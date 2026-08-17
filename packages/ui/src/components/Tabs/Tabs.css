@@ -1,0 +1,118 @@
+.e-tabs {
+  display: flex;
+  align-items: center;
+  gap: var(--e-space-2);
+  min-width: 0;
+}
+
+.e-tabs--scrollable {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.e-tabs--scrollable::-webkit-scrollbar {
+  display: none;
+}
+
+.e-tabs--segmented {
+  padding: var(--e-space-2);
+  background: var(--e-bg-sunken);
+  border-radius: var(--e-radius-lg);
+}
+
+.e-tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--e-space-3);
+  flex: none;
+  min-height: var(--e-control-h-sm);
+  padding: var(--e-space-3) var(--e-space-5);
+  border: 0;
+  background: transparent;
+  color: var(--e-fg-3);
+  font-family: var(--e-font-sans);
+  font-size: var(--e-size-sm);
+  font-weight: var(--e-weight-medium);
+  letter-spacing: var(--e-tracking-wide);
+  border-radius: var(--e-radius-md);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background-color var(--e-dur-instant) var(--e-ease-standard),
+    color var(--e-dur-instant) var(--e-ease-standard);
+}
+
+/* Тач-цель 44px без изменения визуальной высоты сегмента. */
+.e-tab::after {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  top: 50%;
+  height: var(--e-tap-min);
+  transform: translateY(-50%);
+}
+
+.e-tabs--segmented .e-tab--active {
+  background: var(--e-surface);
+  color: var(--e-fg);
+  box-shadow: var(--e-shadow-1);
+}
+
+.e-tabs--underline {
+  gap: var(--e-space-6);
+  border-bottom: 1px solid var(--e-line);
+}
+
+.e-tabs--underline .e-tab {
+  border-radius: 0;
+  padding-inline: 0;
+  padding-block: var(--e-space-4);
+}
+
+.e-tabs--underline .e-tab--active {
+  color: var(--e-fg);
+  box-shadow: inset 0 -2px 0 0 var(--e-tone, var(--e-fg));
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .e-tab:hover:not(.e-tab--active) {
+    color: var(--e-fg);
+  }
+}
+
+.e-tab__icon {
+  display: inline-flex;
+  width: 20px;
+  height: 20px;
+  color: var(--e-tone, currentcolor);
+}
+
+.e-tab__icon > svg {
+  width: 100%;
+  height: 100%;
+}
+
+.e-tab__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 var(--e-space-2);
+  border-radius: var(--e-radius-full);
+  background: var(--e-tone-tint, var(--e-surface-active));
+  color: var(--e-fg-2);
+  font-size: var(--e-size-2xs);
+  font-variant-numeric: var(--e-numeric);
+}
+
+.e-tab__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--e-radius-full);
+  background: var(--e-tone, var(--e-accent));
+}

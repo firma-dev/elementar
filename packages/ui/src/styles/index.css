@@ -1,0 +1,380 @@
+/* @elementar/ui — единая точка импорта стилей.
+   Порядок: токены → сброс → типографика → утилиты → компоненты. */
+
+@import './tokens.css';
+
+@import '../components/Button/Button.css';
+@import '../components/IconButton/IconButton.css';
+@import '../components/Field/Field.css';
+@import '../components/Checkbox/Checkbox.css';
+@import '../components/ListView/ListView.css';
+@import '../components/Row/Row.css';
+@import '../components/Card/Card.css';
+@import '../components/Overlay/Overlay.css';
+@import '../components/Toast/Toast.css';
+@import '../components/EmptyState/EmptyState.css';
+@import '../components/Skeleton/Skeleton.css';
+@import '../components/Menu/Menu.css';
+@import '../components/Tabs/Tabs.css';
+@import '../components/Avatar/Avatar.css';
+@import '../components/Chip/Chip.css';
+@import '../components/Divider/Divider.css';
+@import '../components/Spinner/Spinner.css';
+
+/* ───────────────────────────── Сброс (§11.1) ───────────────────────────── */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  /* Блокировка скролла не должна дёргать раскладку. */
+  scrollbar-gutter: stable;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--e-bg);
+  color: var(--e-fg);
+  font-family: var(--e-font-sans);
+  font-size: var(--e-size-md);
+  line-height: var(--e-leading-normal);
+  letter-spacing: var(--e-tracking-snug);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+body.e-scroll-locked {
+  overflow: hidden;
+}
+
+h1,
+h2,
+h3,
+h4,
+p,
+figure,
+blockquote,
+dl,
+dd {
+  margin: 0;
+}
+
+ul[role='list'],
+ol[role='list'] {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+img,
+picture,
+svg,
+video,
+canvas {
+  display: block;
+  max-width: 100%;
+}
+
+svg {
+  fill: none;
+}
+
+input,
+button,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+}
+
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+textarea {
+  resize: vertical;
+}
+
+/* Курсив не используется нигде: у Golos Text нет настоящего курсива. */
+i,
+em,
+address,
+cite,
+dfn {
+  font-style: normal;
+}
+
+:target {
+  scroll-margin-block: var(--e-space-9);
+}
+
+/* ────────────────────────── Фокус (§11.7) ───────────────────────────── */
+
+/* :focus без -visible не стилизуется никогда. border-radius: inherit не ставится. */
+:where(a, button, input, textarea, select, [tabindex]):focus-visible {
+  outline: 2px solid var(--e-line-focus);
+  outline-offset: 2px;
+}
+
+/* Двойное кольцо на цветной заливке. */
+.e-on-solid:focus-visible {
+  outline: 2px solid var(--e-solid-fg);
+  box-shadow: 0 0 0 4px var(--e-line-focus);
+}
+
+/* ─────────────────────── Типографическая шкала (§11.5) ───────────────── */
+
+.e-display {
+  font-size: var(--e-size-3xl);
+  line-height: var(--e-leading-tight);
+  font-weight: var(--e-weight-semi);
+  letter-spacing: var(--e-tracking-tight);
+}
+
+.e-title {
+  font-size: var(--e-size-2xl);
+  line-height: 1.2;
+  font-weight: var(--e-weight-semi);
+  letter-spacing: var(--e-tracking-tight);
+}
+
+.e-heading {
+  font-size: var(--e-size-xl);
+  line-height: 1.25;
+  font-weight: var(--e-weight-semi);
+  letter-spacing: var(--e-tracking-tight);
+}
+
+.e-subhead {
+  font-size: var(--e-size-lg);
+  line-height: 1.35;
+  font-weight: var(--e-weight-medium);
+  letter-spacing: var(--e-tracking-snug);
+}
+
+.e-body {
+  font-size: var(--e-size-md);
+  line-height: var(--e-leading-normal);
+  font-weight: var(--e-weight-regular);
+  letter-spacing: var(--e-tracking-snug);
+}
+
+.e-body-strong {
+  font-size: var(--e-size-md);
+  line-height: var(--e-leading-normal);
+  font-weight: var(--e-weight-medium);
+  letter-spacing: var(--e-tracking-snug);
+}
+
+.e-body-sm {
+  font-size: var(--e-size-sm);
+  line-height: 1.45;
+  font-weight: var(--e-weight-regular);
+  letter-spacing: var(--e-tracking-wide);
+}
+
+.e-caption {
+  font-size: var(--e-size-xs);
+  line-height: 1.35;
+  font-weight: var(--e-weight-medium);
+  letter-spacing: var(--e-tracking-wide);
+}
+
+.e-overline {
+  font-size: var(--e-size-2xs);
+  line-height: 1.2;
+  font-weight: var(--e-weight-semi);
+  letter-spacing: var(--e-tracking-caps);
+  text-transform: uppercase;
+}
+
+.e-num {
+  font-variant-numeric: var(--e-numeric);
+}
+
+.e-mono {
+  font-family: var(--e-font-mono);
+}
+
+/* ──────────────────────────── Утилиты ───────────────────────────────── */
+
+/* Тон — единственный способ докрасить компонент: примитивы напрямую не берутся. */
+[data-tone='neutral'] {
+  --e-tone: var(--e-fg);
+  --e-tone-tint: var(--e-surface-hover);
+}
+[data-tone='accent'] {
+  --e-tone: var(--e-accent);
+  --e-tone-tint: var(--e-accent-tint);
+}
+[data-tone='success'] {
+  --e-tone: var(--e-success);
+  --e-tone-tint: var(--e-success-tint);
+}
+[data-tone='warning'] {
+  --e-tone: var(--e-warning);
+  --e-tone-tint: var(--e-warning-tint);
+}
+[data-tone='danger'] {
+  --e-tone: var(--e-danger);
+  --e-tone-tint: var(--e-danger-tint);
+}
+[data-tone='work'] {
+  --e-tone: var(--e-list-work);
+  --e-tone-tint: var(--e-list-work-tint);
+}
+[data-tone='home'] {
+  --e-tone: var(--e-list-home);
+  --e-tone-tint: var(--e-list-home-tint);
+}
+[data-tone='hobby'] {
+  --e-tone: var(--e-list-hobby);
+  --e-tone-tint: var(--e-list-hobby-tint);
+}
+[data-tone='craft'] {
+  --e-tone: var(--e-list-craft);
+  --e-tone-tint: var(--e-list-craft-tint);
+}
+[data-tone='agent'] {
+  --e-tone: var(--e-agent);
+  --e-tone-tint: var(--e-agent-tint);
+}
+
+/* Скрытая ссылка «К содержимому» — первый фокусируемый элемент страницы. */
+.e-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/*
+ * База скрытия для самой ссылки: без неё она остаётся обычной ссылкой в потоке
+ * и в flex-раскладке оболочки съедает колонку, сжимая контент.
+ */
+.e-skip-link {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.e-skip-link:focus-visible,
+.e-skip-link:focus {
+  position: fixed;
+  z-index: var(--e-z-tooltip);
+  top: calc(var(--e-safe-top) + var(--e-space-4));
+  left: var(--e-space-4);
+  width: auto;
+  height: auto;
+  clip-path: none;
+  margin: 0;
+  padding: var(--e-space-4) var(--e-space-6);
+  background: var(--e-surface-raised);
+  color: var(--e-fg);
+  border-radius: var(--e-radius-md);
+  box-shadow: var(--e-shadow-3);
+}
+
+.e-stack {
+  display: flex;
+  flex-direction: column;
+}
+
+.e-row-inline {
+  display: flex;
+  align-items: center;
+  gap: var(--e-space-4);
+}
+
+.e-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.e-content {
+  width: 100%;
+  max-width: var(--e-content-max);
+  margin-inline: auto;
+}
+
+.e-safe-bottom {
+  padding-bottom: calc(var(--e-safe-bottom) + var(--e-kb-inset));
+}
+
+/* Каскад предложений агента: задержка stagger × i, максимум 6 элементов. */
+.e-stagger > * {
+  animation: e-rise var(--e-dur-base) var(--e-ease-out) both;
+}
+.e-stagger > *:nth-child(1) {
+  animation-delay: calc(var(--e-stagger) * 0);
+}
+.e-stagger > *:nth-child(2) {
+  animation-delay: calc(var(--e-stagger) * 1);
+}
+.e-stagger > *:nth-child(3) {
+  animation-delay: calc(var(--e-stagger) * 2);
+}
+.e-stagger > *:nth-child(4) {
+  animation-delay: calc(var(--e-stagger) * 3);
+}
+.e-stagger > *:nth-child(5) {
+  animation-delay: calc(var(--e-stagger) * 4);
+}
+.e-stagger > *:nth-child(n + 6) {
+  animation-delay: calc(var(--e-stagger) * 5);
+}
+
+/* Подсветка правки партнёра: вспышка тинта → прозрачный, 1200 мс. */
+.e-flash {
+  animation: e-flash 1200ms var(--e-ease-out);
+}
+
+@keyframes e-rise {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes e-flash {
+  from {
+    background-color: var(--e-tone-tint, var(--e-accent-tint));
+  }
+  to {
+    background-color: transparent;
+  }
+}
+
+/* Дыхание: используется скелетоном и точками спиннера при reduce. */
+@keyframes e-breathe {
+  from {
+    opacity: 0.55;
+  }
+  to {
+    opacity: 0.85;
+  }
+}

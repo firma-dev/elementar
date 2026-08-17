@@ -1,0 +1,12 @@
+/* «Недавно удалённые». */
+
+.e-trash {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-space-5);
+}
+
+.e-trash__hint {
+  margin: 0;
+  color: var(--e-fg-3);
+}

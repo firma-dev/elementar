@@ -1,0 +1,122 @@
+.e-checkbox {
+  --e-checkbox-size: 20px;
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--e-space-5);
+  min-height: var(--e-tap-min);
+}
+
+.e-checkbox--lg {
+  --e-checkbox-size: 24px;
+}
+
+/* Нативный input скрыт визуально, но остаётся фокусируемым. */
+.e-checkbox__input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  padding: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.e-checkbox__box {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: var(--e-checkbox-size);
+  height: var(--e-checkbox-size);
+  margin-top: calc((var(--e-tap-min) - var(--e-checkbox-size)) / 2);
+  border: 1.5px solid var(--e-line-control);
+  border-radius: var(--e-radius-xs);
+  background: var(--e-surface);
+  color: var(--e-fg-on-solid);
+  cursor: pointer;
+  transition:
+    background-color var(--e-dur-fast) var(--e-ease-snap),
+    border-color var(--e-dur-fast) var(--e-ease-snap);
+}
+
+/* Зона нажатия 44×44 вокруг квадрата. */
+.e-checkbox__box::after {
+  content: '';
+  position: absolute;
+  inset: 50% 50%;
+  width: var(--e-tap-min);
+  height: var(--e-tap-min);
+  transform: translate(-50%, -50%);
+}
+
+.e-checkbox__mark {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.e-checkbox__tick {
+  stroke-dasharray: 24;
+  stroke-dashoffset: 24;
+}
+
+.e-checkbox__dash {
+  opacity: 0;
+}
+
+.e-checkbox__input:checked + .e-checkbox__box,
+.e-checkbox__input:indeterminate + .e-checkbox__box {
+  background: var(--e-tone, var(--e-solid));
+  border-color: var(--e-tone, var(--e-solid));
+}
+
+.e-checkbox__input:checked + .e-checkbox__box .e-checkbox__tick {
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset var(--e-dur-fast) var(--e-ease-snap);
+}
+
+/* При снятии галочка исчезает мгновенно: обратное движение читается как неуверенность. */
+.e-checkbox__input:not(:checked) + .e-checkbox__box .e-checkbox__tick {
+  transition: none;
+}
+
+.e-checkbox__input:indeterminate + .e-checkbox__box .e-checkbox__tick {
+  stroke-dashoffset: 24;
+}
+
+.e-checkbox__input:indeterminate + .e-checkbox__box .e-checkbox__dash {
+  opacity: 1;
+}
+
+.e-checkbox__input:focus-visible + .e-checkbox__box {
+  outline: 2px solid var(--e-line-focus);
+  outline-offset: 2px;
+}
+
+.e-checkbox__text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-space-1);
+  padding: calc((var(--e-tap-min) - 1.5em) / 2) 0;
+  min-width: 0;
+}
+
+.e-checkbox__label {
+  cursor: pointer;
+  color: var(--e-fg);
+}
+
+.e-checkbox__desc {
+  color: var(--e-fg-3);
+}
+
+.e-checkbox--disabled {
+  opacity: 0.5;
+}
+
+.e-checkbox--disabled .e-checkbox__box,
+.e-checkbox--disabled .e-checkbox__label {
+  cursor: default;
+}

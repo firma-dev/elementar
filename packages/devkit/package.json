@@ -1,0 +1,17 @@
+{
+  "name": "@elementar/devkit",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./vite": "./src/vite.ts",
+    "./pwa-plugin": "./src/pwa-plugin.ts",
+    "./sw-template": "./src/sw-template.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "vite": "^8.2.1"
+  }
+}

@@ -1,0 +1,277 @@
+/* Планер: только раскладка. Цвета, типографика и тона — из токенов @elementar/ui. */
+
+.p-screen {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 96px; /* композер + таббар не должны закрывать последнюю строку */
+}
+
+.p-boot {
+  padding: 24px 16px;
+}
+
+/* ——— секции ——— */
+
+.p-section {
+  display: block;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 240px;
+}
+
+.p-section__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  min-height: 36px;
+  padding: 8px 16px 4px;
+  color: var(--e-fg-3);
+}
+
+.p-section__head--button {
+  background: none;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  text-align: start;
+}
+
+.p-section__chevron {
+  color: var(--e-fg-3);
+}
+
+.p-task__title {
+  overflow-wrap: anywhere;
+}
+
+/* ——— композер (§12.4): fixed + visualViewport, никакого sticky ——— */
+
+.p-composer {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 30;
+  padding: 8px 12px;
+  background: var(--e-surface);
+  border-top: 1px solid var(--e-line);
+  transform: translateY(calc(-1 * var(--e-kb-inset, 0px)));
+  transition: transform 130ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .p-composer {
+    transition: none;
+  }
+}
+
+.p-composer__inner {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  max-width: 720px;
+  margin-inline: auto;
+}
+
+.p-composer__field {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* ——— чипы ——— */
+
+.p-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-inline: 16px;
+}
+
+/* ——— проекты ——— */
+
+.p-project__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+}
+
+.p-project__head h2 {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+}
+
+.p-project-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  padding: 8px 16px;
+}
+
+@media (min-width: 768px) {
+  .p-project-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .p-project-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.p-project-card {
+  display: block;
+  text-align: start;
+  border-top: 3px solid var(--e-tone, var(--e-line));
+}
+
+.p-project-card__meta {
+  color: var(--e-fg-3);
+  margin-top: 4px;
+}
+
+.p-project-card__list {
+  margin: 8px 0 0;
+  padding-inline-start: 16px;
+  color: var(--e-fg-3);
+}
+
+/* ——— календарь ——— */
+
+.p-calendar__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+}
+
+.p-calendar__head h2 {
+  flex: 1 1 auto;
+  margin: 0;
+}
+
+.p-calendar__weekdays,
+.p-calendar__grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 2px;
+  padding-inline: 8px;
+}
+
+.p-calendar__weekdays {
+  color: var(--e-fg-3);
+  text-align: center;
+  padding-bottom: 4px;
+}
+
+.p-calendar__day {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  min-height: 56px;
+  padding: 4px;
+  background: var(--e-surface);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  contain: layout style;
+}
+
+.p-calendar__day[data-outside='1'] {
+  opacity: 0.45;
+}
+
+.p-calendar__day[data-today='1'] .p-calendar__num {
+  background: var(--e-solid, var(--e-fg));
+  color: var(--e-bg);
+  border-radius: 999px;
+  padding: 0 6px;
+}
+
+.p-calendar__day[data-selected='1'] {
+  border-color: var(--e-tone, var(--e-fg-3));
+}
+
+.p-calendar__num {
+  align-self: flex-start;
+  font-variant-numeric: tabular-nums;
+}
+
+.p-calendar__dots {
+  display: flex;
+  gap: 3px;
+}
+
+.p-calendar__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--e-tone, var(--e-fg-3));
+}
+
+.p-calendar__titles {
+  display: none;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--e-fg-2);
+}
+
+.p-calendar__new {
+  padding: 8px 16px;
+}
+
+@media (min-width: 768px) {
+  .p-calendar__day {
+    min-height: 96px;
+  }
+
+  .p-calendar__dots {
+    display: none;
+  }
+
+  .p-calendar__titles {
+    display: flex;
+  }
+}
+
+/* ——— карточка задачи и настройки ——— */
+
+.p-task-sheet {
+  gap: 12px;
+}
+
+.p-task-sheet__foot {
+  color: var(--e-fg-3);
+  display: grid;
+  gap: 2px;
+}
+
+.p-task-sheet__actions {
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.p-conflict {
+  border: 1px solid var(--e-line);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.p-settings {
+  gap: 20px;
+  padding: 8px 16px 96px;
+}
+
+.p-lists__tabs {
+  padding: 4px 8px;
+}

@@ -1,0 +1,48 @@
+.e-iconbtn {
+  position: relative;
+  padding: 0;
+  gap: 0;
+}
+
+.e-iconbtn--sm {
+  width: var(--e-control-h-sm);
+  height: var(--e-control-h-sm);
+}
+
+.e-iconbtn--md {
+  width: var(--e-control-h-md);
+  height: var(--e-control-h-md);
+}
+
+.e-iconbtn--lg {
+  width: var(--e-control-h-lg);
+  height: var(--e-control-h-lg);
+}
+
+.e-iconbtn--round {
+  border-radius: var(--e-radius-full);
+}
+
+.e-iconbtn__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+}
+
+.e-iconbtn__icon > svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Зона нажатия расширяется до 44px, визуальный размер остаётся прежним. */
+.e-iconbtn--sm::after {
+  content: '';
+  position: absolute;
+  inset: 50% 50%;
+  width: var(--e-tap-min);
+  height: var(--e-tap-min);
+  transform: translate(-50%, -50%);
+}

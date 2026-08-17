@@ -1,0 +1,46 @@
+/* Прихожая и служебные экраны. Всё остальное — из @elementar/ui и @elementar/shell. */
+
+html,
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--e-bg);
+  color: var(--e-fg);
+  overscroll-behavior: none;
+}
+
+#app {
+  min-height: 100dvh;
+}
+
+.h-hall {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: max(16px, env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom));
+  max-width: 720px;
+  margin-inline: auto;
+}
+
+.h-hall__head h1 {
+  margin: 0;
+}
+
+.h-hall__head p {
+  margin: 4px 0 0;
+  color: var(--e-fg-3);
+}
+
+.h-update {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+  background: var(--e-surface);
+  border-top: 1px solid var(--e-line);
+}

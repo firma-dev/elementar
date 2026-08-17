@@ -1,0 +1,261 @@
+/* Оболочка: раскладка, шапка, нижняя панель, рельса (§11.9). */
+
+.e-shell {
+  display: flex;
+  min-height: 100dvh;
+  background: var(--e-bg);
+  padding-left: var(--e-safe-left);
+  padding-right: var(--e-safe-right);
+}
+
+.e-shell__column {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.e-shell__main {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: var(--e-space-6) var(--e-space-5);
+}
+
+.e-shell--tabbar .e-shell__main {
+  padding-bottom: calc(var(--e-tabbar-h) + var(--e-safe-bottom) + var(--e-space-6));
+}
+
+.e-shell__composer {
+  position: sticky;
+  bottom: 0;
+  z-index: var(--e-z-sticky);
+  background: color-mix(in oklab, var(--e-bg) 88%, transparent);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid var(--e-line-soft);
+  padding: var(--e-space-4) var(--e-space-5);
+}
+
+.e-shell--tabbar .e-shell__composer {
+  bottom: calc(var(--e-tabbar-h) + var(--e-safe-bottom));
+}
+
+/* ─────────────────────────────── шапка ─────────────────────────────── */
+
+.e-topbar__sentinel {
+  height: 1px;
+  margin-bottom: -1px;
+}
+
+.e-topbar {
+  position: sticky;
+  top: 0;
+  z-index: var(--e-z-sticky);
+  display: flex;
+  align-items: center;
+  gap: var(--e-space-4);
+  min-height: var(--e-topbar-h);
+  padding: var(--e-space-3) var(--e-space-5);
+  padding-top: calc(var(--e-space-3) + var(--e-safe-top));
+  background: color-mix(in oklab, var(--e-bg) 86%, transparent);
+  backdrop-filter: saturate(1.4) blur(12px);
+  border-bottom: 1px solid transparent;
+  transition: border-color var(--e-dur-fast) var(--e-ease-out);
+}
+
+@supports not (backdrop-filter: blur(1px)) {
+  .e-topbar {
+    background: var(--e-bg);
+  }
+}
+
+.e-topbar--scrolled {
+  border-bottom-color: var(--e-line);
+}
+
+.e-topbar__titles {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.e-topbar__title {
+  margin: 0;
+}
+
+.e-topbar__subtitle {
+  color: var(--e-fg-3);
+}
+
+.e-topbar__lead,
+.e-topbar__presence,
+.e-topbar__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--e-space-2);
+  flex: 0 0 auto;
+}
+
+/* ───────────────────────────── нижняя панель ───────────────────────── */
+
+.e-tabbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: var(--e-z-tabbar);
+  background: color-mix(in oklab, var(--e-surface) 92%, transparent);
+  backdrop-filter: blur(14px);
+  border-top: 1px solid var(--e-line);
+  padding-bottom: var(--e-safe-bottom);
+}
+
+@supports not (backdrop-filter: blur(1px)) {
+  .e-tabbar {
+    background: var(--e-surface);
+  }
+}
+
+.e-tabbar__list {
+  display: flex;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.e-tabbar__item {
+  flex: 1 1 0;
+}
+
+.e-tabbar__button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 100%;
+  min-height: var(--e-tabbar-h);
+  padding: var(--e-space-2) var(--e-space-1);
+  border: 0;
+  background: none;
+  color: var(--e-fg-3);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.e-tabbar__button.is-selected {
+  color: var(--e-tone, var(--e-fg));
+}
+
+.e-tabbar__icon {
+  position: relative;
+  display: inline-flex;
+  width: 24px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+}
+
+.e-tabbar__badge,
+.e-rail__badge {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--e-radius-full);
+  background: var(--e-tone, var(--e-accent));
+  color: var(--e-fg-on-solid);
+  font-size: var(--e-size-2xs);
+  font-variant-numeric: var(--e-numeric);
+  line-height: 18px;
+  text-align: center;
+}
+
+.e-tabbar__badge {
+  position: absolute;
+  top: -4px;
+  left: 14px;
+}
+
+.e-tabbar__badge--dot,
+.e-rail__badge--dot {
+  min-width: 8px;
+  width: 8px;
+  height: 8px;
+  padding: 0;
+}
+
+.e-tabbar__label {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ──────────────────────────────── рельса ───────────────────────────── */
+
+.e-rail {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 var(--e-rail-w);
+  width: var(--e-rail-w);
+  position: sticky;
+  top: 0;
+  align-self: flex-start;
+  /* height, а не max-height: иначе панель ужимается по числу пунктов
+     и её фон обрывается посреди экрана */
+  height: 100dvh;
+  overflow-y: auto;
+  z-index: var(--e-z-rail);
+  padding: var(--e-space-6) var(--e-space-4);
+  border-right: 1px solid var(--e-line-soft);
+  background: var(--e-bg-sunken);
+}
+
+.e-rail__list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.e-rail__button {
+  display: flex;
+  align-items: center;
+  gap: var(--e-space-4);
+  width: 100%;
+  min-height: var(--e-row-h-desktop);
+  padding: var(--e-space-3) var(--e-space-4);
+  border: 0;
+  border-radius: var(--e-radius-md);
+  background: none;
+  color: var(--e-fg-2);
+  text-align: left;
+  cursor: pointer;
+}
+
+.e-rail__button:hover {
+  background: var(--e-surface-hover);
+}
+
+.e-rail__button.is-selected {
+  background: var(--e-tone-tint, var(--e-surface-active));
+  color: var(--e-tone, var(--e-fg));
+  font-weight: var(--e-weight-medium);
+}
+
+.e-rail__label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.e-rail__header,
+.e-rail__footer {
+  padding: var(--e-space-3) var(--e-space-4);
+}
+
+.e-rail__footer {
+  margin-top: auto;
+}

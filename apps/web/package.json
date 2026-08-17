@@ -1,0 +1,26 @@
+{
+  "name": "@elementar/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "icons": "node scripts/make-icons.mjs"
+  },
+  "dependencies": {
+    "@elementar/core": "workspace:*",
+    "@elementar/llm": "workspace:*",
+    "@elementar/proto": "workspace:*",
+    "@elementar/shell": "workspace:*",
+    "@elementar/ui": "workspace:*",
+    "@preact/signals": "^2.11.0",
+    "preact": "^10.29.0"
+  },
+  "devDependencies": {
+    "@elementar/devkit": "workspace:*",
+    "vite": "^8.2.1"
+  }
+}

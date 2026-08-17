@@ -1,0 +1,83 @@
+.e-list {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.e-list__items {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.e-list__item {
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+  background: var(--e-bg);
+  transform: translateY(var(--e-list-dy, 0px));
+  transition: transform var(--e-dur-base) var(--e-ease-inout);
+  contain: layout style;
+}
+
+.e-list__item-body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.e-list__item--dragging {
+  position: relative;
+  z-index: var(--e-z-sticky);
+  transition: none;
+  box-shadow: var(--e-shadow-3);
+}
+
+/* Разделители — hairline между строками, не рамка вокруг всего подряд. */
+.e-list--div-full .e-list__item + .e-list__item,
+.e-list--div-inset .e-list__item + .e-list__item {
+  border-top: 1px solid var(--e-line);
+}
+
+.e-list--div-inset .e-list__item + .e-list__item {
+  border-top-color: transparent;
+  background-image: linear-gradient(var(--e-line), var(--e-line));
+  background-repeat: no-repeat;
+  background-size: calc(100% - var(--e-space-6)) 1px;
+  background-position: var(--e-space-6) 0;
+}
+
+.e-list--div-none .e-list__item + .e-list__item {
+  border-top: 0;
+}
+
+.e-list__grip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: var(--e-tap-min);
+  border: 0;
+  background: transparent;
+  color: var(--e-fg-muted);
+  cursor: grab;
+  touch-action: none;
+}
+
+.e-list__grip:active {
+  cursor: grabbing;
+}
+
+.e-list__grip > svg {
+  width: 20px;
+  height: 20px;
+}
+
+.e-list__header,
+.e-list__footer {
+  padding: var(--e-space-4) var(--e-space-6);
+  color: var(--e-fg-3);
+}
+
+.e-list__empty {
+  padding: var(--e-space-8) var(--e-space-6);
+}

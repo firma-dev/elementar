@@ -1,0 +1,47 @@
+.e-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--e-space-5);
+  color: var(--e-fg-3);
+}
+
+.e-empty--inline {
+  padding: var(--e-space-9) var(--e-space-6);
+}
+
+.e-empty--page {
+  padding: var(--e-space-13) var(--e-space-6);
+  min-height: 50vh;
+  justify-content: center;
+}
+
+.e-empty__art {
+  color: var(--e-tone, var(--e-fg-muted));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.e-empty__art > svg {
+  width: var(--e-space-14);
+  height: var(--e-space-14);
+}
+
+.e-empty__title {
+  margin: 0;
+  /* Крупный текст — единственное место, где допустим --e-fg-muted; здесь берём fg. */
+  color: var(--e-fg);
+  max-width: 22ch;
+}
+
+.e-empty__desc {
+  margin: 0;
+  color: var(--e-fg-3);
+  max-width: 42ch;
+}
+
+.e-empty__action {
+  margin-top: var(--e-space-3);
+}

@@ -1,0 +1,38 @@
+# зависимости
+node_modules/
+.pnpm-store/
+.pnpm-debug.log*
+
+# сборка
+dist/
+build/
+.vite/
+*.tsbuildinfo
+
+# cloudflare / wrangler
+.wrangler/
+.dev.vars
+.dev.vars.*
+worker-configuration.d.ts
+
+# окружение
+.env
+.env.*
+!.env.example
+
+# тесты
+coverage/
+
+# логи
+*.log
+npm-debug.log*
+yarn-error.log*
+
+# редакторы и ос
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# claude code: агенты и CLAUDE.md коммитятся, локальные настройки — нет
+.claude/settings.local.json

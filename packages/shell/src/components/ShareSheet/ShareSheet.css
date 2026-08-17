@@ -1,0 +1,104 @@
+/* Шит шаринга и шит «Сохраните ссылку». */
+
+.e-share__qr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--e-space-3);
+  padding: var(--e-space-4) 0 var(--e-space-6);
+}
+
+.e-share__qr-hint,
+.e-share__note {
+  color: var(--e-fg-3);
+  margin: var(--e-space-3) 0 0;
+  text-align: center;
+}
+
+.e-share__disclosure {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: var(--e-tap-min);
+  padding: var(--e-space-3) 0;
+  border: 0;
+  background: none;
+  color: var(--e-fg);
+  cursor: pointer;
+}
+
+.e-share__chevron {
+  transition: transform var(--e-dur-fast) var(--e-ease-out);
+}
+
+.e-share__chevron.is-open {
+  transform: rotate(180deg);
+}
+
+.e-share__permanent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-space-4);
+  padding-bottom: var(--e-space-4);
+}
+
+.e-share__warning {
+  margin: 0;
+  color: var(--e-fg-2);
+}
+
+.e-share__link {
+  padding: var(--e-space-3) var(--e-space-4);
+  border: 1px solid var(--e-line);
+  border-radius: var(--e-radius-sm);
+  background: var(--e-bg-sunken);
+  font-size: var(--e-size-xs);
+}
+
+.e-share__row {
+  display: flex;
+  gap: var(--e-space-4);
+  flex-wrap: wrap;
+}
+
+.e-share__passphrase {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--e-space-4);
+  margin-top: var(--e-space-4);
+  padding: var(--e-space-5);
+  border-radius: var(--e-radius-md);
+  background: var(--e-accent-tint);
+}
+
+.e-share__phrase {
+  margin: 0;
+  word-spacing: 0.2em;
+  line-height: var(--e-leading-snug);
+}
+
+.e-share__editors {
+  margin: var(--e-space-5) 0 0;
+  color: var(--e-fg-3);
+}
+
+/* «Сохраните ссылку» (§5.2) */
+
+.e-linksave__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-space-4);
+  margin-top: var(--e-space-5);
+}
+
+.e-linksave__why {
+  margin: 0;
+  color: var(--e-fg-2);
+}
+
+.e-linksave__later {
+  align-self: center;
+  margin-top: var(--e-space-3);
+}

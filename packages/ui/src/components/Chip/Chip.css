@@ -1,0 +1,115 @@
+.e-chip {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  border-radius: var(--e-radius-full);
+  background: var(--e-surface);
+  border: 1px solid var(--e-line-control);
+  color: var(--e-fg);
+  transition:
+    background-color var(--e-dur-instant) var(--e-ease-standard),
+    border-color var(--e-dur-instant) var(--e-ease-standard);
+}
+
+.e-chip--toned {
+  background: var(--e-tone-tint, var(--e-surface));
+  border-color: transparent;
+}
+
+.e-chip--selected {
+  border-color: var(--e-tone, var(--e-fg));
+  box-shadow: inset 0 0 0 1px var(--e-tone, var(--e-fg));
+}
+
+.e-chip__main {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--e-space-3);
+  min-width: 0;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-family: var(--e-font-sans);
+  font-weight: var(--e-weight-medium);
+  letter-spacing: var(--e-tracking-wide);
+  border-radius: inherit;
+}
+
+button.e-chip__main {
+  cursor: pointer;
+}
+
+.e-chip--sm .e-chip__main {
+  min-height: var(--e-control-h-sm);
+  padding: 0 var(--e-space-5);
+  font-size: var(--e-size-xs);
+}
+
+.e-chip--md .e-chip__main {
+  min-height: var(--e-tap-min);
+  padding: 0 var(--e-space-6);
+  font-size: var(--e-size-sm);
+}
+
+.e-chip__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.e-chip__icon {
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+  color: var(--e-tone, var(--e-fg-3));
+}
+
+.e-chip__icon > svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* Цвет никогда не единственный носитель смысла: рядом с точкой всегда есть подпись. */
+.e-chip__dot {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: var(--e-radius-full);
+  background: var(--e-tone, var(--e-fg-3));
+}
+
+.e-chip__remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--e-tap-min);
+  height: var(--e-tap-min);
+  margin-inline-start: calc(-1 * var(--e-space-4));
+  border: 0;
+  background: transparent;
+  color: var(--e-fg-3);
+  border-radius: var(--e-radius-full);
+  cursor: pointer;
+}
+
+.e-chip--sm .e-chip__remove {
+  width: var(--e-control-h-sm);
+  height: var(--e-control-h-sm);
+}
+
+.e-chip__remove > svg {
+  width: 16px;
+  height: 16px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  button.e-chip__main:hover {
+    background: var(--e-surface-hover);
+  }
+
+  .e-chip__remove:hover {
+    color: var(--e-fg);
+    background: var(--e-surface-hover);
+  }
+}

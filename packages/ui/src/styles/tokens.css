@@ -1,0 +1,477 @@
+/* @elementar/ui — токены.
+   Порядок слоёв: примитивы → семантика (светлая) → семантика (тёмная) →
+   типографика → пространство → движение.
+   Компоненты используют ТОЛЬКО семантические токены; примитивы переопределять нельзя. */
+
+/* ─────────────────────────── 1. Примитивы (§11.2) ─────────────────────────── */
+
+:root {
+  /* Бумага: тёплая нейтраль, hue ≈ 50 */
+  --e-paper-0: #fcfbf9;
+  --e-paper-25: #f7f5f2;
+  --e-paper-50: #f1eee9;
+  --e-paper-100: #e8e4dd;
+  --e-paper-200: #dad5cc;
+  --e-paper-300: #c4bdb2;
+  --e-paper-400: #a39b8e;
+  --e-paper-500: #8b8374;
+  --e-paper-600: #756c60;
+  --e-paper-700: #4c453c;
+  --e-paper-800: #332e28;
+  --e-paper-900: #221f1b;
+  --e-paper-950: #14120f;
+
+  /* Графит: холодная нейтраль (тёмная тема) */
+  --e-ink-950: #0e0f11;
+  --e-ink-900: #131417;
+  --e-ink-850: #191b1f;
+  --e-ink-800: #202329;
+  --e-ink-700: #2a2e35;
+  --e-ink-600: #3a3f48;
+  --e-ink-550: #666d78;
+  --e-ink-500: #8a929e;
+  --e-ink-400: #a2a9b4;
+  --e-ink-300: #c7ccd4;
+  --e-ink-200: #e2e5ea;
+  --e-ink-100: #f2f4f7;
+
+  /* Хроматика: пары «светлая / тёмная» */
+  --e-blue-700: #33507a;
+  --e-blue-300: #a8bee0;
+  --e-steel-600: #46688f;
+  --e-steel-300: #8fb0d6;
+  --e-clay-600: #9c5f45;
+  --e-clay-300: #dba184;
+  --e-moss-600: #4f7350;
+  --e-moss-300: #97be97;
+  --e-plum-600: #7c5480;
+  --e-plum-300: #c6a0cb;
+  --e-iris-600: #6b5aa6;
+  --e-iris-300: #b3a6e4;
+  --e-green-600: #3e7a56;
+  --e-green-300: #86c39c;
+  --e-amber-700: #8a6520;
+  --e-amber-300: #e0be72;
+  --e-red-600: #9b3a31;
+  --e-red-300: #ec9e96;
+}
+
+/* ─────────────────── 2. Семантика — светлая тема (§11.3) ─────────────────── */
+
+:root,
+[data-theme='light'] {
+  --e-bg: var(--e-paper-0);
+  --e-bg-sunken: var(--e-paper-50);
+  --e-surface: #ffffff;
+  --e-surface-raised: var(--e-paper-0);
+  --e-surface-hover: var(--e-paper-25);
+  --e-surface-active: var(--e-paper-50);
+  --e-scrim: rgb(34 31 27 / 0.32);
+
+  --e-fg: var(--e-paper-900);
+  --e-fg-2: var(--e-paper-700);
+  --e-fg-3: var(--e-paper-600);
+  /* ТОЛЬКО текст ≥ 24px (или ≥ 18.66px полужирный) и иконки — на 16px это провал AA */
+  --e-fg-muted: var(--e-paper-500);
+  --e-fg-on-solid: var(--e-paper-0);
+
+  --e-line: var(--e-paper-200);
+  --e-line-soft: var(--e-paper-100);
+  --e-line-control: var(--e-paper-500);
+  --e-line-focus: var(--e-blue-700);
+
+  --e-solid: var(--e-paper-900);
+  --e-solid-hover: var(--e-paper-800);
+  --e-solid-active: var(--e-paper-950);
+  --e-solid-fg: var(--e-paper-0);
+
+  --e-accent: var(--e-blue-700);
+  --e-accent-tint: #eaf0f8;
+  --e-accent-fg: var(--e-paper-0);
+
+  --e-success: var(--e-green-600);
+  --e-success-tint: #e8f1eb;
+  --e-warning: var(--e-amber-700);
+  --e-warning-tint: #f6efdf;
+  --e-danger: var(--e-red-600);
+  --e-danger-tint: #f7e9e7;
+
+  --e-list-work: var(--e-steel-600);
+  --e-list-work-tint: #e9eef6;
+  --e-list-home: var(--e-clay-600);
+  --e-list-home-tint: #f6ebe4;
+  --e-list-hobby: var(--e-moss-600);
+  --e-list-hobby-tint: #e9f0e9;
+  --e-list-craft: var(--e-plum-600);
+  --e-list-craft-tint: #f2eaf3;
+
+  --e-agent: var(--e-iris-600);
+  --e-agent-tint: #edeaf7;
+
+  --e-actor-a: var(--e-steel-600);
+  --e-actor-b: var(--e-clay-600);
+
+  --e-shadow-1: 0 1px 2px rgb(34 31 27 / 0.06), 0 1px 1px rgb(34 31 27 / 0.04);
+  --e-shadow-2: 0 2px 4px -1px rgb(34 31 27 / 0.06), 0 6px 14px -4px rgb(34 31 27 / 0.08);
+  --e-shadow-3: 0 8px 24px -8px rgb(34 31 27 / 0.16), 0 2px 6px -2px rgb(34 31 27 / 0.08);
+  --e-shadow-4: 0 24px 60px -16px rgb(34 31 27 / 0.28), 0 4px 12px -6px rgb(34 31 27 / 0.12);
+  --e-shadow-inset-top: inset 0 1px 0 rgb(255 255 255 / 0.6);
+
+  color-scheme: light;
+}
+
+/* ──────────────────── 3. Семантика — тёмная тема (§11.4) ───────────────────
+   Каждый color-mix сопровождается статическим hex-фолбэком строкой выше:
+   iOS Safari < 16.4 отбрасывает объявление с color-mix целиком.
+   Блок повторён для @media (prefers-color-scheme: dark) — в отсутствие postcss
+   дублирование сделано руками, синхронность гарантируется test/contrast.test.ts. */
+
+[data-theme='dark'] {
+  --e-bg: var(--e-ink-900);
+  --e-bg-sunken: var(--e-ink-950);
+  --e-surface: var(--e-ink-850);
+  --e-surface-raised: var(--e-ink-800);
+  --e-surface-hover: var(--e-ink-800);
+  --e-surface-active: var(--e-ink-700);
+  --e-scrim: rgb(0 0 0 / 0.56);
+
+  --e-fg: var(--e-ink-100);
+  --e-fg-2: var(--e-ink-300);
+  --e-fg-3: var(--e-ink-400);
+  --e-fg-muted: var(--e-ink-500);
+  --e-fg-on-solid: var(--e-ink-950);
+
+  --e-line: var(--e-ink-700);
+  --e-line-soft: var(--e-ink-800);
+  --e-line-control: var(--e-ink-550);
+  --e-line-focus: var(--e-blue-300);
+
+  --e-solid: var(--e-ink-100);
+  --e-solid-hover: #ffffff;
+  --e-solid-active: var(--e-ink-200);
+  --e-solid-fg: var(--e-ink-950);
+
+  --e-accent: var(--e-blue-300);
+  --e-accent-fg: var(--e-ink-950);
+
+  --e-accent-tint: #232b36;
+  --e-accent-tint: color-mix(in oklab, var(--e-blue-300) 16%, var(--e-surface));
+
+  --e-success: var(--e-green-300);
+  --e-success-tint: #1e2a23;
+  --e-success-tint: color-mix(in oklab, var(--e-green-300) 14%, var(--e-surface));
+  --e-warning: var(--e-amber-300);
+  --e-warning-tint: #2a2620;
+  --e-warning-tint: color-mix(in oklab, var(--e-amber-300) 14%, var(--e-surface));
+  --e-danger: var(--e-red-300);
+  --e-danger-tint: #2b2020;
+  --e-danger-tint: color-mix(in oklab, var(--e-red-300) 14%, var(--e-surface));
+
+  --e-list-work: var(--e-steel-300);
+  --e-list-work-tint: #1f252c;
+  --e-list-work-tint: color-mix(in oklab, var(--e-steel-300) 14%, var(--e-surface));
+  --e-list-home: var(--e-clay-300);
+  --e-list-home-tint: #292321;
+  --e-list-home-tint: color-mix(in oklab, var(--e-clay-300) 14%, var(--e-surface));
+  --e-list-hobby: var(--e-moss-300);
+  --e-list-hobby-tint: #202722;
+  --e-list-hobby-tint: color-mix(in oklab, var(--e-moss-300) 14%, var(--e-surface));
+  --e-list-craft: var(--e-plum-300);
+  --e-list-craft-tint: #26222a;
+  --e-list-craft-tint: color-mix(in oklab, var(--e-plum-300) 14%, var(--e-surface));
+
+  --e-agent: var(--e-iris-300);
+  --e-agent-tint: #23222e;
+  --e-agent-tint: color-mix(in oklab, var(--e-iris-300) 14%, var(--e-surface));
+
+  --e-actor-a: var(--e-steel-300);
+  --e-actor-b: var(--e-clay-300);
+
+  --e-shadow-1: 0 1px 2px rgb(0 0 0 / 0.4);
+  --e-shadow-2: 0 2px 6px rgb(0 0 0 / 0.44);
+  --e-shadow-3: 0 10px 28px -10px rgb(0 0 0 / 0.6);
+  --e-shadow-4: 0 28px 70px -20px rgb(0 0 0 / 0.72);
+  --e-shadow-inset-top: inset 0 1px 0 rgb(255 255 255 / 0.04);
+
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --e-bg: var(--e-ink-900);
+    --e-bg-sunken: var(--e-ink-950);
+    --e-surface: var(--e-ink-850);
+    --e-surface-raised: var(--e-ink-800);
+    --e-surface-hover: var(--e-ink-800);
+    --e-surface-active: var(--e-ink-700);
+    --e-scrim: rgb(0 0 0 / 0.56);
+
+    --e-fg: var(--e-ink-100);
+    --e-fg-2: var(--e-ink-300);
+    --e-fg-3: var(--e-ink-400);
+    --e-fg-muted: var(--e-ink-500);
+    --e-fg-on-solid: var(--e-ink-950);
+
+    --e-line: var(--e-ink-700);
+    --e-line-soft: var(--e-ink-800);
+    --e-line-control: var(--e-ink-550);
+    --e-line-focus: var(--e-blue-300);
+
+    --e-solid: var(--e-ink-100);
+    --e-solid-hover: #ffffff;
+    --e-solid-active: var(--e-ink-200);
+    --e-solid-fg: var(--e-ink-950);
+
+    --e-accent: var(--e-blue-300);
+    --e-accent-fg: var(--e-ink-950);
+
+    --e-accent-tint: #232b36;
+    --e-accent-tint: color-mix(in oklab, var(--e-blue-300) 16%, var(--e-surface));
+
+    --e-success: var(--e-green-300);
+    --e-success-tint: #1e2a23;
+    --e-success-tint: color-mix(in oklab, var(--e-green-300) 14%, var(--e-surface));
+    --e-warning: var(--e-amber-300);
+    --e-warning-tint: #2a2620;
+    --e-warning-tint: color-mix(in oklab, var(--e-amber-300) 14%, var(--e-surface));
+    --e-danger: var(--e-red-300);
+    --e-danger-tint: #2b2020;
+    --e-danger-tint: color-mix(in oklab, var(--e-red-300) 14%, var(--e-surface));
+
+    --e-list-work: var(--e-steel-300);
+    --e-list-work-tint: #1f252c;
+    --e-list-work-tint: color-mix(in oklab, var(--e-steel-300) 14%, var(--e-surface));
+    --e-list-home: var(--e-clay-300);
+    --e-list-home-tint: #292321;
+    --e-list-home-tint: color-mix(in oklab, var(--e-clay-300) 14%, var(--e-surface));
+    --e-list-hobby: var(--e-moss-300);
+    --e-list-hobby-tint: #202722;
+    --e-list-hobby-tint: color-mix(in oklab, var(--e-moss-300) 14%, var(--e-surface));
+    --e-list-craft: var(--e-plum-300);
+    --e-list-craft-tint: #26222a;
+    --e-list-craft-tint: color-mix(in oklab, var(--e-plum-300) 14%, var(--e-surface));
+
+    --e-agent: var(--e-iris-300);
+    --e-agent-tint: #23222e;
+    --e-agent-tint: color-mix(in oklab, var(--e-iris-300) 14%, var(--e-surface));
+
+    --e-actor-a: var(--e-steel-300);
+    --e-actor-b: var(--e-clay-300);
+
+    --e-shadow-1: 0 1px 2px rgb(0 0 0 / 0.4);
+    --e-shadow-2: 0 2px 6px rgb(0 0 0 / 0.44);
+    --e-shadow-3: 0 10px 28px -10px rgb(0 0 0 / 0.6);
+    --e-shadow-4: 0 28px 70px -20px rgb(0 0 0 / 0.72);
+    --e-shadow-inset-top: inset 0 1px 0 rgb(255 255 255 / 0.04);
+
+    color-scheme: dark;
+  }
+}
+
+/* ─────────────────────────── 4. Типографика (§11.5) ─────────────────────── */
+
+@font-face {
+  font-family: 'Golos Text';
+  src: url('/fonts/golos-text-vf.cyrillic.woff2') format('woff2-variations');
+  font-weight: 400 700;
+  font-style: normal;
+  /* НЕ swap: шрифт убран с критического пути (§11.9) */
+  font-display: optional;
+  unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+
+@font-face {
+  font-family: 'Golos Text';
+  src: url('/fonts/golos-text-vf.latin.woff2') format('woff2-variations');
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: optional;
+  unicode-range: U+0000-00FF, U+2000-206F, U+2190-21BB, U+2212;
+}
+
+/* Метрические фолбэки — по одному на платформу: один общий фейс не находит
+   ничего на Android и Windows, и size-adjust не применяется именно там. */
+@font-face {
+  font-family: 'Golos FB';
+  src: local('Helvetica Neue');
+  size-adjust: 101.5%;
+  ascent-override: 96%;
+  descent-override: 24%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: 'Golos FB';
+  src: local('Segoe UI');
+  size-adjust: 100%;
+  ascent-override: 97%;
+  descent-override: 23%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: 'Golos FB';
+  src: local('Roboto');
+  size-adjust: 99.5%;
+  ascent-override: 95%;
+  descent-override: 25%;
+  line-gap-override: 0%;
+}
+
+:root {
+  --e-font-sans: 'Golos Text', 'Golos FB', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --e-font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', 'Roboto Mono', monospace;
+
+  --e-size-2xs: 0.6875rem;
+  --e-size-xs: 0.75rem;
+  --e-size-sm: 0.875rem;
+  --e-size-md: 1rem;
+  --e-size-lg: 1.125rem;
+  --e-size-xl: 1.375rem;
+  --e-size-2xl: 1.75rem;
+  --e-size-3xl: 2.25rem;
+
+  --e-leading-tight: 1.15;
+  --e-leading-snug: 1.3;
+  --e-leading-normal: 1.5;
+  --e-leading-relaxed: 1.62;
+
+  --e-tracking-tight: -0.014em;
+  --e-tracking-snug: -0.006em;
+  --e-tracking-none: 0;
+  --e-tracking-wide: 0.02em;
+  --e-tracking-caps: 0.07em;
+
+  --e-weight-regular: 400;
+  --e-weight-medium: 500;
+  --e-weight-semi: 600;
+  --e-numeric: tabular-nums lining-nums;
+}
+
+/* ──────────────────── 5. Пространство и раскладка (§11.6) ───────────────── */
+
+:root {
+  --e-space-1: 2px;
+  --e-space-2: 4px;
+  --e-space-3: 6px;
+  --e-space-4: 8px;
+  --e-space-5: 12px;
+  --e-space-6: 16px;
+  --e-space-7: 20px;
+  --e-space-8: 24px;
+  --e-space-9: 32px;
+  --e-space-10: 40px;
+  --e-space-11: 48px;
+  --e-space-12: 64px;
+  --e-space-13: 80px;
+  --e-space-14: 96px;
+
+  --e-radius-xs: 4px;
+  --e-radius-sm: 6px;
+  --e-radius-md: 10px;
+  --e-radius-lg: 14px;
+  --e-radius-xl: 20px;
+  --e-radius-2xl: 28px;
+  --e-radius-full: 999px;
+
+  --e-tap-min: 44px;
+  --e-tap-comfortable: 48px;
+  --e-row-h-mobile: 52px;
+  --e-row-h-desktop: 40px;
+  --e-control-h-sm: 32px;
+  --e-control-h-md: 44px;
+  --e-control-h-lg: 52px;
+
+  --e-rail-w: 240px;
+  --e-detail-w: 400px;
+  --e-content-max: 720px;
+  --e-tabbar-h: 56px;
+  --e-topbar-h: 52px;
+
+  --e-safe-top: env(safe-area-inset-top, 0px);
+  --e-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --e-safe-left: env(safe-area-inset-left, 0px);
+  --e-safe-right: env(safe-area-inset-right, 0px);
+  /* Высота клавиатуры, выставляется из useVisualViewport (§12.4). */
+  --e-kb-inset: 0px;
+
+  --e-z-base: 0;
+  --e-z-sticky: 10;
+  --e-z-rail: 20;
+  --e-z-tabbar: 30;
+  --e-z-scrim: 40;
+  --e-z-sheet: 50;
+  --e-z-menu: 60;
+  --e-z-toast: 70;
+  --e-z-tooltip: 80;
+
+  --e-bp-sm: 480px;
+  --e-bp-md: 768px;
+  --e-bp-lg: 1024px;
+  --e-bp-xl: 1280px;
+}
+
+/* ─────────────────────────── 6. Движение (§11.6) ────────────────────────── */
+
+:root {
+  --e-dur-instant: 80ms;
+  --e-dur-fast: 130ms;
+  --e-dur-base: 200ms;
+  --e-dur-slow: 320ms;
+  --e-dur-sheet: 380ms;
+  --e-dur-toast: 6000ms;
+
+  --e-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --e-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --e-ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --e-ease-inout: cubic-bezier(0.65, 0, 0.35, 1);
+  /* только галочка чекбокса */
+  --e-ease-snap: cubic-bezier(0.34, 1.4, 0.64, 1);
+
+  /* шаг каскада, максимум 6 элементов */
+  --e-stagger: 40ms;
+}
+
+/* reduced-motion не отключает обратную связь, а сжимает её до 1 мс;
+   кроссфейд остаётся 80 мс. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --e-dur-instant: 1ms;
+    --e-dur-fast: 1ms;
+    --e-dur-base: 1ms;
+    --e-dur-slow: 1ms;
+    --e-dur-sheet: 1ms;
+    --e-stagger: 0ms;
+    --e-ease-snap: linear;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .e-crossfade {
+    transition-duration: 80ms !important;
+  }
+}
+
+/* ───────────────────── 7. prefers-contrast: more (§11.7) ────────────────── */
+
+@media (prefers-contrast: more) {
+  :root,
+  [data-theme='light'],
+  [data-theme='dark'] {
+    /* Границы → --e-fg-3, тени → границы (§11.7). */
+    --e-line: var(--e-fg-3);
+    --e-line-soft: var(--e-fg-3);
+    --e-line-control: var(--e-fg-3);
+    --e-shadow-1: 0 0 0 1px var(--e-fg-3);
+    --e-shadow-2: 0 0 0 1px var(--e-fg-3);
+    --e-shadow-3: 0 0 0 1px var(--e-fg-3);
+    --e-shadow-4: 0 0 0 1px var(--e-fg-3);
+  }
+}

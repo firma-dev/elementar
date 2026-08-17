@@ -1,0 +1,98 @@
+.e-card {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  min-width: 0;
+  margin: 0;
+  background: var(--e-surface);
+  border: 1px solid var(--e-line-soft);
+  border-radius: var(--e-radius-lg);
+  color: var(--e-fg);
+  font: inherit;
+  text-align: start;
+  text-decoration: none;
+  transition:
+    background-color var(--e-dur-instant) var(--e-ease-standard),
+    border-color var(--e-dur-instant) var(--e-ease-standard),
+    transform var(--e-dur-fast) var(--e-ease-standard);
+}
+
+.e-card--pad-none {
+  padding: 0;
+}
+.e-card--pad-sm {
+  padding: var(--e-space-5);
+}
+.e-card--pad-md {
+  padding: var(--e-space-6);
+}
+.e-card--pad-lg {
+  padding: var(--e-space-8);
+}
+
+.e-card--elev-0 {
+  box-shadow: none;
+}
+.e-card--elev-1 {
+  box-shadow: var(--e-shadow-1);
+}
+.e-card--elev-2 {
+  box-shadow: var(--e-shadow-2);
+}
+.e-card--elev-3 {
+  box-shadow: var(--e-shadow-3);
+}
+
+/* Тон карточки — левая полоска и подложка тинта, текст остаётся --e-fg. */
+.e-card--toned {
+  position: relative;
+  background: var(--e-tone-tint, var(--e-surface));
+  border-color: transparent;
+  overflow: hidden;
+}
+
+.e-card--toned::before {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: 2px;
+  background: var(--e-tone, var(--e-line));
+}
+
+.e-card--interactive {
+  cursor: pointer;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .e-card--interactive:hover {
+    background: var(--e-surface-hover);
+  }
+
+  .e-card--interactive.e-card--toned:hover {
+    background: var(--e-tone-tint, var(--e-surface-hover));
+    filter: brightness(0.985);
+  }
+}
+
+.e-card--interactive:active {
+  transform: scale(0.99);
+}
+
+.e-card__header {
+  display: flex;
+  align-items: center;
+  gap: var(--e-space-4);
+  margin-bottom: var(--e-space-5);
+}
+
+.e-card__footer {
+  display: flex;
+  align-items: center;
+  gap: var(--e-space-4);
+  margin-top: var(--e-space-5);
+}
+
+.e-card__body {
+  min-width: 0;
+}

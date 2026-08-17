@@ -1,0 +1,111 @@
+.e-toasts {
+  position: fixed;
+  z-index: var(--e-z-toast);
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-space-4);
+  pointer-events: none;
+  /* Мобильный: снизу по центру, над safe-area. */
+  left: calc(var(--e-space-5) + var(--e-safe-left));
+  right: calc(var(--e-space-5) + var(--e-safe-right));
+  bottom: calc(var(--e-safe-bottom) + var(--e-space-5));
+}
+
+/* На мобильном с таббаром стопка поднимается над ним. */
+.e-toasts--with-tabbar {
+  bottom: calc(var(--e-tabbar-h) + var(--e-safe-bottom) + var(--e-space-5));
+}
+
+@media (min-width: 768px) {
+  .e-toasts,
+  .e-toasts--with-tabbar {
+    right: auto;
+    left: calc(var(--e-space-7) + var(--e-safe-left));
+    bottom: calc(var(--e-space-7) + var(--e-safe-bottom));
+    width: 360px;
+    max-width: calc(100vw - 2 * var(--e-space-7));
+  }
+}
+
+.e-toast {
+  display: flex;
+  align-items: center;
+  gap: var(--e-space-4);
+  box-sizing: border-box;
+  min-height: var(--e-tap-min);
+  padding: var(--e-space-4) var(--e-space-4) var(--e-space-4) var(--e-space-6);
+  background: var(--e-solid);
+  color: var(--e-solid-fg);
+  border-radius: var(--e-radius-md);
+  box-shadow: var(--e-shadow-3);
+  pointer-events: auto;
+  animation: e-toast-in var(--e-dur-base) var(--e-ease-out);
+}
+
+.e-toast[data-tone='success'] {
+  background: var(--e-success);
+  color: var(--e-fg-on-solid);
+}
+
+.e-toast[data-tone='danger'] {
+  background: var(--e-danger);
+  color: var(--e-fg-on-solid);
+}
+
+.e-toast__message {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.e-toast__action {
+  flex: none;
+  min-height: var(--e-control-h-sm);
+  padding: 0 var(--e-space-4);
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-family: var(--e-font-sans);
+  font-size: var(--e-size-sm);
+  font-weight: var(--e-weight-semi);
+  letter-spacing: var(--e-tracking-wide);
+  text-decoration: underline;
+  border-radius: var(--e-radius-sm);
+  cursor: pointer;
+}
+
+.e-toast__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: var(--e-control-h-sm);
+  height: var(--e-control-h-sm);
+  border: 0;
+  background: transparent;
+  color: inherit;
+  border-radius: var(--e-radius-sm);
+  cursor: pointer;
+  opacity: 0.8;
+}
+
+.e-toast__close > svg {
+  width: 16px;
+  height: 16px;
+}
+
+.e-toast__action:focus-visible,
+.e-toast__close:focus-visible {
+  outline: 2px solid var(--e-solid-fg);
+  outline-offset: 2px;
+}
+
+@keyframes e-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

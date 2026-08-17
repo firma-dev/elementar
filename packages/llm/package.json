@@ -1,0 +1,18 @@
+{
+  "name": "@elementar/llm",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@elementar/core": "workspace:*",
+    "@elementar/proto": "workspace:*",
+    "@preact/signals-core": "^1.14.0"
+  }
+}

@@ -1,0 +1,40 @@
+/* Экран восстановления (§5.6). */
+
+.e-recovery {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-space-6);
+  max-width: var(--e-content-max);
+  margin: 0 auto;
+  padding: var(--e-space-8) var(--e-space-5);
+}
+
+.e-recovery__lead {
+  margin: 0;
+  color: var(--e-fg-2);
+}
+
+.e-recovery__drop,
+.e-recovery__phrase {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-space-4);
+  align-items: flex-start;
+}
+
+.e-recovery__drop p,
+.e-recovery__phrase p {
+  margin: 0;
+}
+
+.e-recovery__link {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-space-4);
+  align-items: flex-start;
+}
+
+.e-recovery__error {
+  margin: 0;
+  color: var(--e-danger);
+}

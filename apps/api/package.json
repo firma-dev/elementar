@@ -1,0 +1,21 @@
+{
+  "name": "@elementar/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "migrate:local": "wrangler d1 migrations apply elementar --local",
+    "migrate:remote": "wrangler d1 migrations apply elementar --remote",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@elementar/proto": "workspace:*"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260815.1",
+    "wrangler": "^4.123.0"
+  }
+}

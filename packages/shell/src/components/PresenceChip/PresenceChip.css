@@ -1,0 +1,49 @@
+/* Присутствие (§12.9). */
+
+.e-presence {
+  display: flex;
+  align-items: center;
+  gap: var(--e-space-4);
+}
+
+.e-presence--compact {
+  gap: calc(-1 * var(--e-space-1));
+  min-height: var(--e-tap-min);
+  padding: 0 var(--e-space-2);
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.e-presence__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  max-width: 72px;
+}
+
+.e-presence__item.is-offline {
+  opacity: 0.45;
+}
+
+.e-presence__where {
+  color: var(--e-fg-3);
+  max-width: 100%;
+}
+
+.e-presence__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.e-presence__row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--e-space-4);
+}

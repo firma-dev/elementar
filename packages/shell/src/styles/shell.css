@@ -1,0 +1,12 @@
+/* @elementar/shell — стили компонентов оболочки.
+   Токены приходят из @elementar/ui: import '@elementar/ui/styles.css' обязателен. */
+
+@import '../components/AppShell/AppShell.css';
+@import '../components/QrCode/QrCode.css';
+@import '../components/ShareSheet/ShareSheet.css';
+@import '../components/ModelSlotSettings/ModelSlotSettings.css';
+@import '../components/AgentProposal/AgentProposal.css';
+@import '../components/PresenceChip/PresenceChip.css';
+@import '../components/DigestSheet/DigestSheet.css';
+@import '../components/RecoveryScreen/RecoveryScreen.css';
+@import '../components/TrashScreen/TrashScreen.css';

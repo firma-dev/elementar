@@ -1,0 +1,61 @@
+.e-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-space-3);
+  width: var(--e-skeleton-w, 100%);
+}
+
+.e-skeleton__bar {
+  display: block;
+  width: 100%;
+  height: var(--e-skeleton-h, 1em);
+  border-radius: var(--e-radius-sm);
+  background: var(--e-surface-active);
+  animation: e-breathe 1400ms var(--e-ease-inout) infinite alternate;
+}
+
+/* Последняя строка текста короче — геометрия совпадает с будущим контентом. */
+.e-skeleton--text .e-skeleton__bar:last-child:not(:only-child) {
+  width: 62%;
+}
+
+.e-skeleton--row {
+  min-height: var(--e-row-h-mobile);
+  justify-content: center;
+  padding: var(--e-space-4) var(--e-space-6);
+}
+
+.e-skeleton--row .e-skeleton__bar {
+  height: var(--e-skeleton-h, 16px);
+  width: 72%;
+}
+
+.e-skeleton--card .e-skeleton__bar {
+  height: var(--e-skeleton-h, 96px);
+  border-radius: var(--e-radius-lg);
+}
+
+.e-skeleton--circle {
+  width: auto;
+}
+
+.e-skeleton--circle .e-skeleton__bar {
+  width: var(--e-skeleton-w, 32px);
+  height: var(--e-skeleton-h, 32px);
+  border-radius: var(--e-radius-full);
+}
+
+.e-skeleton--block .e-skeleton__bar {
+  height: var(--e-skeleton-h, 100%);
+  border-radius: var(--e-radius-md);
+}
+
+/* @keyframes e-breathe объявлен в styles/index.css: его использует ещё и Spinner. */
+
+/* При reduce — статичная плашка, без дыхания. */
+@media (prefers-reduced-motion: reduce) {
+  .e-skeleton__bar {
+    animation: none !important;
+    opacity: 0.7;
+  }
+}

@@ -1,0 +1,25 @@
+.e-divider {
+  border: 0;
+  margin: 0;
+  flex: none;
+  background: var(--e-line);
+  height: 1px;
+  width: 100%;
+}
+
+.e-divider--inset {
+  margin-inline-start: var(--e-space-6);
+  width: auto;
+}
+
+.e-divider--vertical {
+  width: 1px;
+  height: auto;
+  align-self: stretch;
+}
+
+.e-divider--vertical.e-divider--inset {
+  margin: var(--e-space-4) 0;
+  margin-inline-start: 0;
+  height: auto;
+}

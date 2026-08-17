@@ -1,0 +1,14 @@
+/* QR: тёмные модули --e-fg, поле --e-surface (§12.8). */
+
+.e-qr {
+  display: block;
+  border-radius: var(--e-radius-md);
+}
+
+.e-qr__field {
+  fill: var(--e-surface);
+}
+
+.e-qr__modules {
+  fill: var(--e-fg);
+}

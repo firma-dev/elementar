@@ -1,0 +1,37 @@
+/* Шит «Пока вас не было». */
+
+.e-digest__actors {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-space-3);
+  margin: 0 0 var(--e-space-5);
+  padding: 0;
+  list-style: none;
+}
+
+.e-digest__actor {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--e-space-4);
+}
+
+.e-digest__counts {
+  color: var(--e-fg-3);
+  text-align: right;
+}
+
+.e-digest__mark {
+  display: inline-flex;
+  width: 24px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  color: var(--e-tone, var(--e-fg-3));
+}
+
+.e-digest__foot {
+  margin: var(--e-space-5) 0;
+  color: var(--e-fg-3);
+  text-align: center;
+}

@@ -1,0 +1,124 @@
+.e-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-space-3);
+  min-width: 0;
+}
+
+.e-field__label {
+  color: var(--e-fg-2);
+}
+
+.e-field__control {
+  display: flex;
+  align-items: center;
+  gap: var(--e-space-4);
+  box-sizing: border-box;
+  padding: 0 var(--e-space-5);
+  background: var(--e-bg-sunken);
+  border: 1px solid var(--e-line-control);
+  border-radius: var(--e-radius-md);
+  color: var(--e-fg);
+  transition:
+    border-color var(--e-dur-instant) var(--e-ease-standard),
+    background-color var(--e-dur-instant) var(--e-ease-standard);
+}
+
+.e-field--md .e-field__control {
+  min-height: var(--e-control-h-md);
+}
+
+.e-field--lg .e-field__control {
+  min-height: var(--e-control-h-lg);
+}
+
+.e-field__control:focus-within {
+  border-color: var(--e-line-focus);
+  outline: 2px solid var(--e-line-focus);
+  outline-offset: 1px;
+}
+
+.e-field--invalid .e-field__control {
+  border-color: var(--e-danger);
+}
+
+.e-field--disabled .e-field__control {
+  opacity: 0.55;
+}
+
+.e-field__input {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 100%;
+  margin: 0;
+  padding: var(--e-space-4) 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-family: var(--e-font-sans);
+  /* 16px обязателен: меньше — и iOS Safari зумит страницу при фокусе. */
+  font-size: var(--e-size-md);
+  line-height: var(--e-leading-normal);
+  letter-spacing: var(--e-tracking-snug);
+}
+
+.e-field__input:focus {
+  outline: none;
+}
+
+.e-field__input::placeholder {
+  color: var(--e-fg-3);
+  opacity: 1;
+}
+
+.e-field__affix {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  color: var(--e-fg-3);
+}
+
+.e-field__clear {
+  flex: none;
+  margin-inline-end: calc(-1 * var(--e-space-3));
+  color: var(--e-fg-3);
+}
+
+/* Авторост textarea: скрытый measurer в той же ячейке грида. */
+.e-field__grow {
+  display: grid;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.e-field__grow::after {
+  content: attr(data-value) ' ';
+  grid-area: 1 / 1;
+  visibility: hidden;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: var(--e-font-sans);
+  font-size: var(--e-size-md);
+  line-height: var(--e-leading-normal);
+  letter-spacing: var(--e-tracking-snug);
+  padding: var(--e-space-4) 0;
+  min-height: calc(var(--e-rows-min, 2) * var(--e-leading-normal) * 1em);
+  max-height: calc(var(--e-rows-max, 10) * var(--e-leading-normal) * 1em);
+}
+
+.e-field__grow > textarea.e-field__input {
+  grid-area: 1 / 1;
+  resize: none;
+  overflow: auto;
+  max-height: calc(
+    var(--e-rows-max, 10) * var(--e-leading-normal) * 1em + 2 * var(--e-space-4)
+  );
+}
+
+.e-field__error {
+  color: var(--e-danger);
+}
+
+.e-field__hint {
+  color: var(--e-fg-3);
+}

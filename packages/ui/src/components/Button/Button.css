@@ -1,0 +1,161 @@
+.e-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--e-space-4);
+  box-sizing: border-box;
+  margin: 0;
+  border: 1px solid transparent;
+  border-radius: var(--e-radius-md);
+  background: transparent;
+  color: var(--e-fg);
+  font-family: var(--e-font-sans);
+  font-weight: var(--e-weight-medium);
+  line-height: var(--e-leading-snug);
+  letter-spacing: var(--e-tracking-snug);
+  text-decoration: none;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background-color var(--e-dur-instant) var(--e-ease-standard),
+    border-color var(--e-dur-instant) var(--e-ease-standard),
+    color var(--e-dur-instant) var(--e-ease-standard),
+    transform var(--e-dur-fast) var(--e-ease-standard);
+}
+
+.e-btn--sm {
+  min-height: var(--e-control-h-sm);
+  padding: 0 var(--e-space-5);
+  font-size: var(--e-size-sm);
+}
+
+.e-btn--md {
+  min-height: var(--e-control-h-md);
+  padding: 0 var(--e-space-6);
+  font-size: var(--e-size-md);
+}
+
+.e-btn--lg {
+  min-height: var(--e-control-h-lg);
+  padding: 0 var(--e-space-7);
+  font-size: var(--e-size-md);
+  font-weight: var(--e-weight-medium);
+}
+
+.e-btn--full {
+  width: 100%;
+}
+
+.e-btn__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex: none;
+}
+
+.e-btn__label {
+  display: inline-block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.e-btn__label:empty {
+  display: none;
+}
+
+.e-btn__overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Подпись прячется, но занимает место: ширина кнопки при загрузке не меняется. */
+.e-btn--loading-overlay .e-btn__label,
+.e-btn--loading-overlay .e-btn__icon {
+  visibility: hidden;
+}
+
+/* Варианты */
+
+.e-btn--primary {
+  background: var(--e-solid);
+  color: var(--e-solid-fg);
+}
+
+.e-btn--secondary {
+  background: var(--e-surface);
+  border-color: var(--e-line-control);
+  color: var(--e-fg);
+}
+
+.e-btn--ghost {
+  background: transparent;
+  color: var(--e-fg);
+}
+
+.e-btn--danger {
+  background: var(--e-danger);
+  color: var(--e-fg-on-solid);
+}
+
+/* Тон переопределяет заливку/цвет текста, но не геометрию. */
+.e-btn--primary[data-tone] {
+  background: var(--e-tone);
+  color: var(--e-fg-on-solid);
+}
+
+.e-btn--secondary[data-tone],
+.e-btn--ghost[data-tone] {
+  color: var(--e-tone);
+}
+
+/* Hover только там, где есть настоящий курсор. */
+@media (hover: hover) and (pointer: fine) {
+  .e-btn--primary:hover:not(:disabled) {
+    background: var(--e-solid-hover);
+  }
+
+  .e-btn--secondary:hover:not(:disabled) {
+    background: var(--e-surface-hover);
+  }
+
+  .e-btn--ghost:hover:not(:disabled) {
+    background: var(--e-surface-hover);
+  }
+
+  .e-btn--danger:hover:not(:disabled),
+  .e-btn--primary[data-tone]:hover:not(:disabled) {
+    filter: brightness(0.94);
+  }
+}
+
+.e-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.e-btn--primary:active:not(:disabled) {
+  background: var(--e-solid-active);
+}
+
+.e-btn--secondary:active:not(:disabled),
+.e-btn--ghost:active:not(:disabled) {
+  background: var(--e-surface-active);
+}
+
+.e-btn:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.e-btn--loading:disabled {
+  cursor: progress;
+  opacity: 1;
+}

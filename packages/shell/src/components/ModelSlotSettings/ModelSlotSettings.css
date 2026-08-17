@@ -1,0 +1,98 @@
+/* Слот под модель. */
+
+.e-slot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-space-5);
+}
+
+.e-slot__label {
+  margin-bottom: calc(-1 * var(--e-space-3));
+}
+
+.e-slot__select {
+  width: 100%;
+  min-height: var(--e-control-h-md);
+  padding: 0 var(--e-space-5);
+  border: 1px solid var(--e-line-control);
+  border-radius: var(--e-radius-md);
+  background: var(--e-surface);
+  color: var(--e-fg);
+  font: inherit;
+}
+
+.e-slot__select:focus-visible {
+  outline: 2px solid var(--e-line-focus);
+  outline-offset: 1px;
+}
+
+.e-slot__hint,
+.e-slot__note {
+  color: var(--e-fg-3);
+  margin: 0;
+}
+
+.e-slot__transport {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-space-4);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.e-slot__radio {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--e-space-4);
+  align-items: start;
+  min-height: var(--e-tap-min);
+  padding: var(--e-space-2) 0;
+  cursor: pointer;
+}
+
+.e-slot__radio.is-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.e-slot__radio input {
+  width: 20px;
+  height: 20px;
+  margin-top: 2px;
+  accent-color: var(--e-accent);
+}
+
+.e-slot__radio span span {
+  display: block;
+}
+
+.e-slot__relay {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-space-4);
+  padding-left: calc(20px + var(--e-space-4));
+}
+
+.e-slot__actions {
+  display: flex;
+  gap: var(--e-space-4);
+  flex-wrap: wrap;
+}
+
+.e-slot__ok {
+  color: var(--e-success);
+  margin: 0;
+}
+
+.e-slot__fail {
+  color: var(--e-danger);
+  margin: 0;
+}
+
+.e-slot__cors-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--e-space-4);
+  margin: var(--e-space-5) 0 var(--e-space-4);
+}

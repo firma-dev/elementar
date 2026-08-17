@@ -1,0 +1,35 @@
+{
+  "name": "elementar",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "pnpm --filter @elementar/web build",
+    "dev": "pnpm --filter @elementar/web dev",
+    "dev:api": "pnpm --filter @elementar/api dev",
+    "typecheck": "pnpm -r typecheck",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "format": "prettier --write .",
+    "check": "pnpm typecheck && pnpm test"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "prettier": "^3.4.2",
+    "typescript": "^5.9.0",
+    "vitest": "^4.1.10",
+    "fast-check": "^4.9.0",
+    "fake-indexeddb": "^6.2.5",
+    "vite": "^8.2.1"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "workerd",
+      "@cloudflare/workerd-linux-64"
+    ]
+  }
+}
