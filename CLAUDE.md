@@ -21,9 +21,14 @@ TypeScript, pnpm-монорепо. Клиент — Vite + Preact. Бэкенд 
 ## Владение файлами
 Один файл — один владелец. Агент не правит то, чего ему не поручали; замеченную чужую ошибку называет в отчёте.
 
-- `ARCHITECTURE.md` → architect
-- токены и компоненты дизайн-системы → designer
+- `ARCHITECTURE.md`, `PROTOCOL.md` → architect
+- `DECISIONS.md` → architect (дописывается сверху, записи не переписываются)
+- `DESIGN.md`, токены и компоненты дизайн-системы → designer
 - код корпусов и ядра → implementer
+
+`PROTOCOL.md` и `DESIGN.md` появляются по Д-008, до их создания разделы живут в
+`ARCHITECTURE.md`. Без владельца: `README.md`, `CLAUDE.md`, `elementar-canon.md`,
+`.claude/agents/*` — их правит человек.
 
 ## Порядок работы
 ```

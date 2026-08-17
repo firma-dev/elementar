@@ -111,11 +111,13 @@
   --e-actor-a: var(--e-steel-600);
   --e-actor-b: var(--e-clay-600);
 
-  --e-shadow-1: 0 1px 2px rgb(34 31 27 / 0.06), 0 1px 1px rgb(34 31 27 / 0.04);
-  --e-shadow-2: 0 2px 4px -1px rgb(34 31 27 / 0.06), 0 6px 14px -4px rgb(34 31 27 / 0.08);
-  --e-shadow-3: 0 8px 24px -8px rgb(34 31 27 / 0.16), 0 2px 6px -2px rgb(34 31 27 / 0.08);
-  --e-shadow-4: 0 24px 60px -16px rgb(34 31 27 / 0.28), 0 4px 12px -6px rgb(34 31 27 / 0.12);
-  --e-shadow-inset-top: inset 0 1px 0 rgb(255 255 255 / 0.6);
+  /* Канон §6: тени жёсткие, без размытия. Третий аргумент box-shadow всегда 0 —
+     это не стилевое предпочтение, а запрет. Глубина задаётся смещением. */
+  --e-shadow-1: 1px 1px 0 rgb(34 31 27 / 0.20);
+  --e-shadow-2: 2px 2px 0 rgb(34 31 27 / 0.24);
+  --e-shadow-3: 4px 4px 0 rgb(34 31 27 / 0.28);
+  --e-shadow-4: 6px 6px 0 rgb(34 31 27 / 0.32);
+  --e-shadow-inset-top: inset 1px 1px 0 rgb(255 255 255 / 0.7);
 
   color-scheme: light;
 }
@@ -187,11 +189,11 @@
   --e-actor-a: var(--e-steel-300);
   --e-actor-b: var(--e-clay-300);
 
-  --e-shadow-1: 0 1px 2px rgb(0 0 0 / 0.4);
-  --e-shadow-2: 0 2px 6px rgb(0 0 0 / 0.44);
-  --e-shadow-3: 0 10px 28px -10px rgb(0 0 0 / 0.6);
-  --e-shadow-4: 0 28px 70px -20px rgb(0 0 0 / 0.72);
-  --e-shadow-inset-top: inset 0 1px 0 rgb(255 255 255 / 0.04);
+  --e-shadow-1: 1px 1px 0 rgb(0 0 0 / 0.55);
+  --e-shadow-2: 2px 2px 0 rgb(0 0 0 / 0.60);
+  --e-shadow-3: 4px 4px 0 rgb(0 0 0 / 0.66);
+  --e-shadow-4: 6px 6px 0 rgb(0 0 0 / 0.72);
+  --e-shadow-inset-top: inset 1px 1px 0 rgb(255 255 255 / 0.06);
 
   color-scheme: dark;
 }
@@ -258,11 +260,11 @@
     --e-actor-a: var(--e-steel-300);
     --e-actor-b: var(--e-clay-300);
 
-    --e-shadow-1: 0 1px 2px rgb(0 0 0 / 0.4);
-    --e-shadow-2: 0 2px 6px rgb(0 0 0 / 0.44);
-    --e-shadow-3: 0 10px 28px -10px rgb(0 0 0 / 0.6);
-    --e-shadow-4: 0 28px 70px -20px rgb(0 0 0 / 0.72);
-    --e-shadow-inset-top: inset 0 1px 0 rgb(255 255 255 / 0.04);
+    --e-shadow-1: 1px 1px 0 rgb(0 0 0 / 0.55);
+    --e-shadow-2: 2px 2px 0 rgb(0 0 0 / 0.60);
+    --e-shadow-3: 4px 4px 0 rgb(0 0 0 / 0.66);
+    --e-shadow-4: 6px 6px 0 rgb(0 0 0 / 0.72);
+    --e-shadow-inset-top: inset 1px 1px 0 rgb(255 255 255 / 0.06);
 
     color-scheme: dark;
   }
@@ -270,10 +272,16 @@
 
 /* ─────────────────────────── 4. Типографика (§11.5) ─────────────────────── */
 
+/* Канон §6: текст — Basis Grotesque Pro (Regular / Medium / Bold).
+   Начертания Light, Black и курсивы в поставке есть, но каноном не названы и в
+   сборку не идут — см. scripts/build-fonts.py.
+   Файлы собраны из fonts/*.ttf; unicode-range обязан совпадать с диапазонами
+   в этом скрипте, иначе браузер скачает файл и не найдёт в нём глифов. */
+
 @font-face {
-  font-family: 'Golos Text';
-  src: url('/fonts/golos-text-vf.cyrillic.woff2') format('woff2-variations');
-  font-weight: 400 700;
+  font-family: 'Basis Grotesque Pro';
+  src: url('/fonts/basis-400.cyrillic.woff2') format('woff2');
+  font-weight: 400;
   font-style: normal;
   /* НЕ swap: шрифт убран с критического пути (§11.9) */
   font-display: optional;
@@ -281,45 +289,122 @@
 }
 
 @font-face {
-  font-family: 'Golos Text';
-  src: url('/fonts/golos-text-vf.latin.woff2') format('woff2-variations');
-  font-weight: 400 700;
+  font-family: 'Basis Grotesque Pro';
+  src: url('/fonts/basis-400.latin.woff2') format('woff2');
+  font-weight: 400;
   font-style: normal;
+  /* НЕ swap: шрифт убран с критического пути (§11.9) */
   font-display: optional;
   unicode-range: U+0000-00FF, U+2000-206F, U+2190-21BB, U+2212;
 }
 
+@font-face {
+  font-family: 'Basis Grotesque Pro';
+  src: url('/fonts/basis-500.cyrillic.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  /* НЕ swap: шрифт убран с критического пути (§11.9) */
+  font-display: optional;
+  unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+
+@font-face {
+  font-family: 'Basis Grotesque Pro';
+  src: url('/fonts/basis-500.latin.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  /* НЕ swap: шрифт убран с критического пути (§11.9) */
+  font-display: optional;
+  unicode-range: U+0000-00FF, U+2000-206F, U+2190-21BB, U+2212;
+}
+
+@font-face {
+  font-family: 'Basis Grotesque Pro';
+  src: url('/fonts/basis-700.cyrillic.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  /* НЕ swap: шрифт убран с критического пути (§11.9) */
+  font-display: optional;
+  unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+
+@font-face {
+  font-family: 'Basis Grotesque Pro';
+  src: url('/fonts/basis-700.latin.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  /* НЕ swap: шрифт убран с критического пути (§11.9) */
+  font-display: optional;
+  unicode-range: U+0000-00FF, U+2000-206F, U+2190-21BB, U+2212;
+}
+
+/* Канон §6: цифры и единицы измерения — OCR A Becker RUS-LAT. Правило без
+   исключений, поэтому шрифт не декоративный, а несущий: он рисует каждое число
+   в интерфейсе. Цифры в нём моноширинные (0 и 1 по 0.7202 em) — колонки чисел
+   в финансере выравниваются сами, tabular-nums не нужен.
+   size-adjust: цифра OCR — 0.7798 em против 0.7280 em у Basis; 0.728/0.7798
+   даёт 93.4%, иначе число выпирает над строкой текста. */
+
+@font-face {
+  font-family: 'OCR A Becker';
+  src: url('/fonts/ocr-400.cyrillic.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  /* НЕ swap: шрифт убран с критического пути (§11.9) */
+  font-display: optional;
+  size-adjust: 93.4%;
+  unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+
+@font-face {
+  font-family: 'OCR A Becker';
+  src: url('/fonts/ocr-400.latin.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  /* НЕ swap: шрифт убран с критического пути (§11.9) */
+  font-display: optional;
+  size-adjust: 93.4%;
+  unicode-range: U+0000-00FF, U+2000-206F, U+2190-21BB, U+2212;
+}
+
 /* Метрические фолбэки — по одному на платформу: один общий фейс не находит
-   ничего на Android и Windows, и size-adjust не применяется именно там. */
+   ничего на Android и Windows, и size-adjust не применяется именно там.
+   Метрики Basis Grotesque Pro: upm 1000, ascent 940, descent -351, x-height 496.
+   size-adjust = 0.496 / x-height фолбэка. */
 @font-face {
-  font-family: 'Golos FB';
+  font-family: 'Basis FB';
   src: local('Helvetica Neue');
-  size-adjust: 101.5%;
-  ascent-override: 96%;
-  descent-override: 24%;
+  size-adjust: 95.9%;
+  ascent-override: 94%;
+  descent-override: 35.1%;
   line-gap-override: 0%;
 }
 
 @font-face {
-  font-family: 'Golos FB';
+  font-family: 'Basis FB';
   src: local('Segoe UI');
-  size-adjust: 100%;
-  ascent-override: 97%;
-  descent-override: 23%;
+  size-adjust: 99.2%;
+  ascent-override: 94%;
+  descent-override: 35.1%;
   line-gap-override: 0%;
 }
 
 @font-face {
-  font-family: 'Golos FB';
+  font-family: 'Basis FB';
   src: local('Roboto');
-  size-adjust: 99.5%;
-  ascent-override: 95%;
-  descent-override: 25%;
+  size-adjust: 93.9%;
+  ascent-override: 94%;
+  descent-override: 35.1%;
   line-gap-override: 0%;
 }
 
 :root {
-  --e-font-sans: 'Golos Text', 'Golos FB', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --e-font-sans: 'Basis Grotesque Pro', 'Basis FB', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  /* Канон §6: любая цифра в интерфейсе набирается вторым шрифтом. Применяется
+     через утилиту .e-num или свойство font-family: var(--e-font-num) — руками
+     семейство не пишется. Фолбэк моноширинный: если OCR не доехал, цифры всё
+     равно должны стоять в колонку. */
+  --e-font-num: 'OCR A Becker', ui-monospace, 'SF Mono', 'Cascadia Mono', 'Roboto Mono', monospace;
   --e-font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', 'Roboto Mono', monospace;
 
   --e-size-2xs: 0.6875rem;
