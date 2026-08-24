@@ -342,49 +342,6 @@ input {
   color: var(--el__background);
 }
 
-.f-tiles {
-  display: grid;
-  grid-template-columns: 1.7fr 1fr;
-  gap: 0.7em;
-  margin-bottom: var(--f-step-3);
-  align-items: stretch;
-}
-
-/* Числа в обеих плитках стоят на одной высоте: `space-between` растаскивал их
-   по краям, и «поступления» висели ниже «трат» без всякой причины. Подпись
-   прижата к низу отдельно — она и держит нижний край. */
-.f-tile {
-  border: var(--el__border-width-s) solid var(--el__text);
-  padding: 0.6em 0.75em 0.7em;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  gap: 0.4em;
-}
-
-.f-tile--main {
-  border-width: var(--el__border-width-m);
-  box-shadow: var(--el__shadow-m);
-}
-
-.f-tile__k {
-  font-size: var(--el__fs-xs);
-  letter-spacing: var(--el__ls-caps-s);
-  text-transform: uppercase;
-  color: var(--el__text-caption);
-}
-
-.f-tile__v {
-  font-size: var(--el__fs-2xl);
-  white-space: nowrap;
-  line-height: 1.05;
-}
-
-.f-tile__v--in {
-  font-size: var(--el__fs-lg);
-  color: var(--el__success);
-}
-
 /* ─────────────────────── График по месяцам ─────────────────────── */
 
 .f-chart {
@@ -450,6 +407,16 @@ input {
 .f-chart__bar {
   width: 100%;
   min-height: 2px;
+}
+
+/* Красный только у дней сверх дневной нормы. Если красить всё, красное
+   перестаёт значить. */
+.f-chart__bar--over {
+  background: var(--el__accent);
+}
+
+.f-chart__bar--on {
+  background: var(--el__text);
 }
 
 .f-chart__labels {
@@ -613,18 +580,6 @@ input {
   border-bottom: var(--el__border-width-s) solid var(--el__text);
   padding-bottom: 0.4em;
   margin-top: var(--f-step-2);
-}
-
-/* Место под две строки держится всегда. Подпись меняется вместе с разрезом —
-   «в среднем N в месяц» на весь период, «N% года» на месяц, — и длина у них
-   разная: без запаса плитка то в одну строку, то в две, а график под ней
-   подпрыгивает при каждом нажатии на месяц. */
-.f-tile__sub {
-  margin-top: auto;
-  padding-top: 0.4em;
-  min-height: calc(2 * 1.45em + 0.4em);
-  font-size: var(--el__fs-xs);
-  color: var(--el__text-caption);
 }
 
 /* Возврат к периоду набран кеглем заголовка, рядом с которым стоит. Набранный
@@ -1308,7 +1263,7 @@ input {
    седьмой цвет вне палитры. */
 
 .f-accs {
-  margin-top: var(--f-step-2);
+  min-width: 0;
 }
 
 .f-accs__row {
@@ -1418,34 +1373,6 @@ input {
   padding: 0.1em 0.2em;
 }
 
-/* Свежесть данных. Всё на экране посчитано по последний день выписки, а не по
-   сегодняшний, — и если выгрузка старая, числа отвечают не на тот вопрос,
-   который человек задал. Поэтому край данных назван вслух, а «обновить»
-   стоит здесь же: это самое частое действие в ежедневном сценарии. */
-.f-fresh {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--el__gap-s);
-  padding: var(--f-step-2) 0;
-  font-size: var(--el__fs-xs);
-}
-
-.f-fresh__k {
-  white-space: nowrap;
-}
-
-.f-fresh__k--old {
-  color: var(--el__accent);
-}
-
-.f-fresh__file {
-  color: var(--el__text-caption);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .f-go--small {
   font-size: var(--el__fs-xs);
   padding: 0.25em 0.5em;
@@ -1458,145 +1385,10 @@ input {
    прожито. Без второй мерки «75 928 из 80 000» ничего не значит — двадцать
    четвёртого числа это норма, пятого числа это тревога. */
 
-.f-limit {
-  border: var(--el__border-width-m) solid var(--el__text);
-  box-shadow: var(--el__shadow-m);
-  padding: 0.7em 0.8em 0.8em;
-  margin-bottom: var(--f-step-3);
-  display: flex;
-  flex-direction: column;
-  gap: 0.3em;
-}
-
-.f-limit__k {
-  font-size: var(--el__fs-xs);
-  letter-spacing: var(--el__ls-caps-s);
-  text-transform: uppercase;
-  color: var(--el__text-caption);
-}
-
-.f-limit__v {
-  font-size: var(--el__fs-2xl);
-  line-height: 1.05;
-  white-space: nowrap;
-}
-
-.f-limit__v--over {
-  color: var(--el__accent);
-}
-
-.f-limit__track {
-  position: relative;
-  display: block;
-  height: 0.45em;
-  background: var(--el__surface);
-  margin-top: 0.25em;
-}
-
-.f-limit__fill {
-  display: block;
-  height: 100%;
-  background: var(--el__text);
-}
-
-.f-limit__fill--over {
-  background: var(--el__accent);
-}
-
-/* Засечка прожитого: слева от неё — идём с опережением плана. */
-.f-limit__pace {
-  position: absolute;
-  top: -0.15em;
-  bottom: -0.15em;
-  width: var(--el__border-width-m);
-  background: var(--el__text-caption);
-}
-
-.f-limit__sub {
-  font-size: var(--el__fs-xs);
-  color: var(--el__text-caption);
-  min-height: calc(1.45em + 0.2em);
-}
-
-.f-limit__over {
-  color: var(--el__accent);
-}
-
-.f-limit__left {
-  color: var(--el__success);
-}
-
 /* ─────────────────── Дневной ритм: дни ─────────────────── */
 
 /* Пустые дни рисуются пустыми, а не выбрасываются: четырнадцать дней с тремя
    пропусками — другая картина, чем одиннадцать подряд. */
-
-.f-days {
-  border: var(--el__border-width-s) solid var(--el__text);
-  padding: 0.7em 0.7em 0.5em;
-  margin-bottom: var(--f-step-3);
-}
-
-.f-days__bars {
-  display: flex;
-  align-items: flex-end;
-  gap: 2px;
-  border-bottom: var(--el__border-width-m) solid var(--el__text);
-}
-
-.f-days__col {
-  flex: 1;
-  min-width: 0;
-  border: none;
-  background: none;
-  padding: 0;
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-}
-
-.f-days__slot {
-  height: 5em;
-  width: 100%;
-  display: flex;
-  align-items: flex-end;
-}
-
-.f-days__bar {
-  width: 100%;
-  background: var(--el__text-caption);
-}
-
-/* Красный только у дней сверх дневной нормы. Если красить всё, красное
-   перестаёт значить. */
-.f-days__bar--over {
-  background: var(--el__accent);
-}
-
-.f-days__bar--on {
-  background: var(--el__text);
-}
-
-.f-days__scale {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: var(--el__gap-s);
-  padding-top: 0.3em;
-  font-size: var(--el__fs-xs);
-  color: var(--el__text-caption);
-}
-
-.f-days__tick {
-  white-space: nowrap;
-}
-
-.f-days__peak {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 
 /* ───────────────────── Откуда приходит ───────────────────── */
 
@@ -1736,47 +1528,6 @@ input {
    вопросов стоят здесь, а не в свёрнутом разделе: разворачивать ради них
    раздел значило бы платить касанием каждый день. */
 
-.f-pair {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--el__gap-m);
-  margin-bottom: var(--f-step-3);
-}
-
-.f-pair__cell {
-  min-width: 0;
-  border-inline-start: var(--el__border-width-m) solid var(--el__text);
-  padding-inline-start: 0.6em;
-}
-
-.f-pair__k {
-  font-size: var(--el__fs-xs);
-  color: var(--el__text-caption);
-  text-transform: uppercase;
-  letter-spacing: var(--el__ls-caps-s);
-}
-
-.f-pair__v {
-  margin: 0.15em 0 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.1em;
-}
-
-.f-pair__num {
-  font-size: var(--el__fs-lg);
-  white-space: nowrap;
-}
-
-.f-pair__num--in {
-  color: var(--el__success);
-}
-
-.f-pair__note {
-  font-size: var(--el__fs-xs);
-  color: var(--el__text-caption);
-}
-
 /* Выход к данным старше отрезка. Строка появляется, только если такие данные
    есть: молча спрятать их хуже, чем показать лишнюю ссылку. */
 .f-older {
@@ -1787,16 +1538,175 @@ input {
 
 /* Банк — подпись над группой счетов, а не второй уровень переключения: два
    уровня стоили бы двух касаний вместо одного. Появляется, только когда
-   названо больше одного банка. */
-.f-accs__bank {
+   названо больше одного банка. */ /* Группы банков идут в строку и переносятся, а не столбцом: столбцом четыре
+   счёта занимали восемь строк наверху экрана — в самом дорогом его месте. */
+.f-accs__banks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--el__gap-s) var(--el__gap-m);
   margin-top: var(--f-step-1);
 }
 
+.f-accs__bank {
+  display: flex;
+  align-items: center;
+  gap: var(--el__gap-s);
+  min-width: 0;
+}
+
 .f-accs__bankname {
-  display: block;
   font-size: var(--el__fs-xs);
   color: var(--el__text-caption);
   text-transform: uppercase;
   letter-spacing: var(--el__ls-caps-s);
-  margin-bottom: 0.2em;
+  white-space: nowrap;
+}
+
+/* ─────────────────── Верхний ряд управления ─────────────────── */
+
+.f-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--el__gap-s);
+  padding: var(--f-step-2) 0;
+}
+
+/* ─────────────────────── Шапка картины ─────────────────────── */
+
+/* Одна на все шесть отрезков. Раньше короткие показывали полосу предела, а
+   длинные две плитки: переключение сдвигало всё, что ниже, на сто с лишним
+   пикселей — ровно там, где человек и нажимает. Место под полосу и под нижнюю
+   строку держится всегда, даже когда сказать нечего. */
+
+.f-head2 {
+  display: grid;
+  grid-template-columns: 1.7fr 1fr;
+  gap: 0.7em;
+  margin-bottom: var(--f-step-3);
+  align-items: stretch;
+}
+
+.f-head2__cell {
+  border: var(--el__border-width-s) solid var(--el__text);
+  padding: 0.6em 0.75em 0.7em;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25em;
+  min-width: 0;
+}
+
+.f-head2__cell--main {
+  border-width: var(--el__border-width-m);
+  box-shadow: var(--el__shadow-m);
+}
+/* Место под две строки, как и у нижней подписи: «Потрачено за три месяца» в
+   узкой колонке переносится, «Потрачено за год» — нет, и шапка от этого росла
+   на шесть пикселей при смене отрезка. Четырнадцать пикселей воздуха один раз
+   дешевле, чем прыжок на каждое нажатие. */
+.f-head2__k {
+  min-height: calc(2 * 1.45em);
+  font-size: var(--el__fs-xs);
+  letter-spacing: var(--el__ls-caps-s);
+  text-transform: uppercase;
+  color: var(--el__text-caption);
+}
+
+.f-head2__v {
+  font-size: var(--el__fs-2xl);
+  line-height: 1.05;
+  white-space: nowrap;
+}
+
+.f-head2__cell:not(.f-head2__cell--main) .f-head2__v {
+  font-size: var(--el__fs-lg);
+}
+
+.f-head2__v--over {
+  color: var(--el__accent);
+}
+
+.f-head2__v--in {
+  color: var(--el__success);
+}
+
+/* Дорожка есть всегда — даже пустая. Появляющаяся дорожка это тот же прыжок. */
+.f-head2__track {
+  position: relative;
+  display: block;
+  height: 0.45em;
+  margin-top: auto;
+  background: var(--el__surface);
+}
+
+.f-head2__cell:not(.f-head2__cell--main) .f-head2__track,
+.f-head2__track--none {
+  background: none;
+}
+
+.f-head2__fill {
+  display: block;
+  height: 100%;
+  background: var(--el__text);
+}
+
+.f-head2__fill--over {
+  background: var(--el__accent);
+}
+
+/* Засечка прожитого: слева от неё — идём с опережением плана. */
+.f-head2__pace {
+  position: absolute;
+  top: -0.15em;
+  bottom: -0.15em;
+  width: var(--el__border-width-m);
+  background: var(--el__text-caption);
+}
+
+/* Место под две строки: подпись меняется вместе с отрезком, и без запаса
+   шапка то в одну строку, то в две. */
+.f-head2__sub {
+  min-height: calc(2 * 1.45em);
+  font-size: var(--el__fs-xs);
+  color: var(--el__text-caption);
+}
+
+.f-head2__over {
+  color: var(--el__accent);
+}
+
+.f-head2__left {
+  color: var(--el__success);
+}
+
+/* ──────────────── Свежесть данных, в подвале ──────────────── */
+
+/* Всё на экране посчитано по последний день выписки. Знать это надо, но
+   спрашивают об этом раз в день — а место занималось в самом дорогом ряду. */
+.f-fresh {
+  margin-top: var(--f-step-3);
+  font-size: var(--el__fs-xs);
+  color: var(--el__text-caption);
+}
+
+.f-fresh__k--old {
+  color: var(--el__accent);
+}
+
+/* ─────────────────────── Капс на действиях ─────────────────────── */
+
+/* Кнопки и ссылки набираются капсом. В OCR строчные знаки читаются заметно
+   хуже прописных — шрифт рисовали для машины, а не для глаза, — и на мелком
+   кегле, которым набрано всё служебное, разница решает. Данные капсом не
+   набираются: имя получателя и название категории человек читает как слово,
+   а не как метку. */
+
+.f-go,
+.f-linkish,
+.f-more,
+.f-chipoff,
+.f-acc,
+.f-suggest {
+  text-transform: uppercase;
+  letter-spacing: var(--el__ls-caps-s);
 }

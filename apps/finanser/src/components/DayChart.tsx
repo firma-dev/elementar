@@ -3,6 +3,7 @@ import type { Categorized } from '../model.js'
 import type { Kopeck } from '../money.js'
 import { planeOfTx } from '../plane.js'
 import { shiftDays } from '../period.js'
+import { dayLabel } from '../model.js'
 import { Amount } from './Amount.js'
 
 export interface DayChartProps {
@@ -44,6 +45,11 @@ export function daySpend(
  *
  * День сверх дневной нормы красный. Это единственный цвет на графике: если
  * красить всё, красное перестаёт значить.
+ *
+ * На отрезке «день» рисуется не один столбик, а вся его неделя с подсветкой
+ * выбранного дня. Во-первых, один столбик ничего не сообщает: сравнивать не с
+ * чем. Во-вторых, график тогда исчезал бы совсем — и переключение отрезка
+ * сдвигало бы всё, что ниже, ровно там, где человек нажимает.
  */
 export function DayChart({
   rows,
@@ -54,12 +60,24 @@ export function DayChart({
   onSelect,
 }: DayChartProps): JSX.Element | null {
   const days = daySpend(rows, from, to)
-  if (days.length < 2) return null
+  if (days.length === 0) return null
   const max = Math.max(...days.map((d) => d.spend), 1)
+  const shown = days.find((d) => d.date === selected) ?? days[days.length - 1]
 
   return (
-    <div class="f-days">
-      <div class="f-days__bars">
+    <div class="f-chart">
+      {/* Та же раскладка, что у графика по месяцам: подпись, ряд столбиков,
+          ряд делений. Одинаковая высота у обоих — не аккуратность ради
+          аккуратности: разная сдвигала всё, что ниже, при смене отрезка. */}
+      <div class="f-chart__head">
+        <span class="f-eyebrow">По дням</span>
+        <span class="f-chart__peek">
+          <span class="f-chart__peekname">{shown === undefined ? '' : dayLabel(shown.date)}</span>
+          <Amount value={-(shown?.spend ?? 0)} kopecks="never" />
+        </span>
+      </div>
+
+      <div class="f-chart__bars">
         {days.map((day) => {
           const height = Math.round((day.spend / max) * 100)
           const over = limit !== null && day.spend > limit
@@ -68,19 +86,19 @@ export function DayChart({
             <button
               key={day.date}
               type="button"
-              class="f-days__col"
+              class="f-chart__col"
               aria-pressed={on}
-              title={`${day.date.slice(8, 10)}.${day.date.slice(5, 7)}`}
+              title={`${dayLabel(day.date)}`}
               onClick={() => onSelect(on ? null : day.date)}
             >
-              <span class="f-days__slot">
+              <span class="f-chart__slot">
                 <span
                   class={
                     on
-                      ? 'f-days__bar f-days__bar--on'
+                      ? 'f-chart__bar f-chart__bar--on'
                       : over
-                        ? 'f-days__bar f-days__bar--over'
-                        : 'f-days__bar'
+                        ? 'f-chart__bar f-chart__bar--over'
+                        : 'f-chart__bar'
                   }
                   style={`height:${Math.max(day.spend === 0 ? 0 : 2, height)}%`}
                 />
@@ -89,13 +107,26 @@ export function DayChart({
           )
         })}
       </div>
-      <div class="f-days__scale">
-        <span class="f-days__tick">{Number(from.slice(8, 10))}</span>
-        <span class="f-days__peak">
-          самый дорогой день — <Amount value={max as Kopeck} kopecks="never" />
-        </span>
-        <span class="f-days__tick">{Number(to.slice(8, 10))}</span>
+
+      <div class="f-chart__labels">
+        {days.map((day) => (
+          <span
+            key={day.date}
+            class={selected === day.date ? 'f-chart__tick f-chart__tick--on' : 'f-chart__tick'}
+          >
+            {/* Каждое пятое число и края: подписать все тридцать один день
+                нечем — цифры сливаются в серую полосу. */}
+            {label(day.date, days.length)}
+          </span>
+        ))}
       </div>
     </div>
   )
+}
+
+/** Подпись деления: число месяца у краёв и каждого пятого дня, иначе пусто. */
+function label(date: string, total: number): string {
+  const day = Number(date.slice(8, 10))
+  if (total <= 8) return String(day)
+  return day % 5 === 0 || day === 1 ? String(day) : ''
 }

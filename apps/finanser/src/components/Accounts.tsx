@@ -91,14 +91,16 @@ export function Accounts({
         {named < 2 ? list.map(chip) : null}
       </div>
 
-      {named < 2
-        ? null
-        : groups.map((group) => (
+      {named < 2 ? null : (
+        <div class="f-accs__banks">
+          {groups.map((group) => (
             <div key={group.bank} class="f-accs__bank">
               <span class="f-accs__bankname">{group.bank === '' ? 'без банка' : group.bank}</span>
-              <div class="f-accs__row">{group.list.map(chip)}</div>
+              {group.list.map(chip)}
             </div>
           ))}
+        </div>
+      )}
 
       {active === null ? null : (
         <p class="f-accs__act">

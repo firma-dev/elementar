@@ -9,7 +9,7 @@ import type { ParseResult } from './statement.js'
 import { byCategory, byMonth, byPlane } from './stats.js'
 import { formatShare } from './money.js'
 import type { Kopeck } from './money.js'
-import { PERIODS, bounds, daysBehind, elapsed, isDaily, periodOf } from './period.js'
+import { PERIODS, bounds, daysBehind, elapsed, isDaily, periodOf, weekStart } from './period.js'
 import type { PeriodKey } from './period.js'
 import { limitFor, toGoal } from './plan.js'
 import { byIncomeSource, nextArrival } from './income.js'
@@ -38,12 +38,13 @@ import {
   summary,
 } from './store.js'
 import { applyUpdate, updateReady } from './pwa.js'
+import { dark, toggleTheme } from './theme.js'
 import { Amount } from './components/Amount.js'
 import { Accounts } from './components/Accounts.js'
 import { Balance } from './components/Balance.js'
 import { DayChart } from './components/DayChart.js'
 import { IncomeView } from './components/IncomeView.js'
-import { Limit } from './components/Limit.js'
+import { Head } from './components/Head.js'
 import { PlanView } from './components/PlanView.js'
 import { MonthChart } from './components/MonthChart.js'
 import { MoneyMoves } from './components/MoneyMoves.js'
@@ -384,18 +385,19 @@ export function App(): JSX.Element {
    * сценарии, и класть его дальше одного касания было бы дорого (Д-026).
    */
   const freshness = (
-    <div class="f-fresh">
+    <p class="f-fresh">
       <span class={behind > 2 ? 'f-fresh__k f-fresh__k--old' : 'f-fresh__k'}>
-        данные по {dayLabel(edge)}
-        {behind === 0 ? '' : ` · ${behind} ${dayWord(behind)} назад`}
-      </span>
-      <span class="f-fresh__file">
-        {loaded.length <= 1 ? (info?.name ?? '') : `${loaded.length} выписки`}
-      </span>
-      <button type="button" class="f-go f-go--small" onClick={() => fileRef.current?.click()}>
-        обновить
-      </button>
-    </div>
+        Данные по {dayLabel(edge)}
+        {behind === 0 ? '' : `, это ${behind} ${dayWord(behind)} назад`}
+      </span>{' '}
+      {loaded.length <= 1 ? (info?.name ?? '') : `${loaded.length} выписки`}
+    </p>
+  )
+
+  const refresh = (
+    <button type="button" class="f-go f-go--small" onClick={() => fileRef.current?.click()}>
+      ОБНОВИТЬ
+    </button>
   )
 
   const accountSwitch = (
@@ -418,6 +420,12 @@ export function App(): JSX.Element {
     <footer class="f-foot">
       <button type="button" class="f-linkish f-linkish--quiet" onClick={() => setView('rules')}>
         словарь правил →
+      </button>
+      {' · '}
+      {/* Тёмная тема — выбор, а не умолчание: прототип был светлой бумагой,
+          и тёмную сторону дизайнер глазами не проверял. */}
+      <button type="button" class="f-linkish f-linkish--quiet" onClick={toggleTheme}>
+        {dark.value ? 'светлая тема' : 'тёмная тема'}
       </button>
       <br />
       Выписка и правки лежат в хранилище этого браузера и никуда не отправляются. На общем
@@ -459,7 +467,6 @@ export function App(): JSX.Element {
     return (
       <main class="f-page">
         {header}
-        {freshness}
         <div class="f-txhead">
           <button type="button" class="f-linkish" onClick={() => setView('year')}>
             ← картина года
@@ -505,8 +512,13 @@ export function App(): JSX.Element {
   return (
     <main class="f-page">
       {header}
-      {accountSwitch}
-      {freshness}
+      {/* Наверху — только то, чем человек переключает картину. Строка про
+          свежесть данных ушла в подвал: она отвечает на вопрос, который
+          задают раз в день, а место занимала в самом дорогом ряду. */}
+      <div class="f-top">
+        {accountSwitch}
+        {refresh}
+      </div>
 
       {loaded.some((s) => s.foreign > 0) ? (
         <p class="f-note f-hint">
@@ -537,164 +549,65 @@ export function App(): JSX.Element {
         ))}
       </div>
 
-      {/* Данные старше выбранного отрезка не прячутся молча: если они есть,
-          выход к ним стоит здесь же (Д-026). Строка появляется один раз при
-          загрузке и не мигает по ходу работы. */}
-      {oldest !== null && oldest < range.from ? (
-        <p class="f-older">
-          есть операции и раньше, с {dayLabel(oldest)} —{' '}
-          <button
-            type="button"
-            class="f-linkish"
-            onClick={() => {
-              setPeriod('all')
-              setMonth(null)
-              setDay(null)
-            }}
-          >
-            показать всё
-          </button>
-        </p>
-      ) : null}
-      {period === 'all' ? (
-        <p class="f-older">
-          показано всё загруженное —{' '}
-          <button
-            type="button"
-            class="f-linkish"
-            onClick={() => {
-              setPeriod('year')
-              setMonth(null)
-              setDay(null)
-            }}
-          >
-            вернуться к году
-          </button>
-        </p>
-      ) : null}
+      {/* Шапка одна на все шесть отрезков: раньше короткие показывали полосу
+          предела, длинные — две плитки, и переключение сдвигало всё, что ниже,
+          на сто с лишним пикселей — ровно там, где человек нажимает. */}
+      <Head
+        title={day !== null ? dayLabel(day) : month !== null ? monthLabel(month) : spec.title}
+        spent={planes.spend.total}
+        income={planes.income.total}
+        limit={limit}
+        elapsed={pace}
+        average={
+          daily || months.length === 0
+            ? null
+            : {
+                spend: Math.round(planes.spend.total / months.length) as Kopeck,
+                income: Math.round(planes.income.total / months.length) as Kopeck,
+              }
+        }
+        saving={
+          daily
+            ? {
+                done: setAside as Kopeck,
+                left: toGoal(plan.value, setAside as Kopeck),
+                goal: plan.value.save,
+              }
+            : null
+        }
+        onSetPlan={() => {
+          setPlanOpen(true)
+          // Раздел раскрывается перерисовкой, а она случится не сейчас:
+          // до неё блока в разметке ещё нет, и прокручивать не к чему.
+          requestAnimationFrame(() =>
+            document.querySelector('.f-plan')?.scrollIntoView({ block: 'center' }),
+          )
+        }}
+      />
 
+      {/* График тоже один на все отрезки и всегда на месте. На «дне» рисуется
+          его неделя с подсветкой: один столбик не с чем сравнивать, а пустое
+          место снова сдвигало бы всё, что ниже. */}
       {daily ? (
-        <>
-          <Limit
-            spent={planes.spend.total}
-            limit={limit}
-            elapsed={pace}
-            label={day === null ? `Потрачено ${spec.title}` : `Потрачено ${dayLabel(day)}`}
-            onSetPlan={() => {
-              setPlanOpen(true)
-              // Раздел раскрывается перерисовкой, а она случится не сейчас:
-              // до неё блока в разметке ещё нет, и прокручивать не к чему.
-              requestAnimationFrame(() =>
-                document.querySelector('.f-plan')?.scrollIntoView({ block: 'center' }),
-              )
-            }}
-          />
-          {/* Пришло и отложено — вторым рядом, а не в свёрнутом разделе.
-              Это два из семи ежедневных вопросов, и разворачивать ради них
-              раздел значило бы платить касанием каждый день (Д-026). */}
-          <dl class="f-pair">
-            <div class="f-pair__cell">
-              <dt class="f-pair__k">Пришло {spec.title}</dt>
-              <dd class="f-pair__v">
-                <Amount
-                  class="f-pair__num f-pair__num--in"
-                  value={planes.income.total}
-                  kopecks="never"
-                />
-              </dd>
-            </div>
-            <div class="f-pair__cell">
-              <dt class="f-pair__k">Отложено в этом месяце</dt>
-              <dd class="f-pair__v">
-                <Amount class="f-pair__num" value={setAside as Kopeck} kopecks="never" />
-                {plan.value.save === 0 ? null : (
-                  <span class="f-pair__note">
-                    {toGoal(plan.value, setAside as Kopeck) === 0 ? (
-                      'цель месяца взята'
-                    ) : (
-                      <>
-                        до цели ещё{' '}
-                        <Amount value={toGoal(plan.value, setAside as Kopeck)} kopecks="never" />
-                      </>
-                    )}
-                  </span>
-                )}
-              </dd>
-            </div>
-          </dl>
-
-          {period === 'day' ? null : (
-            <DayChart
-              rows={inPeriod}
-              from={range.from}
-              to={range.to}
-              limit={limitFor('day', edge, plan.value)}
-              selected={day}
-              onSelect={(next) => {
-                setDay(next)
-                setCategoryFilter(null)
-              }}
-            />
-          )}
-        </>
+        <DayChart
+          rows={onAccount}
+          from={period === 'day' ? weekStart(edge) : range.from}
+          to={period === 'day' ? edge : range.to}
+          limit={limitFor('day', edge, plan.value)}
+          selected={day}
+          onSelect={(next) => {
+            setDay(next)
+            setCategoryFilter(null)
+          }}
+        />
       ) : (
-        <>
-          <div class="f-tiles">
-            <div class="f-tile f-tile--main">
-              <span class="f-tile__k">
-                {month === null ? `Траты ${spec.title}` : `Траты · ${monthLabel(month)}`}
-              </span>
-              <Amount class="f-tile__v" value={planes.spend.total} kopecks="never" />
-              {/* Подпись стоит всегда, даже когда месяц не выбран: без запаса
-                  плитка то в одну строку, то в две, и график под ней прыгает
-                  ровно из-под пальца, которым по нему ткнули. */}
-              <span class="f-tile__sub">
-                {month === null ? (
-                  <>
-                    в среднем{' '}
-                    <Amount
-                      value={
-                        months.length === 0 ? 0 : Math.round(planes.spend.total / months.length)
-                      }
-                      kopecks="never"
-                    />{' '}
-                    в месяц
-                  </>
-                ) : (
-                  `${formatShare(planes.spend.total, yearPlanes.spend.total)}% периода`
-                )}
-              </span>
-            </div>
-            <div class="f-tile">
-              <span class="f-tile__k">Поступления</span>
-              <Amount class="f-tile__v f-tile__v--in" value={planes.income.total} kopecks="never" />
-              <span class="f-tile__sub">
-                {month === null ? (
-                  <>
-                    в среднем{' '}
-                    <Amount
-                      value={
-                        months.length === 0 ? 0 : Math.round(planes.income.total / months.length)
-                      }
-                      kopecks="never"
-                    />{' '}
-                    в месяц
-                  </>
-                ) : (
-                  `${formatShare(planes.income.total, yearPlanes.income.total)}% периода`
-                )}
-              </span>
-            </div>
-          </div>
-
-          <MonthChart
-            months={months}
-            selected={month}
-            hovered={hovered}
-            onSelect={setMonth}
-            onHover={setHovered}
-          />
-        </>
+        <MonthChart
+          months={months}
+          selected={month}
+          hovered={hovered}
+          onSelect={setMonth}
+          onHover={setHovered}
+        />
       )}
 
       <div class="f-scope">
@@ -791,7 +704,43 @@ export function App(): JSX.Element {
         </button>
       </p>
 
+      {/* Данные старше выбранного отрезка не прячутся молча: если они есть,
+          выход к ним стоит здесь же (Д-026). Строка появляется один раз при
+          загрузке и не мигает по ходу работы. */}
+      {oldest !== null && oldest < range.from ? (
+        <p class="f-older">
+          есть операции и раньше, с {dayLabel(oldest)} —{' '}
+          <button
+            type="button"
+            class="f-linkish"
+            onClick={() => {
+              setPeriod('all')
+              setMonth(null)
+              setDay(null)
+            }}
+          >
+            показать всё
+          </button>
+        </p>
+      ) : null}
+      {period === 'all' ? (
+        <p class="f-older">
+          показано всё загруженное —{' '}
+          <button
+            type="button"
+            class="f-linkish"
+            onClick={() => {
+              setPeriod('year')
+              setMonth(null)
+              setDay(null)
+            }}
+          >
+            вернуться к году
+          </button>
+        </p>
+      ) : null}
       {error === null ? null : <p class="f-err">{error}</p>}
+      {freshness}
       {footer}
       {fileInput}
     </main>

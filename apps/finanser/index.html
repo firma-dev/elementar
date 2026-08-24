@@ -14,22 +14,21 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="финансер" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <!-- Тёмная сторона взята из блока `.dark` в токенах дизайнера, своих цветов
-         не добавлено (Д-017). `color-scheme: light dark` нужен, чтобы холст под
-         страницей браузер покрасил сам: инлайн-скрипта темы здесь нет, и без
-         этого первый кадр был бы светлым на тёмном устройстве. -->
-    <meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#121214" media="(prefers-color-scheme: dark)" />
-    <meta name="color-scheme" content="light dark" />
+    <!-- Базовая тема светлая: прототип был светлой бумагой, а тёмную сторону
+         дизайнер глазами не проверял. Тёмная осталась выбором человека — блок
+         `.dark` в токенах, своих цветов не добавлено (Д-017). Поэтому и холст
+         под страницей объявлен светлым: у большинства он таким и будет. -->
+    <meta name="theme-color" content="#FFFFFF" />
+    <meta name="color-scheme" content="light" />
     <meta name="referrer" content="no-referrer" />
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="i/app-192.png" type="image/png" />
     <link rel="apple-touch-icon" href="i/app-180.png" />
     <!--
-      Инлайн-скрипта переключения темы здесь нет намеренно: тема берётся системная
-      (`color-scheme: light dark` в токенах), а страница остаётся без единого
-      инлайн-скрипта — тогда CSP в мета-теге обходится без хешей и работает на
-      статик-хостинге, который не даёт править заголовки (Д-012).
+      Инлайн-скрипта переключения темы здесь нет намеренно: страница остаётся
+      без единого инлайн-скрипта — тогда CSP в мета-теге обходится без хешей и
+      работает на статик-хостинге, который не даёт править заголовки (Д-012).
+      Выбор темы читается из хранилища уже в модуле, первым делом.
     -->
   </head>
   <body>
