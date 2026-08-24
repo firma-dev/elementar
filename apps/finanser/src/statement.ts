@@ -12,6 +12,7 @@
  *   — остаток по счёту отдельной колонкой → берём, он говорит текущий баланс.
  */
 import { parseCsv, decodeBytes, sniffNotCsv } from './csv.js'
+import { looksLikeXlsx, readXlsx } from './xlsx.js'
 import { parseAmount } from './money.js'
 import type { Kopeck } from './money.js'
 import type { Tx } from './model.js'
@@ -167,7 +168,7 @@ export interface ParseResult {
   /**
    * Были ли в файле колонки MCC и «Категория».
    *
-   * Т-Банк отдаёт выписку в двух видах. Короткая («Выписки и справки») — пять
+   * Банки отдают выписку в двух видах. Короткая — пять
    * колонок без кодов: тогда категорию приходится угадывать по описанию, и в
    * «Прочее» падает заметно больше. Полная выгрузка операций несёт и MCC, и
    * собственную категорию банка — с ними разбор точнее в разы.
@@ -182,11 +183,45 @@ export interface ParseResult {
 const DEAD_STATUS = new Set(['FAILED', 'ОТКАЗ', 'ОТКЛОНЕНО', 'WAITING', 'ОЖИДАЕТ'])
 
 /**
- * Разбор выписки из байтов файла. Сеть не задействована ни в одной строке.
+ * Разбор выписки из байтов файла: CSV или книга Excel.
  *
  * `fallbackAccount` — чем назвать счёт, если в файле нет колонки карты или
  * счёта. Зовущий передаёт имя файла: банки выгружают его одинаково от раза к
  * разу, поэтому как устойчивый ключ оно годится.
+ *
+ * Асинхронный, потому что распаковку zip делает браузер потоком. Для CSV
+ * ожидание пустое — ни одного лишнего кадра.
+ */
+export async function parseFile(bytes: Uint8Array, fallbackAccount = ''): Promise<ParseResult> {
+  if (looksLikeXlsx(bytes)) {
+    const rows = await readXlsx(bytes)
+    if (rows.length === 0) {
+      return {
+        ...EMPTY_RESULT,
+        error:
+          'Это книга Excel, но выписки в ней не нашлось: первый лист пуст или ' +
+          'сохранён в формате, который здесь не читается. Выгрузите операции в CSV.',
+      }
+    }
+    return parseRows(rows, fallbackAccount)
+  }
+  return parseStatement(bytes, fallbackAccount)
+}
+
+const EMPTY_RESULT: ParseResult = {
+  transactions: [],
+  rows: 0,
+  skipped: 0,
+  converted: 0,
+  foreign: 0,
+  error: null,
+  balance: null,
+  accounts: [],
+  hasCodes: false,
+}
+
+/**
+ * Разбор CSV из байтов файла. Сеть не задействована ни в одной строке.
  */
 export function parseStatement(bytes: Uint8Array, fallbackAccount = ''): ParseResult {
   const wrongFormat = sniffNotCsv(bytes)
@@ -207,7 +242,17 @@ export function parseStatement(bytes: Uint8Array, fallbackAccount = ''): ParseRe
 }
 
 export function parseStatementText(text: string, fallbackAccount = ''): ParseResult {
-  const rows = parseCsv(text)
+  return parseRows(parseCsv(text), fallbackAccount)
+}
+
+/**
+ * Разбор уже разложенной таблицы.
+ *
+ * Отдельно от чтения CSV, потому что таблица приезжает не только из CSV: книга
+ * Excel даёт те же строки и те же колонки, и разбирать их вторым кодом значило
+ * бы завести второе место, где правила расходятся.
+ */
+export function parseRows(rows: readonly (readonly string[])[], fallbackAccount = ''): ParseResult {
   const headerAt = findHeader(rows)
   const header = headerAt === -1 ? rows[0] : rows[headerAt]
   const empty: ParseResult = {

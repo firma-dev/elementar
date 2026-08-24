@@ -2,7 +2,7 @@ import { useCallback, useMemo, useRef, useState } from 'preact/hooks'
 import type { JSX } from 'preact'
 import type { Category } from './model.js'
 import { dayLabel, monthLabel, monthOf, pickable } from './model.js'
-import { parseStatement, parseStatementText } from './statement.js'
+import { parseFile, parseStatementText } from './statement.js'
 import { decodeBytes } from './csv.js'
 import { fold } from './text.js'
 import type { ParseResult } from './statement.js'
@@ -179,9 +179,9 @@ export function App(): JSX.Element {
         // Имя файла передаётся как запасной ключ счёта: если банк не выгрузил
         // номер карты, различать счета больше нечем, а имя файла от выгрузки
         // к выгрузке не меняется (Д-026).
-        accept(parseStatement(bytes, file.name), file.name)
+        accept(await parseFile(bytes, file.name), file.name)
       } catch {
-        setError('Файл не удалось прочитать. Нужен CSV — выгрузка операций из банка.')
+        setError('Файл не удалось прочитать. Нужна выгрузка операций из банка: CSV или .xlsx.')
       } finally {
         setBusy(false)
       }
@@ -338,7 +338,13 @@ export function App(): JSX.Element {
   }, [rows])
 
   const fileInput = (
-    <input ref={fileRef} type="file" accept=".csv,.txt,.json" class="f-sr" onChange={onPick} />
+    <input
+      ref={fileRef}
+      type="file"
+      accept=".csv,.txt,.json,.xlsx"
+      class="f-sr"
+      onChange={onPick}
+    />
   )
 
   const header = (
@@ -367,8 +373,8 @@ export function App(): JSX.Element {
             Куда ушли деньги за <span class="f-mark">год</span>
           </h1>
           <p class="f-empty__lead">
-            Финансер читает выписку Т-Банка, отделяет траты от переездов денег и показывает картину
-            года. Всё считается прямо в браузере — данные не покидают устройство.
+            Финансер читает банковскую выписку, отделяет траты от переездов денег и показывает
+            картину года. Всё считается прямо в браузере — данные не покидают устройство.
           </p>
 
           <button
@@ -377,7 +383,7 @@ export function App(): JSX.Element {
             aria-disabled={busy}
             onClick={() => fileRef.current?.click()}
           >
-            {busy ? 'Читаю…' : 'Загрузить выписку — CSV'}
+            {busy ? 'Читаю…' : 'Загрузить выписку'}
           </button>
 
           {error === null ? null : <p class="f-err">{error}</p>}
@@ -387,12 +393,12 @@ export function App(): JSX.Element {
             <ol>
               <li>
                 <span>1</span>
-                <span>Приложение Т-Банка → нужный счёт</span>
+                <span>Приложение банка → нужный счёт</span>
               </li>
               <li>
                 <span>2</span>
                 <span>
-                  «Выписки и справки» → выписка операций за год, формат CSV. Если банк предлагает
+                  Выписка или история операций за год, формат CSV или Excel. Если банк предлагает
                   полную выгрузку операций — берите её: в ней есть коды, и категории определяются
                   точнее
                 </span>
