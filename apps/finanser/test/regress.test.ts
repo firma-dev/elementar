@@ -102,3 +102,31 @@ describe('пара переводов и рука человека', () => {
     expect(marked.find((t) => t.id === list[1]!.id)?.category).toBe('Переводы')
   })
 })
+
+describe('дата: числовая из Excel и окно правдоподобия', () => {
+  it('число из книги Excel читается как дата', async () => {
+    const { parseDate } = await import('../src/statement.js')
+    // 45678 — 21 января 2025 года. Именно так дату отдаёт книга, а не строкой.
+    expect(parseDate('45678')).toBe('2025-01-21')
+    expect(parseDate('45292')).toBe('2024-01-01')
+  })
+
+  it('строковые форматы не сломались', async () => {
+    const { parseDate } = await import('../src/statement.js')
+    expect(parseDate('2025-01-12')).toBe('2025-01-12')
+    expect(parseDate('12.01.2025')).toBe('2025-01-12')
+    expect(parseDate('12/01/25')).toBe('2025-01-12')
+  })
+
+  it('год вне окна не принимается: одна опечатка растягивала график на 1200 столбцов', async () => {
+    const { parseDate } = await import('../src/statement.js')
+    expect(parseDate('12.01.2125')).toBeNull()
+    expect(parseDate('0001-01-01')).toBeNull()
+  })
+
+  it('число вне диапазона дат — не дата', async () => {
+    const { parseDate } = await import('../src/statement.js')
+    expect(parseDate('12')).toBeNull()
+    expect(parseDate('999999')).toBeNull()
+  })
+})

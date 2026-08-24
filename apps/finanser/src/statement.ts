@@ -117,20 +117,62 @@ function mapColumns(header: readonly string[]): Partial<Record<ColumnKey, number
  * «31/12/2025». Возвращает null, если даты нет: строка без даты в картину года
  * не встанет и должна быть пропущена, а не приписана к сегодняшнему дню.
  */
+/**
+ * Границы правдоподобия для года. Выписки за пределами этого окна не бывает, а
+ * одна опечатка в годе внутри годовой выписки растягивала картину по месяцам на
+ * весь промежуток: график получал 1200 столбцов, и понять, что случилось, было
+ * нельзя. Лучше пропустить строку и сказать об этом, чем показать такое.
+ */
+const YEAR_MIN = 1990
+const YEAR_MAX = 2100
+
+/**
+ * Excel держит дату числом дней от 30 декабря 1899 года. Так её отдаёт
+ * `xlsx.ts`, читающий книгу напрямую: в ячейке лежит `45678`, а не «12.01.2025»,
+ * и формат хранится отдельно от значения.
+ *
+ * Без этой ветки настоящая книга из банка давала ноль операций при пустой
+ * ошибке — человек видел бодрое «в файле не нашлось ни одной операции» и думал,
+ * что виноват банк.
+ *
+ * Точка отсчёта именно 30 декабря, а не 31: Excel считает 1900 год високосным,
+ * которым он не был, и сдвиг на сутки уже заложен в саму эпоху.
+ */
+const EXCEL_EPOCH_UTC = Date.UTC(1899, 11, 30)
+const DAY_MS = 86_400_000
+
+function fromExcelSerial(s: string): string | null {
+  if (!/^\d{1,6}(?:\.\d+)?$/.test(s)) return null
+  const serial = Number(s)
+  // 32874 — 1 января 1990 года, 73415 — 31 декабря 2100-го. Вне окна это не
+  // дата, а число, случайно попавшее в колонку даты.
+  if (serial < 32874 || serial > 73415) return null
+  const d = new Date(EXCEL_EPOCH_UTC + Math.floor(serial) * DAY_MS)
+  const year = d.getUTCFullYear()
+  const month = String(d.getUTCMonth() + 1).padStart(2, '0')
+  const day = String(d.getUTCDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 export function parseDate(raw: string): string | null {
   const s = raw.trim()
   if (s === '') return null
 
   const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(s)
-  if (iso !== null) return `${iso[1]}-${iso[2]}-${iso[3]}`
+  if (iso !== null) {
+    const year = Number(iso[1])
+    if (year < YEAR_MIN || year > YEAR_MAX) return null
+    return `${iso[1]}-${iso[2]}-${iso[3]}`
+  }
 
   const dmy = /^(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{2,4})/.exec(s)
-  if (dmy === null) return null
+  if (dmy === null) return fromExcelSerial(s)
   const day = (dmy[1] ?? '').padStart(2, '0')
   const month = (dmy[2] ?? '').padStart(2, '0')
   const rawYear = dmy[3] ?? ''
   const year = rawYear.length === 2 ? `20${rawYear}` : rawYear
   if (Number(month) < 1 || Number(month) > 12 || Number(day) < 1 || Number(day) > 31) return null
+  if (Number(year) < YEAR_MIN || Number(year) > YEAR_MAX) return null
   return `${year}-${month}-${day}`
 }
 

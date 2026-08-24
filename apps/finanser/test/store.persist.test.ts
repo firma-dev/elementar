@@ -72,3 +72,30 @@ describe('чтение испорченного хранилища', () => {
     expect(Array.isArray(store.sources.value)).toBe(true)
   })
 })
+
+describe('отказ записи не проходит молча', () => {
+  it('переполненное хранилище поднимает флаг', async () => {
+    vi.resetModules()
+    const store = await import('../src/store.js')
+    expect(store.storageFailed.value).toBe(false)
+
+    // Подмена ставится на сам объект, а не на Storage.prototype: в тестах
+    // localStorage — простая реализация из vitest.setup.ts, и к прототипу
+    // браузерного Storage она отношения не имеет.
+    const orig = localStorage.setItem.bind(localStorage)
+    localStorage.setItem = () => {
+      throw new DOMException('QuotaExceededError')
+    }
+    try {
+      // Любая правка, которая пишет на диск.
+      store.setCategory('какая-нибудь-операция', 'Продукты' as never)
+    } finally {
+      localStorage.setItem = orig
+    }
+
+    // Данные в памяти остались — вкладка продолжает работать…
+    expect(store.overrides.value['какая-нибудь-операция']).toBe('Продукты')
+    // …но приложение знает, что на диск не легло, и может это сказать.
+    expect(store.storageFailed.value).toBe(true)
+  })
+})

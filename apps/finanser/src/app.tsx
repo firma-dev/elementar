@@ -32,6 +32,7 @@ import {
   clearMerchantCategory,
   compute,
   forgetEverything,
+  storageFailed,
   hasData,
   merchantOverrides,
   overrides,
@@ -386,6 +387,15 @@ export function App(): JSX.Element {
         <div class="f-head__name">финансер</div>
         <div class="f-head__note">корпус Элементара · v0</div>
       </header>
+      {/* Отказ хранилища. Плашка висит и не закрывается: закрыть её значило бы
+          снова замолчать, а положение не изменится само — оно изменится, когда
+          человек выгрузит файл. Поэтому в плашке действие, а не «понятно». */}
+      {storageFailed.value ? (
+        <p class="f-note f-alarm">
+          Браузер не сохраняет: хранилище переполнено или запрещено. Всё, что на экране, живёт до
+          закрытия вкладки — выгрузите JSON внизу страницы, иначе разметка пропадёт.
+        </p>
+      ) : null}
     </>
   )
 
