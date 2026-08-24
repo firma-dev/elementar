@@ -4,7 +4,23 @@
     {
       "name": "финансер",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@elementar/finanser", "run", "preview"],
+      "runtimeArgs": [
+        "--filter",
+        "@elementar/finanser",
+        "run",
+        "dev"
+      ],
+      "port": 5174
+    },
+    {
+      "name": "финансер-сборка",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--filter",
+        "@elementar/finanser",
+        "run",
+        "preview"
+      ],
       "port": 5174
     }
   ]

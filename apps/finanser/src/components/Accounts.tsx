@@ -1,6 +1,7 @@
 import { useState } from 'preact/hooks'
 import type { JSX } from 'preact'
 import type { Account } from '../store.js'
+import { Confirm } from './Confirm.js'
 
 export interface AccountsProps {
   list: readonly Account[]
@@ -138,18 +139,19 @@ export function Accounts({
             <button type="submit" class="f-go">
               сохранить
             </button>
-            {/* Удаление счёта уносит его операции — поэтому оно красное и
-                стоит поодаль от «сохранить», а не рядом кнопка в кнопку. */}
-            <button
-              type="button"
-              class="f-linkish f-linkish--danger"
-              onClick={() => {
+            {/* Удаление счёта уносит его операции — поэтому оно красное,
+                стоит поодаль от «сохранить» и спрашивает. Цвет и расстояние
+                уменьшают вероятность промаха, но не отменяют его: на телефоне
+                мимо попадают и по красному. */}
+            <Confirm
+              label="убрать счёт вместе с операциями"
+              question={`убрать «${current.name}» и все его операции?`}
+              confirm="да, убрать"
+              onConfirm={() => {
                 onDrop(current.key)
                 setEditing(null)
               }}
-            >
-              убрать счёт вместе с операциями
-            </button>
+            />
           </div>
         </form>
       )}

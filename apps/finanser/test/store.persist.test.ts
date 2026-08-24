@@ -3,7 +3,7 @@
  * отсутствует, и все записи молча уходили в никуда. Тест ниже — тот самый,
  * которого не хватило, чтобы поймать белый экран после восстановления.
  */
-import { describe, expect, it, beforeEach } from 'vitest'
+import { describe, expect, it, beforeEach, vi } from 'vitest'
 
 const KEY_SOURCE = 'f.src.v1'
 const KEY_TX = 'f.tx.v1'
@@ -55,20 +55,20 @@ describe('чтение испорченного хранилища', () => {
     // без возможности нажать «забыть всё».
     localStorage.setItem(KEY_SOURCE, JSON.stringify({ name: 'f.json', rows: 1 }))
     localStorage.setItem(KEY_TX, JSON.stringify([]))
-    const store = await import('../src/store.js?broken-shape')
+    const store = await (vi.resetModules(), import('../src/store.js'))
     expect(Array.isArray(store.sources.value)).toBe(true)
   })
 
   it('строка "null" не проезжает мимо значения по умолчанию', async () => {
     localStorage.setItem(KEY_SOURCE, 'null')
-    const store = await import('../src/store.js?null-source')
+    const store = await (vi.resetModules(), import('../src/store.js'))
     expect(Array.isArray(store.sources.value)).toBe(true)
     expect(store.source.value).toBeNull()
   })
 
   it('битый JSON не роняет чтение', async () => {
     localStorage.setItem(KEY_SOURCE, '{это не json')
-    const store = await import('../src/store.js?broken-json')
+    const store = await (vi.resetModules(), import('../src/store.js'))
     expect(Array.isArray(store.sources.value)).toBe(true)
   })
 })

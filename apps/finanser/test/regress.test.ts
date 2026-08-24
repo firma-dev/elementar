@@ -53,7 +53,7 @@ describe('круг «выгрузил — загрузил»', () => {
   ]
 
   it('счёт переживает выгрузку', () => {
-    const back = readExport(JSON.stringify(buildExport(list, null)))
+    const back = readExport(JSON.stringify(buildExport(categorizeAll(list, {}, {}), null)))
     expect(back.error).toBeNull()
     expect(back.transactions.map((t) => t.account).sort()).toEqual([
       'карта-A',
@@ -65,7 +65,7 @@ describe('круг «выгрузил — загрузил»', () => {
   it('перевод между своими счетами не превращается в доход после круга', () => {
     // Без счёта пара не находится: findPairs требует разных счетов. Приход
     // вырастал на сумму каждого перевода, и это было незаметно.
-    const back = readExport(JSON.stringify(buildExport(list, null)))
+    const back = readExport(JSON.stringify(buildExport(categorizeAll(list, {}, {}), null)))
     const after = markPairs(categorizeAll(back.transactions, {}, {}))
     const income = after
       .filter((t) => t.amount > 0 && t.category !== 'Переводы')
@@ -75,7 +75,7 @@ describe('круг «выгрузил — загрузил»', () => {
 
   it('валюта переживает выгрузку', () => {
     const withCurrency: Tx[] = [{ ...tx('2026-03-01', -1000, 'Кофе'), currency: 'EUR' }]
-    const back = readExport(JSON.stringify(buildExport(withCurrency, null)))
+    const back = readExport(JSON.stringify(buildExport(categorizeAll(withCurrency, {}, {}), null)))
     expect(back.transactions[0]?.currency).toBe('EUR')
   })
 })

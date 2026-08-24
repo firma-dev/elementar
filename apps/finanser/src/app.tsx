@@ -59,6 +59,7 @@ import {
 import { applyUpdate, updateReady } from './pwa.js'
 import { dark, toggleTheme } from './theme.js'
 import { Amount } from './components/Amount.js'
+import { Confirm } from './components/Confirm.js'
 import { Accounts } from './components/Accounts.js'
 import { Balance } from './components/Balance.js'
 import { DayChart } from './components/DayChart.js'
@@ -517,18 +518,17 @@ export function App(): JSX.Element {
       <br />
       Выписка и правки лежат в хранилище этого браузера и никуда не отправляются. На общем
       компьютере так делать не стоит —{' '}
-      <button
-        type="button"
-        class="f-linkish f-linkish--danger"
-        onClick={() => {
+      <Confirm
+        label="забыть всё"
+        question="забыть выписку и все проставленные категории?"
+        confirm="да, забыть"
+        onConfirm={() => {
           forgetEverything()
           setMonth(null)
           setCategoryFilter(null)
           setView('year')
         }}
-      >
-        забыть всё
-      </button>
+      />
       .
     </footer>
   )
