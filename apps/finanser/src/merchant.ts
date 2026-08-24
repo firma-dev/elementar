@@ -8,7 +8,7 @@
  * каждой операции по отдельности.
  */
 import type { Categorized, Category } from './model.js'
-import { fold } from './text.js'
+import { fold, normalize } from './text.js'
 import { dropLeftovers, operationOf } from './operation.js'
 
 /** Организационные формы. Выбрасываются целым словом, а не подстрокой. */
@@ -140,33 +140,70 @@ const NOISE = new Set([
  * «Пятёрочка» окажется отдельным получателем.
  */
 export function merchantKey(description: string): string {
-  // Берём остаток после служебного начала: «Оплата в YANDEXGO» — это YANDEXGO,
-  // а не «В YANDEXGO». Предлог, оставшийся от «оплата в», не имя получателя.
-  const words = fold(operationOf(description).rest)
-    .trim()
-    .split(' ')
-    .filter((word) => word !== '')
-    .filter((word) => !FORMS.has(word))
-    .filter((word) => !PLACES.has(word))
-    .filter((word) => !NOISE.has(word))
-    // Чистые числа и коды вида «5411», «1234» — это номер точки, а не имя.
-    .filter((word) => !/^\d+$/.test(word))
-
-  const key = dropLeftovers(words).join(' ').trim()
-  // Если после чистки не осталось ничего — значит имя и было техническим:
-  // возвращаем исходное сложенное описание, чтобы не склеить всё подряд.
-  return key === '' ? fold(description).trim() : key
+  return cleanWords(description, true)
 }
 
-/** Читаемая подпись: `PYATEROCHKA 1234 MOSCOW RU` → `Pyaterochka`. */
+/**
+ * Чистка описания до имени получателя.
+ *
+ * Отбор всегда идёт по сложенной форме: списки служебных слов записаны
+ * латиницей, и «ООО» отсеивается только после перевода в «OOO». А вот наружу
+ * может выйти любая из двух форм — `translit` решает какая. Слова при этом
+ * идут парами: перевод в латиницу побуквенный, поэтому число слов в обеих
+ * формах одинаково, и пара не разъезжается.
+ */
+function cleanWords(description: string, translit: boolean): string {
+  const rest = operationOf(description).rest
+  // Берём остаток после служебного начала: «Оплата в YANDEXGO» — это YANDEXGO,
+  // а не «В YANDEXGO». Предлог, оставшийся от «оплата в», не имя получателя.
+  const plain = normalize(rest).trim().split(' ')
+  const folded = fold(rest).trim().split(' ')
+
+  // Отсев идёт одним проходом по парам: слово выбрасывается сразу из обеих
+  // форм. Снимать предлоги отдельным шагом было нельзя — `dropLeftovers`
+  // выкидывает их и из середины, и обрезать вторую форму по длине первой
+  // значило бы потерять не то слово.
+  const kept: string[] = []
+  const keptFolded: string[] = []
+  folded.forEach((word, i) => {
+    if (word === '') return
+    if (FORMS.has(word) || PLACES.has(word) || NOISE.has(word)) return
+    // Чистые числа и коды вида «5411», «1234» — это номер точки, а не имя.
+    if (/^\d+$/.test(word)) return
+    if (dropLeftovers([word]).length === 0) return
+    kept.push(plain[i] ?? word)
+    keptFolded.push(word)
+  })
+
+  const key = (translit ? keptFolded : kept).join(' ').trim()
+  // Если после чистки не осталось ничего — значит имя и было техническим:
+  // возвращаем исходное описание целиком, чтобы не склеить всё подряд.
+  if (key !== '') return key
+  return (translit ? fold(description) : normalize(description)).trim()
+}
+
+/**
+ * Читаемая подпись: `PYATEROCHKA 1234 MOSCOW RU` → `Pyaterochka`.
+ *
+ * Ключ считается по сложенной форме — с транслитерацией, иначе «пятерочка» не
+ * нашла бы «PYATEROCHKA». Но подпись из ключа годится только там, где банк и
+ * писал латиницей. «Зарплата за месяц ООО РОГА И КОПЫТА» превращалась в
+ * «Zarplata Mesyats Roga I Kopyta» — человек читает такое дважды, прежде чем
+ * узнать. Поэтому имя, написанное кириллицей, кириллицей и остаётся: чистится
+ * тем же способом, но без перевода в латиницу.
+ */
 export function merchantLabel(description: string): string {
-  const key = merchantKey(description)
-  if (key === '') return description
-  return key
+  const source = CYRILLIC.test(description)
+    ? cleanWords(description, false)
+    : merchantKey(description)
+  if (source === '') return description
+  return source
     .split(' ')
     .map((word) => word.charAt(0) + word.slice(1).toLowerCase())
     .join(' ')
 }
+
+const CYRILLIC = /[А-Яа-яЁё]/
 
 /** Получатель, собранный из нескольких операций. */
 export interface MerchantGroup {

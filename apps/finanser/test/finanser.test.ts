@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { formatAmount, formatShare, parseAmount } from '../src/money.js'
 import { decodeBytes, detectDelimiter, parseCsv } from '../src/csv.js'
-import { parseDate, parseStatement, parseStatementText } from '../src/tbank.js'
+import { parseDate, parseStatement, parseStatementText } from '../src/statement.js'
 import { byBank, byRules, categorize, categorizeAll, normalize } from '../src/categorize.js'
 import { operationOf } from '../src/operation.js'
 import { byMcc } from '../src/mcc.js'
@@ -300,6 +300,7 @@ describe('категории', () => {
       description: 'OOO ROGA I KOPYTA',
       mcc: '5411',
       bankCategory: 'Супермаркеты',
+      account: 'default',
     }
     // MCC — свидетельство платёжной сети, оно сильнее столбца банка.
     expect(categorize(base, {})).toMatchObject({ category: 'Продукты', source: 'mcc' })
@@ -328,6 +329,7 @@ describe('категории', () => {
       description: 'ВОЗВРАТ ПОКУПКИ',
       mcc: null,
       bankCategory: null,
+      account: 'default',
     }
     expect(categorize(tx, {}).category).not.toBe('Доход')
     expect(categorize({ ...tx, amount: 10000 }, {}).category).toBe('Доход')
@@ -341,6 +343,7 @@ describe('категории', () => {
       description: 'НЕПОНЯТНО ЧТО',
       mcc: null,
       bankCategory: null,
+      account: 'default',
     }
     expect(categorize(tx, {}).category).toBe('Доход')
   })
@@ -355,6 +358,7 @@ function tx(date: string, amount: number, description: string, bank: string | nu
     description,
     mcc: null,
     bankCategory: bank,
+    account: 'default',
   }
 }
 
@@ -593,6 +597,7 @@ describe('вид операции сильнее словаря', () => {
     description,
     mcc: null,
     bankCategory: null,
+    account: 'default',
   })
 
   it('«перевод по номеру телефона» — это перевод, а не связь', () => {
@@ -607,8 +612,10 @@ describe('вид операции сильнее словаря', () => {
     expect(categorize(tx('Снятие наличных. Т-Банк, 12179 Москва'), {}).category).toBe('Наличные')
     expect(categorize(tx('Кэшбэк за обычные покупки', 5000), {}).category).toBe('Доход')
     expect(categorize(tx('Плата за обслуживание'), {}).category).toBe('Кредиты')
+    // Копилка теперь своя категория, а не «Переводы»: про накопления
+    // спрашивают отдельно — сколько отложено за месяц и сколько до цели.
     expect(categorize(tx('Перевод для пополнения счета Инвесткопилка'), {}).category).toBe(
-      'Переводы',
+      'Накопления',
     )
   })
 
@@ -678,6 +685,7 @@ describe('новые категории', () => {
     description,
     mcc: null,
     bankCategory: null,
+    account: 'default',
   })
 
   it('маркетплейсы отделены от техники и одежды', () => {
@@ -739,20 +747,126 @@ describe('перенос: выгрузка и возврат', () => {
   })
 })
 
+describe('подпись получателя', () => {
+  it('кириллическое имя остаётся кириллическим', () => {
+    // Ключ считается транслитом — иначе «пятерочка» не нашла бы «PYATEROCHKA».
+    // Но подпись из такого ключа человек читает дважды, прежде чем узнать:
+    // «Зарплата за месяц ООО РОГА И КОПЫТА» превращалась в «Zarplata Mesyats
+    // Roga I Kopyta».
+    expect(merchantLabel('Зарплата за месяц ООО РОГА И КОПЫТА')).toBe(
+      'Зарплата Месяц Рога И Копыта',
+    )
+    // Ключ по-прежнему латинский: по нему ищут и по нему группируют.
+    expect(merchantKey('Зарплата за месяц ООО РОГА И КОПЫТА')).toBe(
+      'ZARPLATA MESYATS ROGA I KOPYTA',
+    )
+  })
+
+  it('латинское имя чистится как прежде', () => {
+    expect(merchantLabel('PYATEROCHKA 5566 MOSCOW')).toBe('Pyaterochka')
+  })
+})
+
+describe('выгрузки других банков', () => {
+  it('читает приход и расход разными колонками', () => {
+    // Заметная часть банков не пишет сумму со знаком, а разносит её по двум
+    // колонкам. Знак там несёт сама колонка: расход записан положительным, и
+    // без разворота траты сложились бы с доходами в одну кучу.
+    const csv = [
+      'Дата;Описание;Приход;Расход;Остаток',
+      '05.01.2026;PYATEROCHKA;;900,00;12 340,00',
+      '06.01.2026;ЗАРПЛАТА;120 000,00;;132 340,00',
+    ].join('\n')
+    const result = parseStatementText(csv)
+    expect(result.error).toBeNull()
+    const sums = result.transactions.map((tx) => tx.amount).sort((a, b) => a - b)
+    expect(sums).toEqual([-90000, 12000000])
+  })
+
+  it('находит заголовок под шапкой со счётом', () => {
+    // Банк ставит сверху имя владельца, номер счёта и период — заголовок
+    // таблицы оказывается пятой строкой, а не первой.
+    const csv = [
+      'Выписка по счёту',
+      'Иванов Иван Иванович',
+      'Счёт 40817810099910004312',
+      'за период 01.01.2026 — 31.01.2026',
+      'Дата операции;Сумма операции;Описание',
+      '05.01.2026;-900,00;PYATEROCHKA',
+    ].join('\n')
+    const result = parseStatementText(csv)
+    expect(result.error).toBeNull()
+    expect(result.transactions).toHaveLength(1)
+  })
+
+  it('берёт остаток по счёту из самой поздней строки', () => {
+    // Складывать операции нельзя: выписка начинается не с нуля, и сумма
+    // выглядела бы балансом, не будучи им.
+    const csv = [
+      'Дата;Описание;Сумма;Остаток',
+      '06.01.2026;ЗАРПЛАТА;120 000,00;132 340,00',
+      '05.01.2026;PYATEROCHKA;-900,00;12 340,00',
+    ].join('\n')
+    expect(parseStatementText(csv).balance).toBe(13234000)
+  })
+
+  it('говорит, чего не хватает, когда файл чужой', () => {
+    const result = parseStatementText('Артикул;Наименование;Цена\n1;Гвозди;100')
+    expect(result.error).toContain('дата')
+    // Название банка в тексте не звучит: корпус читает выгрузки любых банков.
+    expect(result.error).not.toContain('Банк')
+  })
+})
+
 describe('несколько выписок', () => {
   it('одинаковые покупки с разных счетов не схлопываются', () => {
     // Две одинаковые чашки кофе в один день с дебетовой и с кредитной карты.
-    // Без ключа выписки у них совпадал бы идентификатор, и вторая исчезала бы
+    // Без счёта в ключе у них совпадал бы идентификатор, и вторая исчезала бы
     // при склейке — то есть пропадали бы деньги.
-    const one = [HEADER, row('05.01.2026', '-300,00', 'Кафе', 'SURF COFFEE')].join('\n')
-    const two = [
+    const coffee = row('05.01.2026', '-300,00', 'Кафе', 'SURF COFFEE')
+    const debit = parseStatementText([HEADER, coffee].join('\n')).transactions
+    const credit = parseStatementText(
+      [HEADER, coffee.replace('"*1234"', '"*5678"')].join('\n'),
+    ).transactions
+    expect(debit[0]?.account).not.toBe(credit[0]?.account)
+    expect(debit[0]?.id).not.toBe(credit[0]?.id)
+  })
+
+  it('имя файла становится счётом, когда банк карту не назвал', () => {
+    // Часть банков не выгружает номер карты вовсе. Тогда единственное, что не
+    // меняется от выгрузки к выгрузке, — имя файла.
+    const bare = 'Дата операции;Сумма операции;Описание\n05.01.2026;-300,00;SURF COFFEE'
+    const one = parseStatementText(bare, 'дебетовая.csv').transactions
+    const two = parseStatementText(bare, 'кредитная.csv').transactions
+    expect(one[0]?.account).not.toBe(two[0]?.account)
+    // А тот же файл, поданный дважды, остаётся тем же счётом.
+    expect(parseStatementText(bare, 'дебетовая.csv').transactions[0]?.id).toBe(one[0]?.id)
+  })
+
+  it('следующая выгрузка того же счёта не задваивает уже загруженное', () => {
+    // Ежедневный сценарий целиком стоит на этом: человек выгружает счёт снова,
+    // и в нём те же операции плюс несколько новых. Раньше ключ выписки
+    // считался из «первая дата | последняя дата | число строк» — он менялся
+    // вместе с новой строкой, и все прежние операции приезжали как новые
+    // (Д-026).
+    const было = [
       HEADER,
       row('05.01.2026', '-300,00', 'Кафе', 'SURF COFFEE'),
-      row('06.01.2026', '-900,00', 'Кафе', 'SURF COFFEE'),
+      row('06.01.2026', '-900,00', 'Продукты', 'PYATEROCHKA'),
     ].join('\n')
-    const a = parseStatementText(one).transactions
-    const b = parseStatementText(two).transactions
-    expect(a[0]?.id).not.toBe(b[b.length - 1]?.id)
+    const стало = [
+      HEADER,
+      row('05.01.2026', '-300,00', 'Кафе', 'SURF COFFEE'),
+      row('06.01.2026', '-900,00', 'Продукты', 'PYATEROCHKA'),
+      row('07.01.2026', '-450,00', 'Такси', 'YANDEX GO'),
+    ].join('\n')
+    const first = parseStatementText(было).transactions
+    const second = parseStatementText(стало).transactions
+
+    // Склейка идёт по идентификатору — ровно так же, как в хранилище.
+    const merged = new Map(first.map((tx) => [tx.id, tx]))
+    for (const tx of second) merged.set(tx.id, tx)
+    expect(merged.size).toBe(3)
   })
 
   it('повторная загрузка того же файла не плодит дублей', () => {

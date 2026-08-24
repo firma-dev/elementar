@@ -31,6 +31,7 @@ const tx = (date: string, amount: number, description: string): Tx => ({
   description,
   mcc: null,
   bankCategory: null,
+  account: 'default',
 })
 
 const rows: Categorized[] = categorizeAll(

@@ -136,6 +136,10 @@ export function readExport(text: string): ImportResult {
       description: typeof t['description'] === 'string' ? t['description'] : 'Без описания',
       mcc: typeof t['mcc'] === 'string' ? t['mcc'] : null,
       bankCategory: typeof t['bankCategory'] === 'string' ? t['bankCategory'] : null,
+      // Выгрузки первой версии счёта не знали: их операции попадают на счёт
+      // «по умолчанию», а не отбрасываются. Потерять данные из-за нового поля
+      // было бы худшим исходом, чем потерять разрез по счетам.
+      account: typeof t['account'] === 'string' && t['account'] !== '' ? t['account'] : 'default',
     })
   }
   if (transactions.length === 0) {

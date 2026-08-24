@@ -13,11 +13,16 @@ import { categorizeAll } from './categorize.js'
 import type { MerchantOverrides, Overrides } from './categorize.js'
 import { summarize } from './insights.js'
 import type { Summary } from './insights.js'
+import { EMPTY_PLAN } from './plan.js'
+import type { Plan } from './plan.js'
+import type { Kopeck } from './money.js'
 
 const KEY_TX = 'f.tx.v1'
 const KEY_OVERRIDES = 'f.cat.v1'
 const KEY_MERCHANTS = 'f.merchant.v1'
 const KEY_SOURCE = 'f.src.v1'
+const KEY_ACCOUNTS = 'f.acc.v1'
+const KEY_PLAN = 'f.plan.v1'
 
 /** Что известно о загруженном файле: имя и что с ним случилось при разборе. */
 export interface SourceInfo {
@@ -32,6 +37,29 @@ export interface SourceInfo {
   hasCodes: boolean
   /** Ключ выписки: по нему её операции отличаются от операций других счетов. */
   key: string
+  /** Остаток по счёту на конец выписки, если банк его отдал. */
+  balance?: Kopeck | null
+  /** Ключи счетов, встреченные в файле. */
+  accounts?: string[]
+}
+
+/**
+ * Счёт.
+ *
+ * Один счёт — одна карта или один вклад, а не один файл: в одном файле их
+ * может быть несколько, и одну карту выгружают много раз. Имя и банк человек
+ * правит сам — угадать их по номеру карты нельзя, а показывать восьмизначный
+ * ключ вместо имени незачем.
+ *
+ * Цвет не выбирается, а раздаётся по порядку: выбор цвета — это работа, за
+ * которую человек ничего не получает, а различать счета взглядом надо.
+ */
+export interface Account {
+  key: string
+  name: string
+  bank: string
+  /** Номер цвета в наборе корпуса, 0…5. */
+  tone: number
 }
 
 function readJson<T>(key: string, fallback: T): T {
@@ -70,6 +98,20 @@ export const merchantOverrides = signal<MerchantOverrides>(
  */
 export const sources = signal<SourceInfo[]>(readJson<SourceInfo[]>(KEY_SOURCE, []))
 
+/**
+ * Счета. Заводятся сами при загрузке выписки, правятся человеком.
+ */
+export const accounts = signal<Account[]>(readJson<Account[]>(KEY_ACCOUNTS, []))
+
+/**
+ * Какой счёт сейчас смотрим. `null` — все сразу: это и есть ответ по умолчанию,
+ * потому что вопрос «сколько я трачу» задают про все деньги, а не про карту.
+ */
+export const activeAccount = signal<string | null>(null)
+
+/** План: три введённых числа плюс копилка. Пустой, пока человек его не завёл. */
+export const plan = signal<Plan>(readJson<Plan>(KEY_PLAN, EMPTY_PLAN))
+
 /** Последняя загруженная — для строки над картиной. */
 export const source = computed<SourceInfo | null>(
   () => sources.value[sources.value.length - 1] ?? null,
@@ -94,6 +136,7 @@ export const hasData = computed(() => transactions.value.length > 0)
  * совпадающие строки просто перекрываются.
  */
 export function addStatement(list: Tx[], info: SourceInfo): void {
+  registerAccounts(list, info)
   const byId = new Map<string, Tx>()
   for (const tx of transactions.value) byId.set(tx.id, tx)
   for (const tx of list) byId.set(tx.id, tx)
@@ -107,17 +150,66 @@ export function addStatement(list: Tx[], info: SourceInfo): void {
   writeJson(KEY_SOURCE, nextSources)
 }
 
-/** Убрать одну выписку из склейки вместе с её операциями. */
-export function dropStatement(name: string): void {
-  const gone = sources.value.filter((s) => s.name === name)
-  if (gone.length === 0) return
-  const keys = new Set(gone.map((s) => s.key))
-  const left = transactions.value.filter((tx) => !keys.has(tx.id.split(':')[0] ?? ''))
-  const nextSources = sources.value.filter((s) => s.name !== name)
+/**
+ * Завести счета, которых ещё нет.
+ *
+ * Имя по умолчанию — имя файла без расширения: человек его узнаёт, а
+ * восьмизначный ключ — нет. Уже заведённый счёт не трогается: у него может
+ * быть имя, данное рукой.
+ */
+function registerAccounts(list: readonly Tx[], info: SourceInfo): void {
+  const known = new Set(accounts.value.map((a) => a.key))
+  const fresh: Account[] = []
+  const fallback = info.name.replace(/\.[a-z0-9]+$/i, '')
+  for (const tx of list) {
+    if (known.has(tx.account) || fresh.some((a) => a.key === tx.account)) continue
+    fresh.push({
+      key: tx.account,
+      name: fallback === '' ? `Счёт ${known.size + fresh.length + 1}` : fallback,
+      bank: '',
+      tone: (known.size + fresh.length) % 6,
+    })
+  }
+  if (fresh.length === 0) return
+  const next = [...accounts.value, ...fresh]
+  accounts.value = next
+  writeJson(KEY_ACCOUNTS, next)
+}
+
+/** Переименовать счёт или назвать его банк. */
+export function renameAccount(key: string, name: string, bank: string): void {
+  const next = accounts.value.map((a) => (a.key === key ? { ...a, name, bank } : a))
+  accounts.value = next
+  writeJson(KEY_ACCOUNTS, next)
+}
+
+/** Записать план. Три числа и копилка — всё, что человек вводит руками. */
+export function setPlan(next: Plan): void {
+  plan.value = next
+  writeJson(KEY_PLAN, next)
+}
+
+/**
+ * Убрать счёт вместе со всеми его операциями.
+ *
+ * Убирается именно счёт, а не выписка. Выписка — это привоз: их бывает
+ * двадцать на один счёт, они перекрываются, и «убрать вторую из них» не имеет
+ * смысла — операции у них общие. Счёт же существует сам по себе, его и видно
+ * в переключателе (Д-026).
+ */
+export function dropAccount(key: string): void {
+  const left = transactions.value.filter((tx) => tx.account !== key)
+  const nextAccounts = accounts.value.filter((a) => a.key !== key)
   transactions.value = left
-  sources.value = nextSources
+  accounts.value = nextAccounts
+  if (activeAccount.value === key) activeAccount.value = null
   summary.value = null
   writeJson(KEY_TX, left)
+  writeJson(KEY_ACCOUNTS, nextAccounts)
+  // Выписки, от которых не осталось ни одной операции, уходят из списка сами.
+  const live = new Set(left.map((tx) => tx.account))
+  const nextSources = sources.value.filter((src) => (src.accounts ?? []).some((a) => live.has(a)))
+  sources.value = nextSources
   writeJson(KEY_SOURCE, nextSources)
 }
 
@@ -135,6 +227,7 @@ export function restoreEverything(
   nextMerchants: MerchantOverrides,
   info: SourceInfo | null,
 ): void {
+  if (info !== null) registerAccounts(list, info)
   transactions.value = list
   overrides.value = { ...nextOverrides }
   merchantOverrides.value = { ...nextMerchants }
@@ -195,12 +288,17 @@ export function forgetEverything(): void {
   overrides.value = {}
   merchantOverrides.value = {}
   sources.value = []
+  accounts.value = []
+  activeAccount.value = null
+  plan.value = EMPTY_PLAN
   summary.value = null
   try {
     globalThis.localStorage?.removeItem(KEY_TX)
     globalThis.localStorage?.removeItem(KEY_OVERRIDES)
     globalThis.localStorage?.removeItem(KEY_MERCHANTS)
     globalThis.localStorage?.removeItem(KEY_SOURCE)
+    globalThis.localStorage?.removeItem(KEY_ACCOUNTS)
+    globalThis.localStorage?.removeItem(KEY_PLAN)
   } catch {
     // см. writeJson
   }

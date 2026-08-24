@@ -2,12 +2,17 @@ import { useCallback, useMemo, useRef, useState } from 'preact/hooks'
 import type { JSX } from 'preact'
 import type { Category } from './model.js'
 import { dayLabel, monthLabel, monthOf } from './model.js'
-import { parseStatement, parseStatementText } from './tbank.js'
+import { parseStatement, parseStatementText } from './statement.js'
 import { decodeBytes } from './csv.js'
 import { fold } from './text.js'
-import type { ParseResult } from './tbank.js'
+import type { ParseResult } from './statement.js'
 import { byCategory, byMonth, byPlane } from './stats.js'
 import { formatShare } from './money.js'
+import type { Kopeck } from './money.js'
+import { PERIODS, bounds, daysBehind, elapsed, isDaily, periodOf } from './period.js'
+import type { PeriodKey } from './period.js'
+import { limitFor, toGoal } from './plan.js'
+import { byIncomeSource, nextArrival } from './income.js'
 import { buildExport, downloadJson, looksLikeExport, readExport } from './export.js'
 import { demoCsv } from './demo.js'
 import {
@@ -22,13 +27,24 @@ import {
   setCategory,
   setMerchantCategory,
   addStatement,
-  dropStatement,
+  accounts,
+  activeAccount,
+  dropAccount,
+  plan,
+  renameAccount,
+  setPlan,
   sources,
   source,
   summary,
 } from './store.js'
 import { applyUpdate, updateReady } from './pwa.js'
 import { Amount } from './components/Amount.js'
+import { Accounts } from './components/Accounts.js'
+import { Balance } from './components/Balance.js'
+import { DayChart } from './components/DayChart.js'
+import { IncomeView } from './components/IncomeView.js'
+import { Limit } from './components/Limit.js'
+import { PlanView } from './components/PlanView.js'
 import { MonthChart } from './components/MonthChart.js'
 import { MoneyMoves } from './components/MoneyMoves.js'
 import { CategoryList } from './components/CategoryList.js'
@@ -38,8 +54,23 @@ import { TxList } from './components/TxList.js'
 import { SummaryView } from './components/SummaryView.js'
 import { RulesView } from './components/RulesView.js'
 
-/** Два экрана: картина года и выписка. Операции — второй шаг, а не вкладка. */
+/** Два экрана: картина и выписка. Операции — второй шаг, а не вкладка. */
 type View = 'year' | 'txs' | 'rules'
+
+/** Сегодняшний день по часам устройства. Отдельной функцией — её видно в тестах. */
+function today(): string {
+  return new Date().toISOString().slice(0, 10)
+}
+
+/** «1 день назад», «2 дня назад», «5 дней назад». */
+function dayWord(n: number): string {
+  const tens = n % 100
+  const ones = n % 10
+  if (tens >= 11 && tens <= 14) return 'дней'
+  if (ones === 1) return 'день'
+  if (ones >= 2 && ones <= 4) return 'дня'
+  return 'дней'
+}
 
 export function App(): JSX.Element {
   const [error, setError] = useState<string | null>(null)
@@ -49,11 +80,17 @@ export function App(): JSX.Element {
   const [hovered, setHovered] = useState<string | null>(null)
   const [category, setCategoryFilter] = useState<Category | null>(null)
   const [query, setQuery] = useState('')
-  /** Сколько последних месяцев показывать. null — весь период файла. */
-  const [back, setBack] = useState<number | null>(null)
+  /** Какой отрезок смотрим. Год — то, с чего корпус начинался (ТЗ §1). */
+  const [period, setPeriod] = useState<PeriodKey>('year')
+  /** Выбранный день внутри короткого периода. */
+  const [day, setDay] = useState<string | null>(null)
+  /** Раскрыт ли план: его открывает и «задать план» из полосы предела. */
+  const [planOpen, setPlanOpen] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   const rows = categorized.value
+  const loaded = sources.value
+  const account = activeAccount.value
 
   const accept = useCallback((result: ParseResult, name: string): void => {
     if (result.error !== null) {
@@ -72,7 +109,9 @@ export function App(): JSX.Element {
       foreign: result.foreign,
       loadedAt: new Date().toISOString().slice(0, 10),
       hasCodes: result.hasCodes,
-      key: result.transactions[0]?.id.split(':')[0] ?? '',
+      key: name,
+      balance: result.balance,
+      accounts: result.accounts,
     })
     setView('year')
     setMonth(null)
@@ -103,7 +142,9 @@ export function App(): JSX.Element {
             foreign: 0,
             loadedAt: new Date().toISOString().slice(0, 10),
             hasCodes: back.transactions.some((t) => t.mcc !== null || t.bankCategory !== null),
-            key: back.transactions[0]?.id.split(':')[0] ?? '',
+            key: back.source?.name ?? file.name,
+            balance: null,
+            accounts: [...new Set(back.transactions.map((t) => t.account))],
           })
           setView('year')
           setMonth(null)
@@ -111,9 +152,12 @@ export function App(): JSX.Element {
           setError(null)
           return
         }
-        accept(parseStatement(bytes), file.name)
+        // Имя файла передаётся как запасной ключ счёта: если банк не выгрузил
+        // номер карты, различать счета больше нечем, а имя файла от выгрузки
+        // к выгрузке не меняется (Д-026).
+        accept(parseStatement(bytes, file.name), file.name)
       } catch {
-        setError('Файл не удалось прочитать. Нужен CSV — выгрузка операций из Т-Банка.')
+        setError('Файл не удалось прочитать. Нужен CSV — выгрузка операций из банка.')
       } finally {
         setBusy(false)
       }
@@ -131,41 +175,80 @@ export function App(): JSX.Element {
   )
 
   const loadDemo = useCallback((): void => {
-    accept(parseStatementText(demoCsv()), 'пример выписки')
+    accept(parseStatementText(demoCsv(), 'пример выписки'), 'пример выписки')
   }, [accept])
 
   /**
-   * Период разговора. По умолчанию — весь файл, но год выписки редко совпадает
-   * с вопросом: «сколько я трачу сейчас» — это последние три месяца, а не
-   * двенадцать. Отсчёт идёт от последней операции, а не от сегодняшнего дня:
-   * выписку могли выгрузить месяц назад, и «последние три месяца» от сегодня
-   * дали бы пустой экран.
+   * Край данных — самая поздняя операция, какая есть.
+   *
+   * Всё считается от него, а не от системной даты: данные приезжают выпиской,
+   * а не проводами из банка, и «за день» от сегодняшнего числа показало бы
+   * ноль на недельной выгрузке (Д-026). Насколько край отстал, приложение
+   * говорит вслух — см. `behind`.
    */
-  const inPeriod = useMemo(() => {
-    if (back === null) return rows
-    const last = rows[0]
-    if (last === undefined) return rows
-    const edge = new Date(`${last.date}T00:00:00Z`)
-    edge.setUTCMonth(edge.getUTCMonth() - back)
-    const from = edge.toISOString().slice(0, 10)
-    return rows.filter((tx) => tx.date >= from)
-  }, [rows, back])
+  const edge = useMemo(() => rows[0]?.date ?? today(), [rows])
+  const behind = useMemo(() => daysBehind(edge, today()), [edge])
+
+  /** Разрез по счёту: `null` — все сразу. */
+  const onAccount = useMemo(
+    () => (account === null ? rows : rows.filter((tx) => tx.account === account)),
+    [rows, account],
+  )
+
+  const range = useMemo(() => bounds(period, edge), [period, edge])
+  const daily = isDaily(period)
+
+  /** Операции периода. Границы включительные с обеих сторон. */
+  const inPeriod = useMemo(
+    () => onAccount.filter((tx) => tx.date >= range.from && tx.date <= range.to),
+    [onAccount, range],
+  )
 
   // График — навигатор внутри выбранного периода, а не итог.
   const months = useMemo(() => byMonth(inPeriod), [inPeriod])
   const yearPlanes = useMemo(() => byPlane(inPeriod), [inPeriod])
 
   /**
-   * Разрез — то, о чём сейчас идёт разговор: весь период или один месяц.
-   * Год и месяц не показываются одновременно: иначе на экране две таблицы
-   * категорий, и человек складывает их глазами, получая двойную сумму.
+   * Разрез — то, о чём сейчас идёт разговор: весь период, один месяц или один
+   * день. Два разреза одновременно не показываются: иначе на экране две
+   * таблицы категорий, и человек складывает их глазами, получая двойную сумму.
    */
-  const scope = useMemo(
-    () => (month === null ? inPeriod : inPeriod.filter((tx) => monthOf(tx.date) === month)),
-    [inPeriod, month],
-  )
+  const scope = useMemo(() => {
+    if (day !== null) return inPeriod.filter((tx) => tx.date === day)
+    if (month !== null) return inPeriod.filter((tx) => monthOf(tx.date) === month)
+    return inPeriod
+  }, [inPeriod, month, day])
   const planes = useMemo(() => byPlane(scope), [scope])
   const cats = useMemo(() => byCategory(scope), [scope])
+
+  /** Предел трат на период: считается из плана, а не вводится (Д-026). */
+  const limit = useMemo(() => limitFor(period, edge, plan.value), [period, edge, plan.value])
+  const pace = useMemo(() => elapsed(period, edge), [period, edge])
+
+  /**
+   * Отложенное за календарный месяц края данных. Считается по операциям плана
+   * «переезд» с категорией «Накопления» — спрашивать его не за чем.
+   */
+  const setAside = useMemo(() => {
+    const from = `${edge.slice(0, 7)}-01`
+    let sum = 0
+    for (const tx of onAccount) {
+      if (tx.date < from || tx.date > edge) continue
+      if (tx.category !== 'Накопления') continue
+      if (tx.amount < 0) sum -= tx.amount
+    }
+    return sum
+  }, [onAccount, edge])
+
+  /** Остаток по счетам: сумма последних известных остатков выгрузок. */
+  const balance = useMemo(() => {
+    const known = loaded.filter((s) => typeof s.balance === 'number' && s.balance !== null)
+    if (known.length === 0) return null
+    return known.reduce((sum, s) => sum + (s.balance ?? 0), 0)
+  }, [loaded])
+
+  const incomeSources = useMemo(() => byIncomeSource(onAccount, edge), [onAccount, edge])
+  const arrival = useMemo(() => nextArrival(incomeSources, edge), [incomeSources, edge])
 
   const visible = useMemo(() => {
     const byCat = category === null ? scope : scope.filter((tx) => tx.category === category)
@@ -183,20 +266,15 @@ export function App(): JSX.Element {
     [scope],
   )
 
-  const PERIODS: ReadonlyArray<{ back: number | null; label: string }> = [
-    { back: null, label: 'весь период' },
-    { back: 12, label: '12 месяцев' },
-    { back: 6, label: '6 месяцев' },
-    { back: 3, label: '3 месяца' },
-  ]
-
   const info = source.value
-  const period = useMemo(() => {
-    const first = inPeriod[inPeriod.length - 1]
-    const last = inPeriod[0]
-    if (first === undefined || last === undefined) return ''
-    return `${dayLabel(first.date)} — ${dayLabel(last.date)}`
-  }, [inPeriod])
+  const spec = periodOf(period)
+
+  /** Сколько операций на каждом счёте — подсказка в переключателе. */
+  const counts = useMemo(() => {
+    const out: Record<string, number> = {}
+    for (const tx of rows) out[tx.account] = (out[tx.account] ?? 0) + 1
+    return out
+  }, [rows])
 
   const fileInput = (
     <input ref={fileRef} type="file" accept=".csv,.txt,.json" class="f-sr" onChange={onPick} />
@@ -286,46 +364,44 @@ export function App(): JSX.Element {
     )
   }
 
-  const loaded = sources.value
-  const sourceLine = (
-    <div class="f-source">
-      <span class="f-source__period">{period}</span>
-      <span class="f-source__file">
-        {loaded.length <= 1
-          ? (info?.name ?? '')
-          : `${loaded.length} выписки · ${rows.length} операций`}
+  /**
+   * Свежесть данных.
+   *
+   * Строка отвечает на вопрос, которого человек не задаёт вслух, но от ответа
+   * на который зависит смысл всех чисел выше: за какое число это посчитано.
+   * «Обновить» стоит здесь же — это самое частое действие в ежедневном
+   * сценарии, и класть его дальше одного касания было бы дорого (Д-026).
+   */
+  const freshness = (
+    <div class="f-fresh">
+      <span class={behind > 2 ? 'f-fresh__k f-fresh__k--old' : 'f-fresh__k'}>
+        данные по {dayLabel(edge)}
+        {behind === 0 ? '' : ` · ${behind} ${dayWord(behind)} назад`}
       </span>
-      <button
-        type="button"
-        class="f-linkish f-linkish--quiet"
-        onClick={() => fileRef.current?.click()}
-      >
-        добавить
+      <span class="f-fresh__file">
+        {loaded.length <= 1 ? (info?.name ?? '') : `${loaded.length} выписки`}
+      </span>
+      <button type="button" class="f-go f-go--small" onClick={() => fileRef.current?.click()}>
+        обновить
       </button>
     </div>
   )
 
-  /* Список склеенных выписок. Показывается только когда их больше одной:
-     на одной он был бы шумом, на нескольких — единственный способ понять,
-     из чего сложилась картина, и убрать лишнюю. */
-  const sourceList =
-    loaded.length <= 1 ? null : (
-      <ul class="f-sources" role="list">
-        {loaded.map((s) => (
-          <li key={s.name} class="f-sources__row">
-            <span class="f-sources__name">{s.name}</span>
-            <span class="f-sources__meta">{s.rows} операций</span>
-            <button
-              type="button"
-              class="f-linkish f-linkish--quiet"
-              onClick={() => dropStatement(s.name)}
-            >
-              убрать
-            </button>
-          </li>
-        ))}
-      </ul>
-    )
+  const accountSwitch = (
+    <Accounts
+      list={accounts.value}
+      active={account}
+      counts={counts}
+      onSelect={(key) => {
+        activeAccount.value = key
+        setMonth(null)
+        setDay(null)
+        setCategoryFilter(null)
+      }}
+      onRename={renameAccount}
+      onDrop={dropAccount}
+    />
+  )
 
   const footer = (
     <footer class="f-foot">
@@ -372,7 +448,7 @@ export function App(): JSX.Element {
     return (
       <main class="f-page">
         {header}
-        {sourceLine}
+        {freshness}
         <div class="f-txhead">
           <button type="button" class="f-linkish" onClick={() => setView('year')}>
             ← картина года
@@ -418,25 +494,31 @@ export function App(): JSX.Element {
   return (
     <main class="f-page">
       {header}
-      {sourceLine}
-      {sourceList}
+      {accountSwitch}
+      {freshness}
+
       {loaded.some((s) => s.foreign > 0) ? (
         <p class="f-note f-hint">
           {loaded.reduce((n, s) => n + s.foreign, 0)} операций в валюте банк не пересчитал в рубли —
-          они посчитаны как рубли, и годовая сумма из-за них завышена или занижена.
+          они посчитаны как рубли, и сумма из-за них завышена или занижена.
         </p>
       ) : null}
 
+      {/* Период — это режим, а не фильтр: ниже меняется не только число, но и
+          то, о чём вообще идёт речь. На коротких отрезках это дневной ритм —
+          сколько уже потрачено и сколько осталось; на длинных — картина по
+          месяцам и категориям (Д-026). */}
       <div class="f-periods" role="group" aria-label="Период">
         {PERIODS.map((p) => (
           <button
-            key={p.label}
+            key={p.key}
             type="button"
-            class={back === p.back ? 'f-period f-period--on' : 'f-period'}
-            aria-pressed={back === p.back}
+            class={period === p.key ? 'f-period f-period--on' : 'f-period'}
+            aria-pressed={period === p.key}
             onClick={() => {
-              setBack(p.back)
+              setPeriod(p.key)
               setMonth(null)
+              setDay(null)
             }}
           >
             {p.label}
@@ -444,67 +526,148 @@ export function App(): JSX.Element {
         ))}
       </div>
 
-      <div class="f-tiles">
-        <div class="f-tile f-tile--main">
-          <span class="f-tile__k">
-            {month === null ? 'Траты за период' : `Траты · ${monthLabel(month)}`}
-          </span>
-          <Amount class="f-tile__v" value={planes.spend.total} kopecks="never" />
-          {/* Подпись стоит всегда, даже когда месяц не выбран. Раньше она
-              появлялась только с выбором месяца, и плитка вырастала на двадцать
-              пикселей — график уезжал вниз ровно из-под пальца, которым по нему
-              и ткнули. Пустое место оставлять нечестно: во весь период там
-              стоит средний месяц, он и отвечает, много это или мало. */}
-          <span class="f-tile__sub">
-            {month === null ? (
-              <>
-                в среднем{' '}
+      {daily ? (
+        <>
+          <Limit
+            spent={planes.spend.total}
+            limit={limit}
+            elapsed={pace}
+            label={day === null ? `Потрачено ${spec.title}` : `Потрачено ${dayLabel(day)}`}
+            onSetPlan={() => {
+              setPlanOpen(true)
+              // Раздел раскрывается перерисовкой, а она случится не сейчас:
+              // до неё блока в разметке ещё нет, и прокручивать не к чему.
+              requestAnimationFrame(() =>
+                document.querySelector('.f-plan')?.scrollIntoView({ block: 'center' }),
+              )
+            }}
+          />
+          {/* Пришло и отложено — вторым рядом, а не в свёрнутом разделе.
+              Это два из семи ежедневных вопросов, и разворачивать ради них
+              раздел значило бы платить касанием каждый день (Д-026). */}
+          <dl class="f-pair">
+            <div class="f-pair__cell">
+              <dt class="f-pair__k">Пришло {spec.title}</dt>
+              <dd class="f-pair__v">
                 <Amount
-                  value={months.length === 0 ? 0 : Math.round(planes.spend.total / months.length)}
+                  class="f-pair__num f-pair__num--in"
+                  value={planes.income.total}
                   kopecks="never"
-                />{' '}
-                в месяц
-              </>
-            ) : (
-              `${formatShare(planes.spend.total, yearPlanes.spend.total)}% года`
-            )}
-          </span>
-        </div>
-        <div class="f-tile">
-          <span class="f-tile__k">Поступления</span>
-          <Amount class="f-tile__v f-tile__v--in" value={planes.income.total} kopecks="never" />
-          <span class="f-tile__sub">
-            {month === null ? (
-              <>
-                в среднем{' '}
-                <Amount
-                  value={months.length === 0 ? 0 : Math.round(planes.income.total / months.length)}
-                  kopecks="never"
-                />{' '}
-                в месяц
-              </>
-            ) : (
-              `${formatShare(planes.income.total, yearPlanes.income.total)}% года`
-            )}
-          </span>
-        </div>
-      </div>
+                />
+              </dd>
+            </div>
+            <div class="f-pair__cell">
+              <dt class="f-pair__k">Отложено в этом месяце</dt>
+              <dd class="f-pair__v">
+                <Amount class="f-pair__num" value={setAside as Kopeck} kopecks="never" />
+                {plan.value.save === 0 ? null : (
+                  <span class="f-pair__note">
+                    {toGoal(plan.value, setAside as Kopeck) === 0 ? (
+                      'цель месяца взята'
+                    ) : (
+                      <>
+                        до цели ещё{' '}
+                        <Amount value={toGoal(plan.value, setAside as Kopeck)} kopecks="never" />
+                      </>
+                    )}
+                  </span>
+                )}
+              </dd>
+            </div>
+          </dl>
 
-      <MonthChart
-        months={months}
-        selected={month}
-        hovered={hovered}
-        onSelect={setMonth}
-        onHover={setHovered}
-      />
+          {period === 'day' ? null : (
+            <DayChart
+              rows={inPeriod}
+              from={range.from}
+              to={range.to}
+              limit={limitFor('day', edge, plan.value)}
+              selected={day}
+              onSelect={(next) => {
+                setDay(next)
+                setCategoryFilter(null)
+              }}
+            />
+          )}
+        </>
+      ) : (
+        <>
+          <div class="f-tiles">
+            <div class="f-tile f-tile--main">
+              <span class="f-tile__k">
+                {month === null ? `Траты ${spec.title}` : `Траты · ${monthLabel(month)}`}
+              </span>
+              <Amount class="f-tile__v" value={planes.spend.total} kopecks="never" />
+              {/* Подпись стоит всегда, даже когда месяц не выбран: без запаса
+                  плитка то в одну строку, то в две, и график под ней прыгает
+                  ровно из-под пальца, которым по нему ткнули. */}
+              <span class="f-tile__sub">
+                {month === null ? (
+                  <>
+                    в среднем{' '}
+                    <Amount
+                      value={
+                        months.length === 0 ? 0 : Math.round(planes.spend.total / months.length)
+                      }
+                      kopecks="never"
+                    />{' '}
+                    в месяц
+                  </>
+                ) : (
+                  `${formatShare(planes.spend.total, yearPlanes.spend.total)}% периода`
+                )}
+              </span>
+            </div>
+            <div class="f-tile">
+              <span class="f-tile__k">Поступления</span>
+              <Amount class="f-tile__v f-tile__v--in" value={planes.income.total} kopecks="never" />
+              <span class="f-tile__sub">
+                {month === null ? (
+                  <>
+                    в среднем{' '}
+                    <Amount
+                      value={
+                        months.length === 0 ? 0 : Math.round(planes.income.total / months.length)
+                      }
+                      kopecks="never"
+                    />{' '}
+                    в месяц
+                  </>
+                ) : (
+                  `${formatShare(planes.income.total, yearPlanes.income.total)}% периода`
+                )}
+              </span>
+            </div>
+          </div>
+
+          <MonthChart
+            months={months}
+            selected={month}
+            hovered={hovered}
+            onSelect={setMonth}
+            onHover={setHovered}
+          />
+        </>
+      )}
 
       <div class="f-scope">
         <h2 class="f-eyebrow">
-          {month === null ? 'Траты по категориям' : `Траты по категориям · ${monthLabel(month)}`}
+          {day !== null
+            ? `Траты по категориям · ${dayLabel(day)}`
+            : month !== null
+              ? `Траты по категориям · ${monthLabel(month)}`
+              : 'Траты по категориям'}
         </h2>
-        {month === null ? null : (
-          <button type="button" class="f-linkish" onClick={() => setMonth(null)}>
-            ← весь период
+        {day === null && month === null ? null : (
+          <button
+            type="button"
+            class="f-linkish"
+            onClick={() => {
+              setMonth(null)
+              setDay(null)
+            }}
+          >
+            ← {spec.title}
           </button>
         )}
       </div>
@@ -520,6 +683,8 @@ export function App(): JSX.Element {
         }}
       />
 
+      <IncomeView rows={inPeriod} edge={edge} total={planes.income.total} />
+
       <Unknown
         rows={scope}
         totalSpend={planes.spend.total}
@@ -529,6 +694,14 @@ export function App(): JSX.Element {
       />
 
       <MoneyMoves rows={scope} />
+
+      <PlanView
+        plan={plan.value}
+        setAside={setAside as Kopeck}
+        open={planOpen}
+        onOpenChange={setPlanOpen}
+        onChange={setPlan}
+      />
 
       <Fold title="Счётная сводка" meta={summary.value === null ? 'не посчитана' : undefined}>
         <p class="f-note">
@@ -542,6 +715,8 @@ export function App(): JSX.Element {
         {summary.value === null ? null : <SummaryView summary={summary.value} />}
       </Fold>
 
+      <Balance onAccount={balance as Kopeck | null} next={arrival} saved={plan.value.saved} />
+
       <p class="f-all">
         <button
           type="button"
@@ -551,10 +726,8 @@ export function App(): JSX.Element {
             setView('txs')
           }}
         >
-          {month === null
-            ? `вся выписка · ${rows.length} операций →`
-            : `выписка за ${monthLabel(month)} · ${scope.length} операций →`}
-        </button>{' '}
+          {scope.length} операций →
+        </button>
         <button
           type="button"
           class="f-linkish f-linkish--quiet"

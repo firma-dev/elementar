@@ -304,55 +304,7 @@ input {
 
 /* ───────────────────── Строка над картиной ───────────────────── */
 
-.f-source {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.7em 0 1em;
-  gap: 0.6em;
-  font-size: var(--el__fs-xs);
-}
-
-.f-source__period {
-  white-space: nowrap;
-}
-
-.f-source__file {
-  color: var(--el__text-caption);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 /* ───────────────────────── Две плитки ───────────────────────── */
-
-/* Список склеенных выписок: видно, из чего сложилась картина. */
-.f-sources {
-  margin-bottom: var(--f-step-3);
-  border-top: var(--el__border-width-s) solid var(--el__border);
-}
-
-.f-sources__row {
-  display: flex;
-  align-items: baseline;
-  gap: 0.6em;
-  padding: 0.35em 0;
-  border-bottom: var(--el__border-width-s) solid var(--el__border);
-  font-size: var(--el__fs-xs);
-}
-
-.f-sources__name {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.f-sources__meta {
-  margin-inline-start: auto;
-  color: var(--el__text-caption);
-  white-space: nowrap;
-}
 
 /* Выбор периода: год выписки редко совпадает с вопросом. Сетка встык, как
    переключатель лет в модели дизайн-сессии — рамка одна на всю группу. */
@@ -1345,4 +1297,482 @@ input {
 
 .f-linkish--danger {
   color: var(--el__accent);
+}
+
+/* ───────────────────── Счета и свежесть ───────────────────── */
+
+/* Переключатель счетов. Цвет раздан по порядку заведения, а не выбран
+   человеком: работа есть, пользы нет — важно лишь, чтобы два счёта не
+   выглядели одинаково. Шесть тонов хватает: больше шести счетов у человека
+   обычно нет, а седьмой начнёт круг заново и это честнее, чем изобретать
+   седьмой цвет вне палитры. */
+
+.f-accs {
+  margin-top: var(--f-step-2);
+}
+
+.f-accs__row {
+  display: flex;
+  gap: var(--el__gap-s);
+  flex-wrap: wrap;
+}
+
+.f-acc {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  border: var(--el__border-width-s) solid var(--el__text);
+  background: var(--el__background);
+  color: var(--el__text);
+  font-size: var(--el__fs-xs);
+  padding: 0.25em 0.5em;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.f-acc--on {
+  background: var(--el__text);
+  color: var(--el__background);
+}
+
+.f-acc__dot {
+  width: 0.5em;
+  height: 0.5em;
+  flex-shrink: 0;
+  background: currentcolor;
+}
+
+.f-acc--t0 .f-acc__dot {
+  background: var(--el__accent);
+}
+
+.f-acc--t1 .f-acc__dot {
+  background: var(--el__success);
+}
+
+.f-acc--t2 .f-acc__dot {
+  background: var(--el__link);
+}
+
+.f-acc--t3 .f-acc__dot {
+  background: var(--el__mark);
+}
+
+.f-acc--t4 .f-acc__dot {
+  background: var(--el__text-caption);
+}
+
+.f-acc--t5 .f-acc__dot {
+  background: var(--el__text);
+}
+
+.f-acc--on .f-acc__dot {
+  outline: var(--el__border-width-s) solid var(--el__background);
+}
+
+.f-accs__act {
+  margin-top: var(--f-step-1);
+  font-size: var(--el__fs-xs);
+}
+
+.f-accs__form {
+  margin-top: var(--f-step-1);
+  border: var(--el__border-width-s) solid var(--el__text);
+  padding: 0.6em 0.7em;
+}
+
+.f-accs__buttons {
+  display: flex;
+  align-items: baseline;
+  gap: var(--el__gap-m);
+  flex-wrap: wrap;
+  margin-top: var(--f-step-2);
+  font-size: var(--el__fs-xs);
+}
+
+/* Поле ввода. Кегль 16px — правило DESIGN.md §4.3: ниже него iOS Safari
+   увеличивает страницу при фокусе, и вёрстка дёргается прямо под пальцем. */
+.f-field {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--el__gap-s);
+  padding: 0.3em 0;
+  border-bottom: var(--el__border-width-s) solid var(--el__border);
+}
+
+.f-field__k {
+  font-size: var(--el__fs-xs);
+  color: var(--el__text-caption);
+}
+
+.f-field input {
+  width: 8em;
+  border: none;
+  border-bottom: var(--el__border-width-s) solid var(--el__text);
+  background: none;
+  color: var(--el__text);
+  font-family: inherit;
+  font-size: 16px;
+  text-align: end;
+  padding: 0.1em 0.2em;
+}
+
+/* Свежесть данных. Всё на экране посчитано по последний день выписки, а не по
+   сегодняшний, — и если выгрузка старая, числа отвечают не на тот вопрос,
+   который человек задал. Поэтому край данных назван вслух, а «обновить»
+   стоит здесь же: это самое частое действие в ежедневном сценарии. */
+.f-fresh {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--el__gap-s);
+  padding: var(--f-step-2) 0;
+  font-size: var(--el__fs-xs);
+}
+
+.f-fresh__k {
+  white-space: nowrap;
+}
+
+.f-fresh__k--old {
+  color: var(--el__accent);
+}
+
+.f-fresh__file {
+  color: var(--el__text-caption);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.f-go--small {
+  font-size: var(--el__fs-xs);
+  padding: 0.25em 0.5em;
+  white-space: nowrap;
+}
+
+/* ─────────────────── Дневной ритм: предел ─────────────────── */
+
+/* Полоса показывает две вещи разом: сколько истрачено и сколько периода
+   прожито. Без второй мерки «75 928 из 80 000» ничего не значит — двадцать
+   четвёртого числа это норма, пятого числа это тревога. */
+
+.f-limit {
+  border: var(--el__border-width-m) solid var(--el__text);
+  box-shadow: var(--el__shadow-m);
+  padding: 0.7em 0.8em 0.8em;
+  margin-bottom: var(--f-step-3);
+  display: flex;
+  flex-direction: column;
+  gap: 0.3em;
+}
+
+.f-limit__k {
+  font-size: var(--el__fs-xs);
+  letter-spacing: var(--el__ls-caps-s);
+  text-transform: uppercase;
+  color: var(--el__text-caption);
+}
+
+.f-limit__v {
+  font-size: var(--el__fs-2xl);
+  line-height: 1.05;
+  white-space: nowrap;
+}
+
+.f-limit__v--over {
+  color: var(--el__accent);
+}
+
+.f-limit__track {
+  position: relative;
+  display: block;
+  height: 0.45em;
+  background: var(--el__surface);
+  margin-top: 0.25em;
+}
+
+.f-limit__fill {
+  display: block;
+  height: 100%;
+  background: var(--el__text);
+}
+
+.f-limit__fill--over {
+  background: var(--el__accent);
+}
+
+/* Засечка прожитого: слева от неё — идём с опережением плана. */
+.f-limit__pace {
+  position: absolute;
+  top: -0.15em;
+  bottom: -0.15em;
+  width: var(--el__border-width-m);
+  background: var(--el__text-caption);
+}
+
+.f-limit__sub {
+  font-size: var(--el__fs-xs);
+  color: var(--el__text-caption);
+  min-height: calc(1.45em + 0.2em);
+}
+
+.f-limit__over {
+  color: var(--el__accent);
+}
+
+.f-limit__left {
+  color: var(--el__success);
+}
+
+/* ─────────────────── Дневной ритм: дни ─────────────────── */
+
+/* Пустые дни рисуются пустыми, а не выбрасываются: четырнадцать дней с тремя
+   пропусками — другая картина, чем одиннадцать подряд. */
+
+.f-days {
+  border: var(--el__border-width-s) solid var(--el__text);
+  padding: 0.7em 0.7em 0.5em;
+  margin-bottom: var(--f-step-3);
+}
+
+.f-days__bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  border-bottom: var(--el__border-width-m) solid var(--el__text);
+}
+
+.f-days__col {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.f-days__slot {
+  height: 5em;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+}
+
+.f-days__bar {
+  width: 100%;
+  background: var(--el__text-caption);
+}
+
+/* Красный только у дней сверх дневной нормы. Если красить всё, красное
+   перестаёт значить. */
+.f-days__bar--over {
+  background: var(--el__accent);
+}
+
+.f-days__bar--on {
+  background: var(--el__text);
+}
+
+.f-days__scale {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--el__gap-s);
+  padding-top: 0.3em;
+  font-size: var(--el__fs-xs);
+  color: var(--el__text-caption);
+}
+
+.f-days__tick {
+  white-space: nowrap;
+}
+
+.f-days__peak {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ───────────────────── Откуда приходит ───────────────────── */
+
+.f-inc {
+  margin-top: var(--f-step-2);
+}
+
+.f-inc__row {
+  padding: 0.45em 0;
+  border-bottom: var(--el__border-width-s) solid var(--el__border);
+}
+
+.f-inc__line {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--el__gap-s);
+  align-items: baseline;
+}
+
+.f-inc__name {
+  font-size: var(--el__fs-s);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.f-inc__sum {
+  font-size: var(--el__fs-s);
+  white-space: nowrap;
+}
+
+.f-inc__meta {
+  display: flex;
+  gap: 0.8em;
+  flex-wrap: wrap;
+  margin-top: 0.2em;
+  font-size: var(--el__fs-xs);
+  color: var(--el__text-caption);
+}
+
+.f-inc__kind {
+  text-transform: uppercase;
+  letter-spacing: var(--el__ls-caps-s);
+}
+
+/* Регулярный источник помечен, разовый — нет. Метка одна: если помечать оба,
+   разница перестаёт читаться с одного взгляда. */
+.f-inc__mark--on {
+  color: var(--el__success);
+}
+
+.f-inc__typical,
+.f-inc__last {
+  white-space: nowrap;
+}
+
+/* ───────────────────── План и копилка ───────────────────── */
+
+.f-plan {
+  margin-top: var(--f-step-2);
+}
+
+.f-plan__out {
+  display: flex;
+  gap: var(--el__gap-l);
+  flex-wrap: wrap;
+  margin-top: var(--f-step-2);
+}
+
+.f-plan__k {
+  font-size: var(--el__fs-xs);
+  color: var(--el__text-caption);
+  text-transform: uppercase;
+  letter-spacing: var(--el__ls-caps-s);
+}
+
+.f-plan__v {
+  font-size: var(--el__fs-s);
+  margin: 0;
+}
+
+.f-plan__v--bad {
+  color: var(--el__accent);
+}
+
+/* ───────────────────── Счёт, приход, копилка ───────────────────── */
+
+/* Числа, которых нет, не подменяются нулями: ноль на счёте и «банк не сказал»
+   — разные новости, а выглядели бы одинаково. */
+
+.f-bal {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9em, 1fr));
+  gap: var(--el__gap-m);
+  margin-top: var(--f-step-4);
+  padding-top: var(--f-step-2);
+  border-top: var(--el__border-width-s) solid var(--el__text);
+}
+
+.f-bal__cell {
+  min-width: 0;
+}
+
+.f-bal__k {
+  font-size: var(--el__fs-xs);
+  color: var(--el__text-caption);
+  text-transform: uppercase;
+  letter-spacing: var(--el__ls-caps-s);
+}
+
+.f-bal__v {
+  margin: 0.15em 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1em;
+}
+
+.f-bal__num {
+  font-size: var(--el__fs-lg);
+  white-space: nowrap;
+}
+
+.f-bal__num--in {
+  color: var(--el__success);
+}
+
+.f-bal__note,
+.f-bal__none {
+  font-size: var(--el__fs-xs);
+  color: var(--el__text-caption);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Пришло и отложено — второй ряд дневного режима. Два из семи ежедневных
+   вопросов стоят здесь, а не в свёрнутом разделе: разворачивать ради них
+   раздел значило бы платить касанием каждый день. */
+
+.f-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--el__gap-m);
+  margin-bottom: var(--f-step-3);
+}
+
+.f-pair__cell {
+  min-width: 0;
+  border-inline-start: var(--el__border-width-m) solid var(--el__text);
+  padding-inline-start: 0.6em;
+}
+
+.f-pair__k {
+  font-size: var(--el__fs-xs);
+  color: var(--el__text-caption);
+  text-transform: uppercase;
+  letter-spacing: var(--el__ls-caps-s);
+}
+
+.f-pair__v {
+  margin: 0.15em 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1em;
+}
+
+.f-pair__num {
+  font-size: var(--el__fs-lg);
+  white-space: nowrap;
+}
+
+.f-pair__num--in {
+  color: var(--el__success);
+}
+
+.f-pair__note {
+  font-size: var(--el__fs-xs);
+  color: var(--el__text-caption);
 }

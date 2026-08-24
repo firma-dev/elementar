@@ -7,6 +7,15 @@ export interface FoldProps {
   meta?: string
   /** Раскрыт ли раздел при первом показе. */
   startOpen?: boolean
+  /**
+   * Раскрытием управляют снаружи.
+   *
+   * Нужно, когда открыть раздел просит другой блок: «плана на этот период нет
+   * → задать план» ведёт в «План и копилку», и раздел должен раскрыться, а не
+   * просто подсветиться. Не передан — раздел живёт сам по себе.
+   */
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
   children: ComponentChildren
 }
 
@@ -19,8 +28,20 @@ export interface FoldProps {
  * Закрытый раздел занимает одну строку и при этом остаётся видимым: он не
  * прячется, а ждёт.
  */
-export function Fold({ title, meta, startOpen = false, children }: FoldProps): JSX.Element {
-  const [open, setOpen] = useState(startOpen)
+export function Fold({
+  title,
+  meta,
+  startOpen = false,
+  open: forced,
+  onOpenChange,
+  children,
+}: FoldProps): JSX.Element {
+  const [own, setOwn] = useState(startOpen)
+  const open = forced ?? own
+  const setOpen = (next: boolean): void => {
+    setOwn(next)
+    onOpenChange?.(next)
+  }
   return (
     <section class={open ? 'f-fold f-fold--open' : 'f-fold'}>
       <button
