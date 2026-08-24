@@ -70,6 +70,14 @@ ul {
   padding: 0;
 }
 
+/* Нумерованный список сбрасывается отдельно: у `ol` свой отступ слева в сорок
+   пикселей, и «Как выгрузить» стояло вдвинутым внутрь рамки без причины. */
+ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
 a {
   color: var(--el__link);
   text-decoration-thickness: 1px;
@@ -221,7 +229,7 @@ input {
   font-size: var(--el__fs-s);
   line-height: 1.6;
   margin-bottom: 1.4em;
-  color: var(--el__color-gray-700);
+  color: var(--el__text-caption);
   text-wrap: pretty;
 }
 
@@ -243,7 +251,7 @@ input {
 }
 
 .f-cta:hover {
-  background: var(--el__color-gray-700);
+  background: var(--el__text-caption);
 }
 
 .f-cta:active {
@@ -524,6 +532,12 @@ input {
   border-bottom: var(--el__border-width-s) solid var(--el__text);
   padding-bottom: 0.4em;
 }
+/* Первый заголовок на экране не отбивается сверху: разделительная ступень
+   отделяет разделы друг от друга, а над первым разделять нечего — там
+   получалась пустая полоса во сто пикселей. */
+.f-secline--first {
+  margin-top: 0;
+}
 
 .f-cat {
   display: block;
@@ -589,18 +603,6 @@ input {
   margin-top: 0.35em;
 }
 
-.f-cat--small .f-cat__name,
-.f-cat--small .f-cat__sum {
-  font-size: var(--el__fs-xs);
-}
-
-.f-cat--small .f-cat__track {
-  display: block;
-  height: 0.3em;
-  background: var(--el__background);
-  margin-top: 0.3em;
-}
-
 .f-cat__fill {
   height: 100%;
 }
@@ -661,9 +663,14 @@ input {
   margin-top: var(--f-step-2);
 }
 
+/* Место под две строки держится всегда. Подпись меняется вместе с разрезом —
+   «в среднем N в месяц» на весь период, «N% года» на месяц, — и длина у них
+   разная: без запаса плитка то в одну строку, то в две, а график под ней
+   подпрыгивает при каждом нажатии на месяц. */
 .f-tile__sub {
   margin-top: auto;
   padding-top: 0.4em;
+  min-height: calc(2 * 1.45em + 0.4em);
   font-size: var(--el__fs-xs);
   color: var(--el__text-caption);
 }
@@ -677,18 +684,11 @@ input {
 
 /* ────────────────────── Разбор непонятного ────────────────────── */
 
-.f-unknown {
-  margin-top: var(--f-step-3);
-  border: var(--el__border-width-m) solid var(--el__text);
-  box-shadow: var(--el__shadow-m);
-  padding: 0.8em 0.8em 0.6em;
-}
-
 /* Подсказка про выгрузку без кодов: не ошибка, но и не проходная строка. */
 .f-hint {
   border-inline-start: var(--el__border-width-m) solid var(--el__mark);
   padding-inline-start: 0.6em;
-  margin-top: 0.6em;
+  margin-top: var(--f-step-2);
 }
 
 .f-unknown__list {
@@ -750,12 +750,6 @@ input {
 
 /* ─────────────────────── Движения денег ─────────────────────── */
 
-.f-moves {
-  margin-top: var(--f-step-3);
-  border-top: var(--el__border-width-s) solid var(--el__text);
-  padding-top: 0.7em;
-}
-
 .f-moves__nums {
   display: flex;
   gap: 1.4em;
@@ -816,6 +810,12 @@ input {
   font-size: var(--el__fs-xs);
 }
 
+/* Возврат набран кеглем списка, к которому относится: основным кеглем он был
+   в полтора раза крупнее всего на экране и перетягивал внимание с выписки. */
+.f-txhead .f-linkish {
+  font-size: var(--el__fs-xs);
+}
+
 .f-txhead {
   display: flex;
   justify-content: space-between;
@@ -869,7 +869,7 @@ input {
   color: var(--el__text);
   font-family: inherit;
   font-size: 16px;
-  padding: 0.4em 0.6em;
+  padding: 0.35em 0.5em;
 }
 
 .f-search input::placeholder {
@@ -898,7 +898,13 @@ input {
   overflow: hidden;
 }
 
+/* Имя получателя занимает свою строку целиком. Строчным элементом оно вело
+   себя по-разному в зависимости от длины: у короткого имени категория
+   пристраивалась справа на той же строке, у длинного — переезжала вниз. Две
+   раскладки в одном списке, и список читается как рассыпанный. Заодно
+   строчному элементу не действует многоточие — длинное имя просто уезжало. */
 .f-tx__desc {
+  display: block;
   font-size: var(--el__fs-s);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1002,18 +1008,6 @@ input {
   white-space: nowrap;
 }
 
-.f-rules__group {
-  padding: 0.5em 0;
-  border-bottom: var(--el__border-width-s) solid var(--el__border);
-}
-
-.f-rules__cat--head {
-  display: block;
-  margin: 0 0 0.25em;
-  color: var(--el__text);
-  font-size: var(--el__fs-s);
-}
-
 .f-rules__words {
   display: block;
   font-size: var(--el__fs-xs);
@@ -1062,12 +1056,6 @@ input {
 /* Экрана сводки в прототипе нет: он входит в объём v0 по ТЗ §2 п.5 и одет в тот
    же язык — рамка, капс, без заливок. Тон карточки задаёт только цвет рамки. */
 
-.f-sum {
-  margin-top: var(--f-step-3);
-  border-top: var(--el__border-width-s) solid var(--el__text);
-  padding-top: 0.7em;
-}
-
 .f-summary {
   margin-top: var(--f-step-2);
 }
@@ -1097,7 +1085,7 @@ input {
 .f-card__body {
   font-size: var(--el__fs-xs);
   line-height: 1.6;
-  color: var(--el__color-gray-700);
+  color: var(--el__text-caption);
   text-wrap: pretty;
 }
 
@@ -1166,6 +1154,13 @@ input {
 
 .f-fold {
   margin-top: var(--f-step-3);
+}
+
+/* Разделы, идущие подряд, — список, а не соседние блоки: между ними шаг
+   строки, а не шаг блока. Иначе двадцать пять свёрнутых категорий словаря
+   растягиваются на полтора экрана пустоты. */
+.f-fold + .f-fold {
+  margin-top: var(--f-step-1);
 }
 
 .f-fold__head {

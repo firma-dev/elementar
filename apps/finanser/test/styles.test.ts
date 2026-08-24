@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
 /**
@@ -16,7 +16,37 @@ const tokens = readFileSync(new URL('../src/tokens.css', import.meta.url), 'utf8
 /** Правила файла без комментариев: в них цвета упоминаются в объяснениях. */
 const code = css.replace(/\/\*[\s\S]*?\*\//g, '')
 
+/** Вся разметка корпуса: по ней проверяется, что класс кем-то используется. */
+function readMarkup(): string {
+  const root = new URL('../src/', import.meta.url)
+  const walk = (dir: URL): string => {
+    let out = ''
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const child = new URL(entry.name + (entry.isDirectory() ? '/' : ''), dir)
+      if (entry.isDirectory()) out += walk(child)
+      else if (/\.tsx?$/.test(entry.name)) out += readFileSync(child, 'utf8')
+    }
+    return out
+  }
+  return walk(root)
+}
+
 describe('стиль корпуса', () => {
+  it('в файле нет правил, которые никто не рисует', () => {
+    // Мёртвые правила копятся незаметно: компонент переписали, класс из
+    // разметки ушёл, стиль остался. Через десяток таких файл перестаёт
+    // отвечать на вопрос «как это выглядит» — и правки начинают попадать не
+    // туда, куда смотрит глаз. Однажды так набралось четыре штуки.
+    const markup = readMarkup()
+    const used = new Set<string>()
+    for (const chunk of markup.match(/['"`\s{]([a-z0-9_ -]*f-[a-z0-9_-]+[a-z0-9_ -]*)['"`\s}]/g) ??
+      []) {
+      for (const token of chunk.split(/[\s'"`{}]+/)) if (token !== '') used.add(token)
+    }
+    const declared = new Set(code.match(/\.(f-[a-z0-9_-]+)/g)?.map((m) => m.slice(1)) ?? [])
+    expect([...declared].filter((name) => !used.has(name))).toEqual([])
+  })
+
   it('ни одного цвета литералом — только токены', () => {
     // CLAUDE.md, «Запреты»: никаких цветов хардкодом. Литерал переживает смену
     // палитры молча и разводит корпус с дизайн-системой.
@@ -49,6 +79,23 @@ describe('стиль корпуса', () => {
     expect(coarse).toMatch(/min-height/)
     // И заодно кегль здесь не трогается — плотность прототипа остаётся.
     expect(coarse).not.toContain('font-size')
+  })
+
+  it('текст набирается смысловым токеном, а не цветом из палитры', () => {
+    // Палитра (`--el__color-*`) при смене темы не переворачивается — это просто
+    // числа. Смысловые токены (`--el__text`, `--el__text-caption`) переворачиваются.
+    // Набранный палитрой текст выглядит правильно ровно в одной теме, а во второй
+    // сливается с фоном: gray-700 на gray-900 даёт контраст 1,6:1.
+    //
+    // Исключение одно: подпись на жёлтом. `--el__mark` жёлтый в обеих темах,
+    // поэтому текст на нём обязан быть тёмным в обеих — то есть именно из
+    // палитры, а не из смысла.
+    const rules = code.match(/[^{}]+\{[^{}]*\}/g) ?? []
+    const guilty = rules.filter((rule) => {
+      if (!/color:\s*var\(--el__color-/.test(rule)) return false
+      return !/background:\s*var\(--el__mark\)/.test(rule)
+    })
+    expect(guilty).toEqual([])
   })
 
   it('текст не набирается серым с недостаточным контрастом', () => {

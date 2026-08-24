@@ -395,10 +395,13 @@ export function App(): JSX.Element {
         </div>
         <label class="f-search">
           <span class="f-sr">Поиск по выписке</span>
+          {/* Приглашение короткое: длинное обрезалось прямо в поле на телефоне,
+              а обрезанная подсказка хуже отсутствующей. Полная формулировка
+              осталась выше, для экранного диктора. */}
           <input
             type="search"
             value={query}
-            placeholder="поиск по получателю или категории"
+            placeholder="поиск"
             onInput={(event) => setQuery((event.currentTarget as HTMLInputElement).value)}
           />
         </label>
@@ -470,6 +473,20 @@ export function App(): JSX.Element {
         <div class="f-tile">
           <span class="f-tile__k">Поступления</span>
           <Amount class="f-tile__v f-tile__v--in" value={planes.income.total} kopecks="never" />
+          <span class="f-tile__sub">
+            {month === null ? (
+              <>
+                в среднем{' '}
+                <Amount
+                  value={months.length === 0 ? 0 : Math.round(planes.income.total / months.length)}
+                  kopecks="never"
+                />{' '}
+                в месяц
+              </>
+            ) : (
+              `${formatShare(planes.income.total, yearPlanes.income.total)}% года`
+            )}
+          </span>
         </div>
       </div>
 

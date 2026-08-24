@@ -2,6 +2,7 @@ import type { JSX } from 'preact'
 import { RULES } from '../rules.js'
 import type { Category } from '../model.js'
 import { merchantLabel } from '../merchant.js'
+import { Fold } from './Fold.js'
 
 export interface RulesViewProps {
   /** Правки по получателю: их человек ставил сам, их же может снять. */
@@ -36,7 +37,7 @@ export function RulesView({ named, manualCount, onForget, onBack }: RulesViewPro
         </button>
       </p>
 
-      <h2 class="f-eyebrow f-secline">Ваши правки</h2>
+      <h2 class="f-eyebrow f-secline f-secline--first">Ваши правки</h2>
       {mine.length === 0 ? (
         <p class="f-note">
           Пока ни одной. Назовите получателя в «Разборе непонятного» — правка появится здесь и будет
@@ -69,14 +70,15 @@ export function RulesView({ named, manualCount, onForget, onBack }: RulesViewPro
         По этим словам финансер узнаёт получателя в описании операции. Словарь — часть сборки и
         отсюда не меняется: ваша правка всегда сильнее его.
       </p>
-      <ul class="f-rules" role="list">
-        {RULES.map((rule) => (
-          <li key={rule.category} class="f-rules__group">
-            <span class="f-rules__cat f-rules__cat--head">{rule.category}</span>
-            <span class="f-rules__words">{rule.keywords.join(' · ')}</span>
-          </li>
-        ))}
-      </ul>
+      {/* Каждая категория свёрнута. Пятьсот восемьдесят семь слов подряд — это
+          двадцать экранов сплошного текста, по которым не пролистать к нужной
+          категории. Свёрнутые, они умещаются в один список из двадцати пяти
+          строк, и число слов справа говорит, что там внутри. */}
+      {RULES.map((rule) => (
+        <Fold key={rule.category} title={rule.category} meta={`${rule.keywords.length} слов`}>
+          <p class="f-rules__words">{rule.keywords.join(' · ')}</p>
+        </Fold>
+      ))}
     </div>
   )
 }
