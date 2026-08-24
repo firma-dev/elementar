@@ -59,6 +59,7 @@ import { Accounts } from './components/Accounts.js'
 import { Balance } from './components/Balance.js'
 import { DayChart } from './components/DayChart.js'
 import { IncomeView } from './components/IncomeView.js'
+import { Regular } from './components/Regular.js'
 import { Head } from './components/Head.js'
 import { PlanView } from './components/PlanView.js'
 import { MonthChart } from './components/MonthChart.js'
@@ -709,6 +710,10 @@ export function App(): JSX.Element {
         options={options}
         onSplit={setCashSplit}
       />
+
+      {/* Что уходит само — рядом с «откуда приходит»: оба про то, что человек
+          не выбирает каждый день, а обнаруживает раз в полгода. */}
+      <Regular rows={onAccount} edge={edge} />
 
       <IncomeView rows={onAccount} edge={edge} total={allIncome as Kopeck} />
 

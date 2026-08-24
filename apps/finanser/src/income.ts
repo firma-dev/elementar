@@ -15,6 +15,7 @@ import type { Categorized } from './model.js'
 import type { Kopeck } from './money.js'
 import { merchantKey, merchantLabel } from './merchant.js'
 import { operationOf } from './operation.js'
+import { planeOfTx } from './plane.js'
 import { daysInMonth } from './period.js'
 
 /** Как деньги пришли. Не категория — способ. */
@@ -43,6 +44,15 @@ export interface IncomeSource {
   judged: boolean
   /** Обычная сумма: медиана, а не среднее — одна премия не должна её сдвигать. */
   typical: Kopeck
+  /**
+   * Доля платежей, попавших в ±10% от обычной суммы.
+   *
+   * Отличает подписку от привычки. «Пятёрочка» формально регулярна — она
+   * появляется каждый месяц, — но списывается вполне с участием человека и
+   * каждый раз на другую сумму. Подписка же всегда на одну и ту же, и именно
+   * поэтому её перестают замечать.
+   */
+  steady: number
   /** Обычное число месяца, когда приходит. Для регулярных. */
   typicalDay: number
   lastDate: string
@@ -63,6 +73,15 @@ function kindOf(description: string): IncomeKind {
   return 'other'
 }
 
+/** Какая доля сумм лежит в ±10% от медианы. Одна сумма — считаем устойчивой. */
+function steadiness(values: readonly number[]): number {
+  if (values.length === 0) return 0
+  const middle = median(values)
+  if (middle === 0) return 0
+  const close = values.filter((v) => Math.abs(v - middle) <= middle * 0.1).length
+  return close / values.length
+}
+
 function median(values: readonly number[]): number {
   if (values.length === 0) return 0
   const sorted = [...values].sort((a, b) => a - b)
@@ -76,6 +95,39 @@ function monthSpan(from: string, to: string): number {
   const [fy, fm] = from.split('-').map(Number)
   const [ty, tm] = to.split('-').map(Number)
   return ((ty ?? 0) - (fy ?? 0)) * 12 + ((tm ?? 0) - (fm ?? 0)) + 1
+}
+
+/**
+ * Регулярные траты: подписки, аренда, рассрочки.
+ *
+ * Тот же приём, что и с доходами, — и это не экономия кода, а то же самое
+ * знание: если платёж приходил почти каждый месяц с тех пор, как появился, он
+ * регулярный. Разница в вопросе. По доходу спрашивают «на что рассчитывать»,
+ * по трате — «сколько уходит само, без моего участия каждый месяц» и «нет ли
+ * здесь того, о чём я забыл».
+ *
+ * Разовая крупная покупка сюда не попадает, и это главное: список из ста
+ * получателей бесполезен, список из девяти регулярных — это разговор.
+ */
+export function regularSpends(rows: readonly Categorized[], edge: string): IncomeSource[] {
+  const flipped = rows
+    .filter((tx) => tx.amount < 0 && planeOfTx(tx.category, tx.amount) === 'spend')
+    .map((tx) => ({ ...tx, amount: -tx.amount as Kopeck }))
+  return byIncomeSource(flipped, edge).filter(
+    (source) =>
+      source.regular &&
+      // Подписку от привычки отличают две вещи. Первая: сумма одна и та же —
+      // «Пятёрочка» появляется каждый месяц, но каждый раз на другую.
+      source.steady >= 0.6 &&
+      // Вторая: платёж один в месяц, а не тридцать. Тридцать — это магазин, в
+      // который человек ходит, а не подписка, о которой он забыл.
+      source.count <= source.months * 1.6,
+  )
+}
+
+/** Сколько уходит регулярно за месяц: сумма обычных сумм. */
+export function regularMonthly(list: readonly IncomeSource[]): Kopeck {
+  return list.reduce((sum, source) => sum + source.typical, 0) as Kopeck
 }
 
 /**
@@ -123,6 +175,7 @@ export function byIncomeSource(rows: readonly Categorized[], edge: string): Inco
       judged,
       regular: judged && months >= 3 && months / possible >= 0.6,
       typical: median(group.amounts) as Kopeck,
+      steady: steadiness(group.amounts),
       typicalDay: median(dates.map((d) => Number(d.slice(8, 10)))),
       lastDate: last,
     })
