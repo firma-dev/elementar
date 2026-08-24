@@ -1,0 +1,176 @@
+/* Токен-слой финансера. Файл пришёл из дизайн-сессии вместе с прототипом
+   «Финансер v0.dc.html» и подключён в нём первым — здесь он лежит без правок,
+   чтобы корпус и прототип нельзя было незаметно развести.
+
+   Это ответ на открытый вопрос О-16 в пользу «своя палитра на корпус»: финансер
+   не берёт палитру @elementar/ui, у него собственный слой (Д-017). Правит его
+   designer — реализация сюда не пишет.
+
+   Ниже — файл дизайн-сессии дословно. Ничего не дописано: подключение шрифта
+   и все правила корпуса лежат в `finanser.css`. */
+
+/* ─────────────────────────────────────────────────────────────
+   ЭЛЕМЕНТАР · дизайн-токены
+   Основа — Intuition Design System (MIT): палитра, семантика,
+   шкала спейсеров, флюидный корень, толщины и длительности.
+   Кастом Элементара — шрифты, типографическая шкала, жёсткие
+   тени без блюра, нулевые радиусы.
+
+   Слои: палитра → семантика → шкалы. В вёрстке используется
+   только семантика; палитра не вызывается напрямую нигде.
+   Полупрозрачные варианты не хранятся — выводятся color-mix.
+   ───────────────────────────────────────────────────────────── */
+
+/* ── 1. Палитра (IDS) ───────────────────────────────────────── */
+:root {
+  --el__color-white: rgb(255, 255, 255);
+  --el__color-gray-100: rgb(238, 240, 242);
+  --el__color-gray-200: rgb(220, 221, 223);
+  --el__color-gray-400: rgb(153, 156, 160);
+  --el__color-gray-500: rgb(115, 120, 125);
+  --el__color-gray-600: rgb(85, 88, 92);
+  --el__color-gray-700: rgb(55, 58, 62);
+  --el__color-gray-800: rgb(32, 33, 36);
+  --el__color-gray-900: rgb(18, 18, 20);
+  --el__color-gray-950: rgb(5, 5, 5);
+  --el__color-blue-450: rgb(60, 130, 250);
+  --el__color-blue-500: rgb(0, 100, 240);
+  --el__color-green-450: rgb(40, 215, 40);
+  --el__color-green-600: rgb(30, 170, 60);
+  --el__color-red-450: rgb(255, 70, 95);
+  --el__color-red-500: rgb(253, 47, 75);
+  --el__color-yellow-500: rgb(255, 225, 0);
+}
+
+/* ── 2. Семантика ───────────────────────────────────────────── */
+:root {
+  color-scheme: light;
+
+  --el__text: var(--el__color-gray-950);
+  --el__text-caption: var(--el__color-gray-600);
+  --el__background: var(--el__color-white);
+  --el__surface: var(--el__color-gray-100);
+  --el__link: var(--el__color-blue-500);
+  --el__accent: var(--el__color-red-500);
+  --el__mark: var(--el__color-yellow-500);
+  --el__success: var(--el__color-green-600);
+  --el__error: var(--el__color-red-500);
+  --el__border: color-mix(in srgb, var(--el__text) 20%, transparent);
+
+  /* прикладной слой финансера: чем красится график */
+  --el__data-primary: var(--el__mark); /* внедрения */
+  --el__data-secondary: var(--el__link); /* сопровождение */
+  --el__data-tertiary: var(--el__text-caption); /* корпуса */
+  --el__data-negative: var(--el__accent); /* расходы, минусы */
+}
+
+.dark {
+  color-scheme: dark;
+
+  --el__text: var(--el__color-gray-200);
+  --el__text-caption: var(--el__color-gray-400);
+  --el__background: var(--el__color-gray-900);
+  --el__surface: var(--el__color-gray-800);
+  --el__link: var(--el__color-blue-450);
+  --el__accent: var(--el__color-red-450);
+  --el__mark: var(--el__color-yellow-500);
+  --el__success: var(--el__color-green-450);
+  --el__error: var(--el__color-red-450);
+}
+
+/* ── 3. Шкалы ───────────────────────────────────────────────── */
+:root {
+  /* Плотность — влияет на интерлиньяж и на все спейсеры разом */
+  --el__density: 1.3;
+
+  /* Спейсеры в rem: считаются от флюидного корня, не зависят
+     от кегля окружения */
+  --el__spacer-s: calc(var(--el__density) * 0.7rem);
+  --el__spacer-m: calc(var(--el__density) * 1.4rem);
+  --el__spacer-l: calc(var(--el__density) * 2.4rem);
+  --el__spacer-xl: calc(var(--el__density) * 4rem);
+
+  --el__gap-s: 0.5rem;
+  --el__gap-m: 1rem;
+  --el__gap-l: 1.5rem;
+
+  /* Кегли в em — масштабируются вместе с контейнером */
+  --el__fs-xs: 0.7em; /* капс-метки, легенда, сноски */
+  --el__fs-s: 0.78em; /* подписи, плашки, ползунки */
+  --el__fs-m: 0.85em; /* строки таблиц */
+  --el__fs-base: 1em;
+  --el__fs-lg: 1.15em; /* итоги, значения ручек */
+  --el__fs-xl: 1.35em; /* метрики */
+  --el__fs-2xl: 1.6em; /* суммы по годам */
+  --el__fs-display: 3.6em; /* главное число */
+
+  --el__ls-caps: 0.16em; /* разрядка капса */
+  --el__ls-caps-s: 0.14em;
+  --el__ls-tight: -0.02em; /* крупные числа */
+
+  /* Штрихи и радиусы — в px, не масштабируются */
+  --el__border-width-s: 1px;
+  --el__border-width-m: 2px;
+  --el__radius: 0; /* кастом: скругления не используем */
+
+  /* Жёсткие тени без размытия — кастом Элементара */
+  --el__shadow-s: 2px 2px 0 var(--el__text);
+  --el__shadow-m: 3px 3px 0 var(--el__text);
+  --el__shadow-offset-s: 2px;
+  --el__shadow-offset-m: 3px;
+
+  --el__duration-instant: 0s;
+  --el__duration-fast: 0.1s;
+  --el__duration-base: 0.5s;
+  --el__easing-base: ease;
+
+  /* Шрифты. Текст — гротеск, числа и единицы — OCR */
+  --el__font-text: 'Basis Grotesque Pro', ui-sans-serif, system-ui, Arial, sans-serif;
+  --el__font-num: 'OCR A Becker RUS-LAT', ui-monospace, monospace;
+  --el__weight-regular: 400;
+  --el__weight-medium: 500;
+  --el__weight-bold: 700;
+  --el__num-size-adjust: 92%; /* OCR к высоте прописных гротеска */
+}
+
+/* ── 4. Флюидный корень (IDS) ───────────────────────────────── */
+html {
+  --el__mobile-font-size-min: 12;
+  --el__mobile-font-size-max: 26;
+  --el__desktop-font-size-min: 11.5;
+  --el__desktop-font-size-max: 22.5;
+  --el__mobile-viewport-min: 320;
+  --el__mobile-desktop-breakpoint: 768;
+  --el__desktop-viewport-max: 1500;
+
+  font-size: calc(var(--el__mobile-font-size-min) * 1px);
+}
+@media screen and (min-width: 320px) {
+  html {
+    font-size: calc(
+      var(--el__mobile-font-size-min) * 1px +
+        (var(--el__mobile-font-size-max) - var(--el__mobile-font-size-min)) *
+        (
+          (100vw - var(--el__mobile-viewport-min) * 1px) /
+            (var(--el__mobile-desktop-breakpoint) - var(--el__mobile-viewport-min))
+        )
+    );
+  }
+}
+@media screen and (min-width: 768px) {
+  html {
+    font-size: calc(
+      var(--el__desktop-font-size-min) * 1px +
+        (var(--el__desktop-font-size-max) - var(--el__desktop-font-size-min)) *
+        (
+          (100vw - var(--el__mobile-desktop-breakpoint) * 1px) /
+            (var(--el__desktop-viewport-max) - var(--el__mobile-desktop-breakpoint))
+        )
+    );
+  }
+}
+@media screen and (min-width: 1500px) {
+  html {
+    font-size: calc(var(--el__desktop-font-size-max) * 1px);
+  }
+}

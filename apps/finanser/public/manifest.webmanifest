@@ -1,0 +1,17 @@
+{
+  "name": "финансер",
+  "short_name": "финансер",
+  "description": "Выписка раскладывается по категориям прямо в браузере.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#FFFFFF",
+  "theme_color": "#FFFFFF",
+  "lang": "ru",
+  "dir": "ltr",
+  "icons": [
+    { "src": "i/app-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "i/app-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "i/app-mask.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

@@ -1,0 +1,1030 @@
+/* Финансер. Вид перенесён с прототипа «Финансер v0.dc.html» из дизайн-сессии:
+   светлая бумага, один OCR на весь текст, рамки вместо заливок, жёсткие тени
+   без размытия, нулевые радиусы, капс с трекингом на служебных метках.
+
+   Значения берутся только из `tokens.css` (--el__*). Своей палитры у файла нет
+   и быть не должно: разойдётся с прототипом — разойдётся молча (Д-017). */
+
+@import './tokens.css';
+
+/* Шрифт корпуса. Один на весь текст, как в прототипе. `size-adjust: 92%` —
+   значение оттуда же: OCR выше гротеска, и без подгонки цифра выпирает над
+   строкой. Два сабсета вместо одного файла: кириллица и латиница качаются
+   раздельно, `font-display: optional` держит шрифт вне критического пути. */
+
+@font-face {
+  font-family: 'OCR A Becker';
+  src: url('/fonts/ocr-400.cyrillic.woff2') format('woff2');
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: optional;
+  size-adjust: 92%;
+  unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+
+@font-face {
+  font-family: 'OCR A Becker';
+  src: url('/fonts/ocr-400.latin.woff2') format('woff2');
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: optional;
+  size-adjust: 92%;
+  unicode-range: U+0000-00FF, U+2000-206F, U+2190-21BB, U+2212;
+}
+
+/* ─────────────────────── Сброс и основа ─────────────────────── */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'OCR A Becker', ui-monospace, 'SF Mono', monospace;
+  color: var(--el__text);
+  background: var(--el__background);
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  text-size-adjust: 100%;
+}
+
+h1,
+h2,
+h3,
+p,
+dl,
+dd {
+  margin: 0;
+}
+
+ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+a {
+  color: var(--el__link);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+a:hover {
+  color: var(--el__success);
+}
+
+button,
+select,
+input {
+  font: inherit;
+  border-radius: var(--el__radius);
+}
+
+/* Экранного диктора касается, глаза — нет. */
+.f-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ───────────────────────── Страница ───────────────────────── */
+
+.f-page {
+  min-height: 100vh;
+  max-width: 44rem;
+  margin: 0 auto;
+  padding: 0 0.8rem 2.5rem;
+  font-size: 1rem;
+}
+
+.f-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.8em 0 0.5em;
+  border-bottom: var(--el__border-width-m) solid var(--el__text);
+}
+
+.f-head__name {
+  font-size: var(--el__fs-base);
+  letter-spacing: var(--el__ls-caps-s);
+  text-transform: uppercase;
+}
+
+.f-head__note {
+  font-size: var(--el__fs-xs);
+  letter-spacing: var(--el__ls-caps-s);
+  text-transform: uppercase;
+  color: var(--el__text-caption);
+}
+
+/* Служебная метка над блоком: капс с трекингом. */
+.f-eyebrow {
+  font-size: var(--el__fs-xs);
+  letter-spacing: var(--el__ls-caps);
+  text-transform: uppercase;
+}
+
+.f-eyebrow--quiet {
+  color: var(--el__text-caption);
+}
+
+.f-note {
+  font-size: var(--el__fs-xs);
+  color: var(--el__text-caption);
+  line-height: 1.6;
+}
+
+/* ──────────────────────── Пустой экран ──────────────────────── */
+
+.f-empty {
+  padding-top: 1.4em;
+}
+
+.f-empty__title {
+  font-size: var(--el__fs-xl);
+  line-height: 1.3;
+  margin-bottom: 0.6em;
+  font-weight: 700;
+  text-wrap: pretty;
+}
+
+/* Жёлтая подсветка под словом — приём прототипа, не декорация:
+   она называет предмет разговора («год») и больше нигде не повторяется. */
+.f-mark {
+  position: relative;
+  display: inline-block;
+  z-index: 0;
+}
+
+.f-mark::after {
+  content: '';
+  position: absolute;
+  left: -0.05em;
+  right: -0.07em;
+  bottom: 0.06em;
+  height: 0.24em;
+  background: var(--el__mark);
+  z-index: -1;
+}
+
+.f-empty__lead {
+  font-size: var(--el__fs-s);
+  line-height: 1.6;
+  margin-bottom: 1.4em;
+  color: var(--el__color-gray-700);
+  text-wrap: pretty;
+}
+
+/* Главное действие. Инверсия, тень со смещением, вдавливание по нажатию. */
+.f-cta {
+  display: block;
+  width: 100%;
+  background: var(--el__text);
+  color: var(--el__background);
+  text-align: center;
+  padding: 0.9em 0.6em;
+  font-size: var(--el__fs-base);
+  border: var(--el__border-width-s) solid var(--el__text);
+  box-shadow: var(--el__shadow-m);
+  cursor: pointer;
+  user-select: none;
+  letter-spacing: var(--el__ls-caps-s);
+  text-transform: uppercase;
+}
+
+.f-cta:hover {
+  background: var(--el__color-gray-700);
+}
+
+.f-cta:active {
+  transform: translate(var(--el__shadow-offset-m), var(--el__shadow-offset-m));
+  box-shadow: none;
+}
+
+.f-cta[aria-disabled='true'] {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.f-err {
+  margin-top: 1em;
+  border: var(--el__border-width-s) solid var(--el__error);
+  color: var(--el__error);
+  padding: 0.6em 0.8em;
+  font-size: var(--el__fs-xs);
+  line-height: 1.6;
+}
+
+.f-howto {
+  margin-top: 1.4em;
+  background: var(--el__surface);
+  border: var(--el__border-width-s) solid var(--el__text);
+  padding: 0.9em 0.9em 0.4em;
+}
+
+.f-howto__title {
+  margin-bottom: 0.9em;
+}
+
+.f-howto li {
+  display: flex;
+  gap: 0.7em;
+  margin-bottom: 0.7em;
+  align-items: baseline;
+  font-size: var(--el__fs-xs);
+  line-height: 1.6;
+}
+
+.f-demo {
+  margin-top: 1.1em;
+  font-size: var(--el__fs-s);
+}
+
+.f-hermetic {
+  margin-top: 1.5em;
+}
+
+/* ───────────────────── Строка над картиной ───────────────────── */
+
+.f-source {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.7em 0 1em;
+  gap: 0.6em;
+  font-size: var(--el__fs-xs);
+}
+
+.f-source__period {
+  white-space: nowrap;
+}
+
+.f-source__file {
+  color: var(--el__text-caption);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ───────────────────────── Две плитки ───────────────────────── */
+
+.f-tiles {
+  display: grid;
+  grid-template-columns: 1.7fr 1fr;
+  gap: 0.7em;
+  margin-bottom: 1.2em;
+  align-items: stretch;
+}
+
+.f-tile {
+  border: var(--el__border-width-s) solid var(--el__text);
+  padding: 0.6em 0.75em 0.7em;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.4em;
+}
+
+.f-tile--main {
+  border-width: var(--el__border-width-m);
+  box-shadow: var(--el__shadow-m);
+}
+
+.f-tile__k {
+  font-size: var(--el__fs-xs);
+  letter-spacing: var(--el__ls-caps-s);
+  text-transform: uppercase;
+  color: var(--el__text-caption);
+}
+
+.f-tile__v {
+  font-size: var(--el__fs-2xl);
+  white-space: nowrap;
+  line-height: 1.05;
+}
+
+.f-tile__v--in {
+  font-size: var(--el__fs-lg);
+  color: var(--el__success);
+}
+
+/* ─────────────────────── График по месяцам ─────────────────────── */
+
+.f-chart {
+  border: var(--el__border-width-s) solid var(--el__text);
+  box-shadow: var(--el__shadow-m);
+  padding: 0.7em 0.7em 0.6em;
+  margin-bottom: 1.3em;
+}
+
+.f-chart__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.6em;
+  flex-wrap: wrap;
+}
+
+.f-chart__peek {
+  display: flex;
+  gap: 0.8em;
+  align-items: baseline;
+  font-size: var(--el__fs-xs);
+  white-space: nowrap;
+}
+
+.f-chart__peekname {
+  color: var(--el__text-caption);
+  text-transform: uppercase;
+  letter-spacing: var(--el__ls-caps-s);
+}
+
+.f-chart__in {
+  color: var(--el__success);
+}
+
+.f-chart__bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  margin-top: 0.8em;
+  border-bottom: var(--el__border-width-m) solid var(--el__text);
+}
+
+.f-chart__col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  cursor: pointer;
+  min-width: 0;
+  border: none;
+  background: none;
+  padding: 0;
+}
+
+.f-chart__slot {
+  height: 7.5em;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+}
+
+.f-chart__bar {
+  width: 100%;
+  min-height: 2px;
+}
+
+.f-chart__labels {
+  display: flex;
+  gap: 2px;
+}
+
+.f-chart__tick {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--el__fs-xs);
+  text-align: center;
+  white-space: nowrap;
+  padding-top: 0.3em;
+  overflow: hidden;
+  color: var(--el__text-caption);
+}
+
+.f-chart__tick--hover {
+  color: var(--el__text);
+}
+
+.f-chart__tick--on {
+  color: var(--el__background);
+  background: var(--el__text);
+}
+
+.f-month {
+  border: var(--el__border-width-m) solid var(--el__text);
+  box-shadow: var(--el__shadow-m);
+  background: var(--el__surface);
+  padding: 0.8em 0.8em 0.7em;
+  margin-bottom: 1.3em;
+}
+
+.f-month__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.6em;
+  margin-bottom: 0.8em;
+}
+
+.f-month__name {
+  font-size: var(--el__fs-s);
+  letter-spacing: var(--el__ls-caps-s);
+  text-transform: uppercase;
+}
+
+.f-month__nums {
+  display: flex;
+  gap: 1.4em;
+  align-items: baseline;
+  margin-bottom: 1em;
+  flex-wrap: wrap;
+}
+
+.f-month__k {
+  font-size: var(--el__fs-xs);
+  color: var(--el__text-caption);
+  text-transform: uppercase;
+  letter-spacing: var(--el__ls-caps-s);
+}
+
+.f-month__v {
+  font-size: var(--el__fs-lg);
+}
+
+.f-month__v--in {
+  color: var(--el__success);
+}
+
+.f-month__link {
+  margin-top: 0.8em;
+  font-size: var(--el__fs-xs);
+}
+
+/* ───────────────────────── Категории ───────────────────────── */
+
+.f-secline {
+  border-bottom: var(--el__border-width-s) solid var(--el__text);
+  padding-bottom: 0.4em;
+}
+
+.f-cat {
+  display: block;
+  width: 100%;
+  text-align: start;
+  border: 0;
+  border-bottom: var(--el__border-width-s) solid var(--el__border);
+  background: none;
+  padding: 0.55em 0 0.5em;
+  cursor: pointer;
+  color: inherit;
+}
+
+.f-cat:hover {
+  background: var(--el__surface);
+}
+
+.f-cat__line {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6em;
+  align-items: baseline;
+}
+
+.f-cat__left {
+  display: flex;
+  gap: 0.5em;
+  align-items: baseline;
+  min-width: 0;
+}
+
+.f-cat__rank {
+  font-size: var(--el__fs-xs);
+  color: var(--el__color-gray-400);
+}
+
+.f-cat__name {
+  font-size: var(--el__fs-s);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.f-cat__share {
+  font-size: var(--el__fs-xs);
+  color: var(--el__text-caption);
+}
+
+.f-cat__sum {
+  font-size: var(--el__fs-s);
+  white-space: nowrap;
+}
+
+.f-cat__track {
+  /* Дорожка — span внутри кнопки: без display:block высота на строчном
+     элементе не действует, и полоса просто не рисуется. */
+  display: block;
+  height: 0.35em;
+  background: var(--el__surface);
+  margin-top: 0.35em;
+}
+
+.f-cat--small .f-cat__name,
+.f-cat--small .f-cat__sum {
+  font-size: var(--el__fs-xs);
+}
+
+.f-cat--small .f-cat__track {
+  display: block;
+  height: 0.3em;
+  background: var(--el__background);
+  margin-top: 0.3em;
+}
+
+.f-cat__fill {
+  height: 100%;
+}
+
+.f-cat--open {
+  background: var(--el__surface);
+}
+
+/* Раскрытая категория: из чего сложилась сумма. Не отдельный экран — вопрос
+   задают, не отрываясь от картины, и ответ появляется на том же месте. */
+.f-peek {
+  background: var(--el__surface);
+  border-bottom: var(--el__border-width-s) solid var(--el__border);
+  padding: 0.2em 0 0.5em;
+}
+
+.f-peek__row {
+  display: grid;
+  /* «31 декабря» в OCR шире, чем кажется: моноширинная цифра плюс полное имя
+     месяца. На узкой колонке дата налезала на имя получателя. */
+  grid-template-columns: 6.8em minmax(0, 1fr) auto;
+  gap: 0.6em;
+  align-items: baseline;
+  padding: 0.25em 0.6em;
+  font-size: var(--el__fs-xs);
+}
+
+.f-peek__day {
+  color: var(--el__text-caption);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.f-peek__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.f-peek__sum {
+  white-space: nowrap;
+}
+
+.f-peek__all {
+  margin: 0.3em 0 0 0.6em;
+  font-size: var(--el__fs-xs);
+}
+
+/* Заголовок разреза: год или месяц, но никогда оба сразу. */
+.f-scope {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.6em;
+  border-bottom: var(--el__border-width-s) solid var(--el__text);
+  padding-bottom: 0.4em;
+  margin-top: 0.4em;
+}
+
+.f-tile__sub {
+  font-size: var(--el__fs-xs);
+  color: var(--el__text-caption);
+}
+
+/* ────────────────────── Разбор непонятного ────────────────────── */
+
+.f-unknown {
+  margin-top: 1.6em;
+  border: var(--el__border-width-m) solid var(--el__text);
+  box-shadow: var(--el__shadow-m);
+  padding: 0.8em 0.8em 0.6em;
+}
+
+.f-unknown__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.6em;
+}
+
+.f-unknown__share {
+  font-size: var(--el__fs-xs);
+  color: var(--el__text-caption);
+  white-space: nowrap;
+}
+
+/* Подсказка про выгрузку без кодов: не ошибка, но и не проходная строка. */
+.f-hint {
+  border-inline-start: var(--el__border-width-m) solid var(--el__mark);
+  padding-inline-start: 0.6em;
+  margin-top: 0.6em;
+}
+
+.f-unknown__list {
+  margin-top: 0.8em;
+}
+
+.f-unknown__row {
+  padding: 0.45em 0;
+  border-bottom: var(--el__border-width-s) solid var(--el__border);
+}
+
+.f-unknown__line {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6em;
+  align-items: baseline;
+}
+
+.f-unknown__name {
+  font-size: var(--el__fs-s);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.f-unknown__sum {
+  font-size: var(--el__fs-s);
+  white-space: nowrap;
+}
+
+.f-unknown__pick {
+  display: flex;
+  gap: 0.6em;
+  align-items: center;
+  margin-top: 0.35em;
+  flex-wrap: wrap;
+}
+
+.f-unknown__count {
+  font-size: var(--el__fs-xs);
+  color: var(--el__text-caption);
+  white-space: nowrap;
+}
+
+.f-unknown__pick select {
+  border: var(--el__border-width-s) solid var(--el__text);
+  background: var(--el__background);
+  color: var(--el__text);
+  font-size: var(--el__fs-xs);
+  padding: 0.2em 0.25em;
+  max-width: 13em;
+  cursor: pointer;
+}
+
+/* ─────────────────────── Движения денег ─────────────────────── */
+
+.f-moves {
+  margin-top: 1.6em;
+  border-top: var(--el__border-width-s) solid var(--el__text);
+  padding-top: 0.7em;
+}
+
+.f-moves__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.6em;
+}
+
+.f-moves__nums {
+  display: flex;
+  gap: 1.4em;
+  align-items: baseline;
+  margin-top: 0.6em;
+  flex-wrap: wrap;
+}
+
+.f-moves__k {
+  font-size: var(--el__fs-xs);
+  color: var(--el__text-caption);
+  text-transform: uppercase;
+  letter-spacing: var(--el__ls-caps-s);
+}
+
+.f-moves__v {
+  font-size: var(--el__fs-s);
+}
+
+.f-moves__v--in {
+  color: var(--el__success);
+}
+
+.f-moves__rows {
+  margin-top: 0.8em;
+}
+
+.f-moves__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6em;
+  align-items: baseline;
+  padding: 0.4em 0;
+  border-bottom: var(--el__border-width-s) solid var(--el__border);
+  font-size: var(--el__fs-xs);
+}
+
+.f-moves__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.f-moves__kind {
+  color: var(--el__text-caption);
+  white-space: nowrap;
+}
+
+/* ─────────────────────────── Выписка ─────────────────────────── */
+
+.f-all {
+  margin-top: 1.5em;
+  font-size: var(--el__fs-xs);
+}
+
+.f-txhead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.6em;
+  margin-bottom: 0.9em;
+}
+
+.f-txhead__filters {
+  display: flex;
+  gap: 0.5em;
+  align-items: center;
+  min-width: 0;
+}
+
+.f-chip {
+  border: var(--el__border-width-s) solid var(--el__text);
+  padding: 0.2em 0.5em;
+  font-size: var(--el__fs-xs);
+  background: var(--el__mark);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.f-chipoff {
+  border: var(--el__border-width-s) solid var(--el__text);
+  background: var(--el__background);
+  color: var(--el__text);
+  padding: 0.2em 0.5em;
+  font-size: var(--el__fs-xs);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.f-chipoff:hover {
+  background: var(--el__mark);
+}
+
+.f-txcount {
+  font-size: var(--el__fs-xs);
+  color: var(--el__text-caption);
+  margin-bottom: 0.7em;
+}
+
+.f-tx {
+  display: grid;
+  grid-template-columns: 6.8em minmax(0, 1fr) auto;
+  gap: 0.7em;
+  align-items: baseline;
+  border-bottom: var(--el__border-width-s) solid var(--el__border);
+  padding: 0.5em 0;
+}
+
+.f-tx__day {
+  font-size: var(--el__fs-xs);
+  color: var(--el__text-caption);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.f-tx__desc {
+  font-size: var(--el__fs-s);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.f-tx__cat {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  margin-top: 0.2em;
+}
+
+/* Метка источника категории: цвет говорит, кто её поставил. */
+.f-tx__mark {
+  width: 0.5em;
+  height: 0.5em;
+  flex-shrink: 0;
+}
+
+.f-tx__cat select {
+  border: none;
+  background: none;
+  color: var(--el__text-caption);
+  font-size: var(--el__fs-xs);
+  padding: 0;
+  max-width: 12em;
+  cursor: pointer;
+}
+
+.f-tx__sum {
+  font-size: var(--el__fs-s);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.f-tx__sum--in {
+  color: var(--el__success);
+}
+
+.f-more {
+  display: block;
+  width: 100%;
+  margin-top: 1em;
+  padding: 0.7em;
+  border: var(--el__border-width-s) solid var(--el__text);
+  background: var(--el__background);
+  color: var(--el__text);
+  font-size: var(--el__fs-xs);
+  cursor: pointer;
+  box-shadow: var(--el__shadow-m);
+  letter-spacing: var(--el__ls-caps-s);
+  text-transform: uppercase;
+}
+
+.f-more:hover {
+  background: var(--el__mark);
+}
+
+.f-more:active {
+  transform: translate(var(--el__shadow-offset-m), var(--el__shadow-offset-m));
+  box-shadow: none;
+}
+
+/* ─────────────────────────── Подвал ─────────────────────────── */
+
+.f-foot {
+  margin-top: 1.8em;
+  padding-top: 0.7em;
+  border-top: var(--el__border-width-s) solid var(--el__border);
+  font-size: var(--el__fs-xs);
+  color: var(--el__text-caption);
+  line-height: 1.6;
+}
+
+.f-linkish {
+  appearance: none;
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: var(--el__link);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.f-linkish:hover {
+  color: var(--el__success);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+  }
+}
+
+/* ─────────────────────────── Сводка ─────────────────────────── */
+/* Экрана сводки в прототипе нет: он входит в объём v0 по ТЗ §2 п.5 и одет в тот
+   же язык — рамка, капс, без заливок. Тон карточки задаёт только цвет рамки. */
+
+.f-sum {
+  margin-top: 1.6em;
+  border-top: var(--el__border-width-s) solid var(--el__text);
+  padding-top: 0.7em;
+}
+
+.f-sum__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.6em;
+  margin-bottom: 0.5em;
+}
+
+.f-summary {
+  margin-top: 0.8em;
+}
+
+.f-card {
+  border: var(--el__border-width-s) solid var(--el__text);
+  padding: 0.6em 0.75em 0.7em;
+  margin-bottom: 0.7em;
+}
+
+.f-card[data-tone='warn'] {
+  border-color: var(--el__accent);
+}
+
+.f-card[data-tone='good'] {
+  border-color: var(--el__success);
+}
+
+.f-card__title {
+  font-size: var(--el__fs-s);
+  font-weight: 700;
+  line-height: 1.35;
+  margin-bottom: 0.3em;
+  text-wrap: pretty;
+}
+
+.f-card__body {
+  font-size: var(--el__fs-xs);
+  line-height: 1.6;
+  color: var(--el__color-gray-700);
+  text-wrap: pretty;
+}
+
+.f-subs {
+  margin-top: 1.2em;
+}
+
+.f-subs__title {
+  border-bottom: var(--el__border-width-s) solid var(--el__text);
+  padding-bottom: 0.4em;
+  margin-bottom: 0.5em;
+}
+
+.f-sub {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-areas:
+    'name sum year'
+    'meta sum year';
+  align-items: baseline;
+  gap: 0.1em 0.8em;
+  padding: 0.45em 0;
+  border-bottom: var(--el__border-width-s) solid var(--el__border);
+}
+
+.f-sub__name {
+  grid-area: name;
+  font-size: var(--el__fs-s);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.f-sub__meta {
+  grid-area: meta;
+  font-size: var(--el__fs-xs);
+  color: var(--el__text-caption);
+}
+
+.f-sub__sum {
+  grid-area: sum;
+  font-size: var(--el__fs-s);
+  text-align: end;
+  white-space: nowrap;
+}
+
+.f-sub__year {
+  grid-area: year;
+  font-size: var(--el__fs-xs);
+  color: var(--el__text-caption);
+  text-align: end;
+  min-width: 8em;
+}
+
+.f-sub--off .f-sub__name,
+.f-sub--off .f-sub__sum {
+  color: var(--el__text-caption);
+}

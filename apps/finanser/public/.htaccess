@@ -1,0 +1,36 @@
+# Заголовки выкатки финансера. Лежит в public/, а не собирается руками: `vite
+# build` очищает dist целиком, и .htaccess, положенный туда после сборки,
+# исчезал при следующей. Заголовки безопасности — не то, что можно однажды
+# забыть приложить.
+<IfModule mod_headers.c>
+  # connect-src 'none' — не преувеличение: финансер не делает ни одного запроса
+  # из кода. Сервис-воркер берёт своё из кэша того же происхождения.
+  Header always set Content-Security-Policy "default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; form-action 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'none'; manifest-src 'self'; worker-src 'self'"
+  Header always set Referrer-Policy "no-referrer"
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set Cross-Origin-Opener-Policy "same-origin"
+  Header always set Permissions-Policy "geolocation=(), camera=(), microphone=(), interest-cohort=()"
+
+  # Имена ассетов с хешем — можно кэшировать навсегда.
+  <FilesMatch "\.(js|css|woff2|png)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+  # Точка входа и воркер — никогда: иначе новая версия не доедет.
+  <FilesMatch "^(index\.html|sw\.js|manifest\.webmanifest)$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+</IfModule>
+
+<IfModule mod_mime.c>
+  AddType application/manifest+json .webmanifest
+  AddType font/woff2 .woff2
+</IfModule>
+
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/css application/javascript application/manifest+json
+</IfModule>
+
+# Карты исходников наружу не отдаём: человеку они не нужны, а весят втрое больше кода.
+<FilesMatch "\.map$">
+  Require all denied
+</FilesMatch>

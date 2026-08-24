@@ -21,6 +21,11 @@ const ALLOWED: Record<string, string[]> = {
   '@elementar/archiver': ['@elementar/core', '@elementar/ui', '@elementar/llm', '@elementar/shell'],
   // apps/api зависит ТОЛЬКО от proto — иначе появится соблазн расшифровать на сервере
   '@elementar/api': ['@elementar/proto'],
+  // Финансер v0 — отдельный бандл (Д-012) и с Д-017 ещё и со своим токен-слоем:
+  // палитру он берёт не из `ui`, а из файла дизайн-сессии, поэтому в графе
+  // остаётся только сборочный набор. Ни proto, ни llm, ни shell: домена в графе
+  // нет вовсе, и это и есть проверка герметичности, обещанной в ТЗ.
+  '@elementar/finanser': ['@elementar/devkit'],
   '@elementar/web': [
     '@elementar/core',
     '@elementar/ui',

@@ -1,0 +1,21 @@
+{
+  "name": "@elementar/finanser",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build && node scripts/check-hermetic.mjs",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "check:hermetic": "node scripts/check-hermetic.mjs"
+  },
+  "dependencies": {
+    "@preact/signals": "^2.11.0",
+    "preact": "^10.29.0"
+  },
+  "devDependencies": {
+    "@elementar/devkit": "workspace:*",
+    "vite": "^8.2.1"
+  }
+}
