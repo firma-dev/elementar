@@ -246,16 +246,27 @@ export function App(): JSX.Element {
    * ноль на недельной выгрузке (Д-026). Насколько край отстал, приложение
    * говорит вслух — см. `behind`.
    */
-  const edge = useMemo(() => rows[0]?.date ?? today(), [rows])
-  /** Самая ранняя операция: по ней видно, осталось ли что-то за краем отрезка. */
-  const oldest = useMemo(() => onAccountDates(rows), [rows])
-  const behind = useMemo(() => daysBehind(edge, today()), [edge])
-
   /** Разрез по счёту: `null` — все сразу. */
   const onAccount = useMemo(
     () => (account === null ? rows : rows.filter((tx) => tx.account === account)),
     [rows, account],
   )
+
+  /**
+   * Край считается по выбранному счёту, а не по всем операциям сразу.
+   *
+   * Считался по всем — и выбор счёта, выписка по которому кончилась в июне,
+   * при общем крае в декабре давал нули в «дне», «неделе» и «месяце»: отрезок
+   * отмерялся от чужой даты. Подпись внизу при этом бодро сообщала «данные по
+   * 31 декабря» — про другой счёт. Человек видел пустой экран и никакого
+   * объяснения.
+   *
+   * Список отсортирован от новых к старым, поэтому край — первая строка.
+   */
+  const edge = useMemo(() => onAccount[0]?.date ?? today(), [onAccount])
+  /** Самая ранняя операция: по ней видно, осталось ли что-то за краем отрезка. */
+  const oldest = useMemo(() => onAccountDates(onAccount), [onAccount])
+  const behind = useMemo(() => daysBehind(edge, today()), [edge])
 
   const range = useMemo(() => bounds(period, edge), [period, edge])
   const daily = isDaily(period)
