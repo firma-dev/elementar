@@ -16,7 +16,14 @@
  * календарного трёхмесячья не существует.
  */
 
-export type PeriodKey = 'day' | 'week' | 'month' | 'q' | 'half' | 'year'
+/**
+ * `all` в ряду кнопок не стоит: шесть отрезков закрывают ежедневные вопросы, а
+ * седьмая кнопка на телефоне уже не помещается. Но данные старше года иначе
+ * стали бы недоступны молча — а молча спрятать данные хуже, чем показать
+ * лишнюю ссылку. Поэтому «всё» появляется отдельной строкой и только тогда,
+ * когда операции старше года действительно есть.
+ */
+export type PeriodKey = 'day' | 'week' | 'month' | 'q' | 'half' | 'year' | 'all'
 
 export interface Period {
   key: PeriodKey
@@ -37,8 +44,12 @@ export const PERIODS: readonly Period[] = [
   { key: 'year', label: 'год', title: 'за год', calendar: false },
 ]
 
+/** «Всё» — не кнопка ряда, а выход к данным старше года. */
+export const ALL: Period = { key: 'all', label: 'всё', title: 'за всё время', calendar: false }
+
 /** Описание отрезка по ключу. Ключей ровно шесть, поэтому промаха не бывает. */
 export function periodOf(key: PeriodKey): Period {
+  if (key === 'all') return ALL
   return PERIODS.find((p) => p.key === key) ?? PERIODS[5]!
 }
 
@@ -92,6 +103,8 @@ export function daysInMonth(date: string): number {
  */
 export function bounds(key: PeriodKey, edge: string): { from: string; to: string } {
   switch (key) {
+    case 'all':
+      return { from: '0000-01-01', to: edge }
     case 'day':
       return { from: edge, to: edge }
     case 'week':
@@ -113,6 +126,8 @@ export function bounds(key: PeriodKey, edge: string): { from: string; to: string
  */
 export function elapsed(key: PeriodKey, edge: string): { done: number; total: number } {
   switch (key) {
+    case 'all':
+      return { done: 1, total: 1 }
     case 'day':
       return { done: 1, total: 1 }
     case 'week': {

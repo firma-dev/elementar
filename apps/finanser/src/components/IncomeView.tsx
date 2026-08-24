@@ -24,6 +24,12 @@ export interface IncomeViewProps {
  * Регулярность считается по данным, а не спрашивается. Если истории меньше
  * трёх месяцев, так и написано: судить не по чему. Написать «разовый» вместо
  * этого значило бы выдать незнание за факт.
+ *
+ * Раздел смотрит на все загруженные операции, а не на выбранный отрезок, и
+ * говорит об этом вслух. Иначе он исчезал бы на «дне» — за один день приходов
+ * обычно нет, — а вопрос «откуда у меня деньги» не про один день. Сумма за
+ * выбранный отрезок отвечает на другой вопрос и стоит отдельно, в строке
+ * «Пришло за …».
  */
 export function IncomeView({ rows, edge, total }: IncomeViewProps): JSX.Element | null {
   const sources = byIncomeSource(rows, edge)
@@ -35,6 +41,8 @@ export function IncomeView({ rows, edge, total }: IncomeViewProps): JSX.Element 
   return (
     <Fold title="Откуда приходит" meta={`${sources.length} ${word(sources.length)}`}>
       <p class="f-note">
+        За всё загруженное, а не за выбранный отрезок: одним днём о том, откуда приходят деньги, не
+        судят.{' '}
         {regular.length === 0
           ? 'Регулярных источников пока не видно: все приходы разовые или история слишком короткая.'
           : `${regular.length} из ${sources.length} приходят регулярно и дают ${formatShare(regularSum as Kopeck, total)}% всех поступлений.`}

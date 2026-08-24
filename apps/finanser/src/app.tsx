@@ -62,6 +62,11 @@ function today(): string {
   return new Date().toISOString().slice(0, 10)
 }
 
+/** Самая ранняя дата в списке. Список отсортирован от свежих к старым. */
+function onAccountDates(rows: readonly { date: string }[]): string | null {
+  return rows[rows.length - 1]?.date ?? null
+}
+
 /** «1 день назад», «2 дня назад», «5 дней назад». */
 function dayWord(n: number): string {
   const tens = n % 100
@@ -187,6 +192,8 @@ export function App(): JSX.Element {
    * говорит вслух — см. `behind`.
    */
   const edge = useMemo(() => rows[0]?.date ?? today(), [rows])
+  /** Самая ранняя операция: по ней видно, осталось ли что-то за краем отрезка. */
+  const oldest = useMemo(() => onAccountDates(rows), [rows])
   const behind = useMemo(() => daysBehind(edge, today()), [edge])
 
   /** Разрез по счёту: `null` — все сразу. */
@@ -247,6 +254,10 @@ export function App(): JSX.Element {
     return known.reduce((sum, s) => sum + (s.balance ?? 0), 0)
   }, [loaded])
 
+  const allIncome = useMemo(
+    () => onAccount.reduce((sum, tx) => (tx.amount > 0 ? sum + tx.amount : sum), 0),
+    [onAccount],
+  )
   const incomeSources = useMemo(() => byIncomeSource(onAccount, edge), [onAccount, edge])
   const arrival = useMemo(() => nextArrival(incomeSources, edge), [incomeSources, edge])
 
@@ -526,6 +537,42 @@ export function App(): JSX.Element {
         ))}
       </div>
 
+      {/* Данные старше выбранного отрезка не прячутся молча: если они есть,
+          выход к ним стоит здесь же (Д-026). Строка появляется один раз при
+          загрузке и не мигает по ходу работы. */}
+      {oldest !== null && oldest < range.from ? (
+        <p class="f-older">
+          есть операции и раньше, с {dayLabel(oldest)} —{' '}
+          <button
+            type="button"
+            class="f-linkish"
+            onClick={() => {
+              setPeriod('all')
+              setMonth(null)
+              setDay(null)
+            }}
+          >
+            показать всё
+          </button>
+        </p>
+      ) : null}
+      {period === 'all' ? (
+        <p class="f-older">
+          показано всё загруженное —{' '}
+          <button
+            type="button"
+            class="f-linkish"
+            onClick={() => {
+              setPeriod('year')
+              setMonth(null)
+              setDay(null)
+            }}
+          >
+            вернуться к году
+          </button>
+        </p>
+      ) : null}
+
       {daily ? (
         <>
           <Limit
@@ -683,7 +730,9 @@ export function App(): JSX.Element {
         }}
       />
 
-      <IncomeView rows={inPeriod} edge={edge} total={planes.income.total} />
+      {/* Все операции, а не отрезок: за один день приходов нет, и раздел
+          исчезал бы ровно тогда, когда о нём вспоминают (Д-026). */}
+      <IncomeView rows={onAccount} edge={edge} total={allIncome as Kopeck} />
 
       <Unknown
         rows={scope}

@@ -1776,3 +1776,11 @@ input {
   font-size: var(--el__fs-xs);
   color: var(--el__text-caption);
 }
+
+/* Выход к данным старше отрезка. Строка появляется, только если такие данные
+   есть: молча спрятать их хуже, чем показать лишнюю ссылку. */
+.f-older {
+  margin-bottom: var(--f-step-3);
+  font-size: var(--el__fs-xs);
+  color: var(--el__text-caption);
+}
