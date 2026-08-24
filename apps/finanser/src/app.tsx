@@ -10,7 +10,17 @@ import { pendingExtras } from './categorize.js'
 import { byCategory, byMonth, byPlane } from './stats.js'
 import { formatShare } from './money.js'
 import type { Kopeck } from './money.js'
-import { PERIODS, bounds, daysBehind, elapsed, isDaily, periodOf, weekStart } from './period.js'
+import {
+  PERIODS,
+  bounds,
+  daysBehind,
+  elapsed,
+  isDaily,
+  periodOf,
+  previous,
+  previousLabel,
+  weekStart,
+} from './period.js'
 import type { PeriodKey } from './period.js'
 import { limitFor, toGoal } from './plan.js'
 import { byIncomeSource, nextArrival } from './income.js'
@@ -274,6 +284,29 @@ export function App(): JSX.Element {
     () => pendingExtras(scope, overrides.value, merchantOverrides.value),
     [scope, overrides.value, merchantOverrides.value],
   )
+  /**
+   * Насколько отличается от прошлого такого же отрезка.
+   *
+   * Пустой прошлый отрезок сравнением не считается: «+100%» против нуля
+   * означает не рост, а то, что данных за прошлый раз просто нет. Показать это
+   * ростом значило бы соврать первым же числом на экране.
+   */
+  const change = useMemo(() => {
+    if (day !== null || month !== null) return null
+    const was = previous(period, edge)
+    if (was === null) return null
+    const list = onAccount.filter((tx) => tx.date >= was.from && tx.date <= was.to)
+    if (list.length === 0) return null
+    const before = byPlane(list)
+    const delta = (now: number, then: number): number | null =>
+      then === 0 ? null : Math.round(((now - then) / then) * 100)
+    return {
+      spend: delta(planes.spend.total, before.spend.total),
+      income: delta(planes.income.total, before.income.total),
+      label: previousLabel(period, edge),
+    }
+  }, [onAccount, period, edge, day, month, planes])
+
   const incomeSources = useMemo(() => byIncomeSource(onAccount, edge), [onAccount, edge])
   const arrival = useMemo(() => nextArrival(incomeSources, edge), [incomeSources, edge])
 
@@ -531,7 +564,9 @@ export function App(): JSX.Element {
           свежесть данных ушла в подвал: она отвечает на вопрос, который
           задают раз в день, а место занимала в самом дорогом ряду. */}
       <div class="f-top">
-        {accountSwitch}
+        {/* Обёртка есть всегда, даже когда счёт один и переключатель молчит:
+            без неё «обновить» уезжало к левому краю. */}
+        <div class="f-top__accs">{accountSwitch}</div>
         {refresh}
       </div>
 
@@ -581,6 +616,7 @@ export function App(): JSX.Element {
                 income: Math.round(planes.income.total / months.length) as Kopeck,
               }
         }
+        change={change}
         saving={
           daily
             ? {

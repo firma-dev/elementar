@@ -6,6 +6,7 @@ import {
   elapsed,
   isDaily,
   monthStart,
+  previous,
   shiftDays,
   weekStart,
 } from '../src/period.js'
@@ -102,5 +103,33 @@ describe('режим периода', () => {
     expect(isDaily('month')).toBe(true)
     expect(isDaily('q')).toBe(false)
     expect(isDaily('year')).toBe(false)
+  })
+})
+
+describe('предыдущий отрезок', () => {
+  it('вчера, прошлая неделя, прошлый месяц', () => {
+    expect(previous('day', '2026-08-24')).toEqual({ from: '2026-08-23', to: '2026-08-23' })
+    // 24 августа 2026 — понедельник: прошлая неделя это 17–23 августа целиком.
+    expect(previous('week', '2026-08-24')).toEqual({ from: '2026-08-17', to: '2026-08-23' })
+    expect(previous('month', '2026-08-24')).toEqual({ from: '2026-07-01', to: '2026-07-31' })
+  })
+
+  it('прошлый месяц берётся целиком, а этот — до края данных', () => {
+    // Иначе сравнивались бы двадцать четыре дня с тридцатью одним, и любой
+    // месяц выглядел бы дешевле предыдущего.
+    const now = bounds('month', '2026-08-24')
+    const was = previous('month', '2026-08-24')
+    expect(now).toEqual({ from: '2026-08-01', to: '2026-08-24' })
+    expect(was?.to).toBe('2026-07-31')
+  })
+
+  it('длинные отрезки сдвигаются на свою длину', () => {
+    expect(previous('q', '2026-08-24')).toEqual({ from: '2026-02-24', to: '2026-05-23' })
+    expect(previous('year', '2026-08-24')?.from).toBe('2024-08-24')
+  })
+
+  it('у «всего загруженного» предыдущего нет', () => {
+    // Придумать его значило бы соврать: сравнивать не с чем.
+    expect(previous('all', '2026-08-24')).toBeNull()
   })
 })

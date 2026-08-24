@@ -144,6 +144,79 @@ export function elapsed(key: PeriodKey, edge: string): { done: number; total: nu
 }
 
 /**
+ * Границы предыдущего сопоставимого отрезка.
+ *
+ * Число само по себе не говорит ничего: «потрачено 164 253» — это много или
+ * мало? Говорит оно рядом с прошлым таким же отрезком. Поэтому сравнивается
+ * не «месяц с месяцем вообще», а прошлый месяц с этим, прошлая неделя с этой:
+ * границы строятся тем же кодом, сдвинутым назад.
+ *
+ * Для «всего загруженного» предыдущего отрезка не бывает — сравнивать не с чем,
+ * и придумывать сравнение было бы враньём.
+ */
+export function previous(key: PeriodKey, edge: string): { from: string; to: string } | null {
+  if (key === 'all') return null
+  const now = bounds(key, edge)
+  switch (key) {
+    case 'day':
+      return { from: shiftDays(now.from, -1), to: shiftDays(now.from, -1) }
+    case 'week':
+      return { from: shiftDays(now.from, -7), to: shiftDays(now.from, -1) }
+    case 'month': {
+      const lastDay = shiftDays(now.from, -1)
+      return { from: monthStart(lastDay), to: lastDay }
+    }
+    default: {
+      const months = key === 'q' ? 3 : key === 'half' ? 6 : 12
+      const d = utc(now.from)
+      d.setUTCMonth(d.getUTCMonth() - months)
+      return { from: iso(d), to: shiftDays(now.from, -1) }
+    }
+  }
+}
+
+/** Родительный падеж месяца — для подписи «к июлю». */
+const MONTH_DATIVE = [
+  'январю',
+  'февралю',
+  'марту',
+  'апрелю',
+  'маю',
+  'июню',
+  'июлю',
+  'августу',
+  'сентябрю',
+  'октябрю',
+  'ноябрю',
+  'декабрю',
+]
+
+/**
+ * Как назвать предыдущий отрезок в подписи.
+ *
+ * Для месяца — именем месяца: «к июлю» человек понимает без пересчёта, а
+ * «к прошлому месяцу» заставляет вспоминать, какой был прошлый.
+ */
+export function previousLabel(key: PeriodKey, edge: string): string {
+  const was = previous(key, edge)
+  if (was === null) return ''
+  switch (key) {
+    case 'day':
+      return 'ко вчера'
+    case 'week':
+      return 'к прошлой неделе'
+    case 'month':
+      return `к ${MONTH_DATIVE[Number(was.from.slice(5, 7)) - 1] ?? 'прошлому месяцу'}`
+    case 'q':
+      return 'к прошлым 3 мес'
+    case 'half':
+      return 'к прошлым 6 мес'
+    default:
+      return 'к прошлому году'
+  }
+}
+
+/**
  * На сколько дней данные отстали от сегодняшнего дня.
  *
  * Ноль — выгрузка свежая, и «за день» это буквально сегодня. Больше нуля —

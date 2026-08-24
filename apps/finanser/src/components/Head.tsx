@@ -16,7 +16,39 @@ export interface HeadProps {
   average: { spend: Kopeck; income: Kopeck } | null
   /** Отложено за календарный месяц и сколько ещё до цели. */
   saving: { done: Kopeck; left: Kopeck; goal: Kopeck } | null
+  /**
+   * Насколько отличается от прошлого такого же отрезка.
+   *
+   * Число само по себе не говорит ничего: «потрачено 164 253» — это много или
+   * мало? Говорит оно рядом с прошлым месяцем.
+   */
+  change: { spend: number | null; income: number | null; label: string } | null
   onSetPlan: () => void
+}
+
+/**
+ * Подпись изменения. Растущая трата плохая, растущий приход хороший — цвет
+ * идёт за смыслом, а не за знаком.
+ */
+function Change({
+  percent,
+  good,
+  label,
+}: {
+  percent: number | null
+  good: boolean
+  label: string
+}): JSX.Element {
+  // Нечего сравнить — строка всё равно занимает место: без запаса шапка то в
+  // одну строку, то в две, и всё, что ниже, уезжает при смене отрезка.
+  if (percent === null || percent === 0) return <span class="f-head2__d" />
+  const up = percent > 0
+  return (
+    <span class={up === good ? 'f-head2__d f-head2__d--good' : 'f-head2__d f-head2__d--bad'}>
+      {up ? '+' : '−'}
+      {Math.abs(percent)}%{label === '' ? '' : ` ${label}`}
+    </span>
+  )
 }
 
 /**
@@ -40,6 +72,7 @@ export function Head({
   elapsed,
   average,
   saving,
+  change,
   onSetPlan,
 }: HeadProps): JSX.Element {
   const over = limit !== null && spent > limit
@@ -101,6 +134,7 @@ export function Head({
             </>
           )}
         </span>
+        <Change percent={change?.spend ?? null} good={false} label={change?.label ?? ''} />
       </div>
 
       <div class="f-head2__cell">
@@ -128,6 +162,10 @@ export function Head({
             <>{formatShare(spent, income)}% поступлений ушло на траты</>
           ) : null}
         </span>
+        {/* Без подписи: она та же самая, что слева, и повторять её незачем —
+            зато в узкой колонке она переносилась на вторую строку, и шапка
+            росла на шесть пикселей при смене отрезка. */}
+        <Change percent={change?.income ?? null} good label="" />
       </div>
     </div>
   )
