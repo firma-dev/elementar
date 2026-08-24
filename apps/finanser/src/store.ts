@@ -11,6 +11,7 @@ import { computed, signal } from '@preact/signals'
 import type { Category, Categorized, Tx } from './model.js'
 import { PARENT, currentName } from './model.js'
 import { cleanParts, expandCash } from './cash.js'
+import { markPairs } from './pairs.js'
 import type { CashPart, CashSplits } from './cash.js'
 import { categorizeAll } from './categorize.js'
 import type { MerchantOverrides, Overrides } from './categorize.js'
@@ -178,11 +179,13 @@ export const summary = signal<Summary | null>(null)
 /** Операции с категориями. Пересчитывается сама при правке правил или списка. */
 export const categorized = computed<Categorized[]>(() =>
   expandCash(
-    categorizeAll(
-      transactions.value,
-      overrides.value,
-      merchantOverrides.value,
-      new Set(extras.value),
+    markPairs(
+      categorizeAll(
+        transactions.value,
+        overrides.value,
+        merchantOverrides.value,
+        new Set(extras.value),
+      ),
     ),
     cashSplits.value,
   ),
