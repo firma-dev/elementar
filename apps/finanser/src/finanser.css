@@ -1710,3 +1710,44 @@ input {
   text-transform: uppercase;
   letter-spacing: var(--el__ls-caps-s);
 }
+
+/* ──────────────────── Дополнительные категории ──────────────────── */
+
+/* Рядом с каждой — цена вопроса: сколько операций и денег из неё сейчас лежит
+   в родительской. Решение принимается до нажатия, а не после. */
+
+.f-extras {
+  margin-top: var(--f-step-2);
+}
+
+.f-extras__row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--el__gap-s);
+  padding: 0.3em 0;
+  border-bottom: var(--el__border-width-s) solid var(--el__border);
+  flex-wrap: wrap;
+}
+
+.f-extra {
+  border: var(--el__border-width-s) solid var(--el__text);
+  background: var(--el__background);
+  color: var(--el__text);
+  font-size: var(--el__fs-xs);
+  padding: 0.2em 0.5em;
+  cursor: pointer;
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: var(--el__ls-caps-s);
+}
+
+.f-extra--on {
+  background: var(--el__text);
+  color: var(--el__background);
+}
+
+.f-extras__meta {
+  margin-inline-start: auto;
+  font-size: var(--el__fs-xs);
+  color: var(--el__text-caption);
+}

@@ -9,6 +9,7 @@
  */
 import { computed, signal } from '@preact/signals'
 import type { Category, Categorized, Tx } from './model.js'
+import { PARENT, currentName } from './model.js'
 import { categorizeAll } from './categorize.js'
 import type { MerchantOverrides, Overrides } from './categorize.js'
 import { summarize } from './insights.js'
@@ -23,6 +24,7 @@ const KEY_MERCHANTS = 'f.merchant.v1'
 const KEY_SOURCE = 'f.src.v1'
 const KEY_ACCOUNTS = 'f.acc.v1'
 const KEY_PLAN = 'f.plan.v1'
+const KEY_EXTRAS = 'f.extra.v1'
 
 /** Что известно о загруженном файле: имя и что с ним случилось при разборе. */
 export interface SourceInfo {
@@ -82,7 +84,19 @@ function writeJson(key: string, value: unknown): void {
 }
 
 export const transactions = signal<Tx[]>(readJson<Tx[]>(KEY_TX, []))
-export const overrides = signal<Overrides>(readJson<Overrides>(KEY_OVERRIDES, {}))
+/**
+ * Правки по операции. Имена категорий прогоняются через `currentName`: правка,
+ * сделанная до переразбивки категорий, должна найти свою, а не превратиться в
+ * «Прочее». Переименование редко, но потерянная правка — это работа человека,
+ * выброшенная молча.
+ */
+export const overrides = signal<Overrides>(renameAll(readJson<Overrides>(KEY_OVERRIDES, {})))
+
+function renameAll(table: Readonly<Record<string, string>>): Record<string, Category> {
+  const out: Record<string, Category> = {}
+  for (const [key, value] of Object.entries(table)) out[key] = currentName(value)
+  return out
+}
 
 /**
  * Правки по получателю. Отдельно от правок по операции: «Пятёрочка — это
@@ -90,7 +104,7 @@ export const overrides = signal<Overrides>(readJson<Overrides>(KEY_OVERRIDES, {}
  * включая те, что приедут со следующей выпиской.
  */
 export const merchantOverrides = signal<MerchantOverrides>(
-  readJson<MerchantOverrides>(KEY_MERCHANTS, {}),
+  renameAll(readJson<MerchantOverrides>(KEY_MERCHANTS, {})),
 )
 /**
  * Загруженные выписки. Список, а не одна: у человека дебетовая, кредитная и
@@ -112,6 +126,25 @@ export const activeAccount = signal<string | null>(null)
 /** План: три введённых числа плюс копилка. Пустой, пока человек его не завёл. */
 export const plan = signal<Plan>(readJson<Plan>(KEY_PLAN, EMPTY_PLAN))
 
+/**
+ * Включённые дополнительные категории.
+ *
+ * Пусто по умолчанию: девяти основных хватает, чтобы увидеть картину, а
+ * различия сверх них человек добавляет сам, когда они ему понадобились.
+ */
+export const extras = signal<string[]>(readJson<string[]>(KEY_EXTRAS, []))
+
+/** Включить или выключить дополнительную категорию. */
+export function toggleExtra(category: string): void {
+  const set = new Set(extras.value)
+  if (set.has(category)) set.delete(category)
+  else set.add(category)
+  const next = [...set]
+  extras.value = next
+  summary.value = null
+  writeJson(KEY_EXTRAS, next)
+}
+
 /** Последняя загруженная — для строки над картиной. */
 export const source = computed<SourceInfo | null>(
   () => sources.value[sources.value.length - 1] ?? null,
@@ -122,7 +155,12 @@ export const summary = signal<Summary | null>(null)
 
 /** Операции с категориями. Пересчитывается сама при правке правил или списка. */
 export const categorized = computed<Categorized[]>(() =>
-  categorizeAll(transactions.value, overrides.value, merchantOverrides.value),
+  categorizeAll(
+    transactions.value,
+    overrides.value,
+    merchantOverrides.value,
+    new Set(extras.value),
+  ),
 )
 
 export const hasData = computed(() => transactions.value.length > 0)
@@ -239,8 +277,14 @@ export function restoreEverything(
   writeJson(KEY_SOURCE, info)
 }
 
-/** Ручная правка категории. Переживает перезагрузку выписки: ключ — id операции. */
+/**
+ * Ручная правка категории. Переживает перезагрузку выписки: ключ — id операции.
+ *
+ * Выбор дополнительной категории её же и включает: человек только что сказал,
+ * что различие ему нужно, — спрашивать об этом отдельным шагом незачем.
+ */
 export function setCategory(id: string, category: Category): void {
+  enableIfExtra(category)
   const next: Record<string, Category> = { ...overrides.value, [id]: category }
   overrides.value = next
   summary.value = null
@@ -249,10 +293,20 @@ export function setCategory(id: string, category: Category): void {
 
 /** Правка категории у получателя целиком: одна на всю «Пятёрочку» за год. */
 export function setMerchantCategory(key: string, category: Category): void {
+  enableIfExtra(category)
   const next: Record<string, Category> = { ...merchantOverrides.value, [key]: category }
   merchantOverrides.value = next
   summary.value = null
   writeJson(KEY_MERCHANTS, next)
+}
+
+/** Выбранная рукой дополнительная категория включается сама. */
+function enableIfExtra(category: Category): void {
+  if (PARENT[category] === undefined) return
+  if (extras.value.includes(category)) return
+  const next = [...extras.value, category]
+  extras.value = next
+  writeJson(KEY_EXTRAS, next)
 }
 
 /** Снять правку с получателя: он снова попадёт под словарь. */
@@ -291,6 +345,7 @@ export function forgetEverything(): void {
   accounts.value = []
   activeAccount.value = null
   plan.value = EMPTY_PLAN
+  extras.value = []
   summary.value = null
   try {
     globalThis.localStorage?.removeItem(KEY_TX)
@@ -299,6 +354,7 @@ export function forgetEverything(): void {
     globalThis.localStorage?.removeItem(KEY_SOURCE)
     globalThis.localStorage?.removeItem(KEY_ACCOUNTS)
     globalThis.localStorage?.removeItem(KEY_PLAN)
+    globalThis.localStorage?.removeItem(KEY_EXTRAS)
   } catch {
     // см. writeJson
   }

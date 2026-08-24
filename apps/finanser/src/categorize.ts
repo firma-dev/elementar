@@ -19,7 +19,7 @@
  * выглядела правдоподобно, поэтому ошибку никто бы не заметил.
  */
 import type { Category, Categorized, Tx } from './model.js'
-import { INCOME, OTHER, isCategory } from './model.js'
+import { INCOME, OTHER, PARENT, collapse, isCategory } from './model.js'
 import { KEYWORD_INDEX } from './rules.js'
 import { fold, normalize } from './text.js'
 import { merchantKey } from './merchant.js'
@@ -57,8 +57,8 @@ const BANK_MAP: Readonly<Record<string, Category>> = {
   ДОМ: 'Жильё и ЖКХ',
   'ДОМ И РЕМОНТ': 'Дом и техника',
   'КОММУНАЛЬНЫЕ ПЛАТЕЖИ': 'Жильё и ЖКХ',
-  СВЯЗЬ: 'Связь и интернет',
-  ИНТЕРНЕТ: 'Связь и интернет',
+  СВЯЗЬ: 'Связь и подписки',
+  ИНТЕРНЕТ: 'Связь и подписки',
   'DIGITAL ТОВАРЫ': 'Подписки',
   МУЗЫКА: 'Подписки',
   АПТЕКИ: 'Здоровье',
@@ -156,6 +156,44 @@ export function categorizeAll(
   list: readonly Tx[],
   overrides: Overrides,
   merchants: MerchantOverrides = {},
+  /**
+   * Включённые дополнительные категории. Всё, чего здесь нет, сворачивается в
+   * родителя: не включивший «Такси» видит эти деньги в «Транспорте», а не в
+   * отдельной строке, которую не просил.
+   */
+  extras: ReadonlySet<string> = new Set(),
 ): Categorized[] {
-  return list.map((tx) => categorize(tx, overrides, merchants))
+  return list.map((tx) => {
+    const done = categorize(tx, overrides, merchants)
+    // Сказанное человеком не сворачивается никогда. Он выбрал «Дети» — значит
+    // различие ему нужно, и показывать вместо него «Покупки» было бы спором
+    // с ним же. Сворачивается только угаданное.
+    if (done.source === 'manual' || done.source === 'merchant') return done
+    const shown = collapse(done.category, extras)
+    return shown === done.category ? done : { ...done, category: shown }
+  })
+}
+
+/**
+ * Сколько операций и денег ждёт за каждой выключенной категорией.
+ *
+ * Нужно, чтобы предложить включить её не вслепую: «Такси — 47 операций на
+ * 16 893» отвечает на вопрос «а есть ли мне разница» до того, как человек
+ * нажмёт, а не после.
+ */
+export function pendingExtras(
+  list: readonly Tx[],
+  overrides: Overrides,
+  merchants: MerchantOverrides = {},
+): Map<Category, { count: number; spend: number }> {
+  const out = new Map<Category, { count: number; spend: number }>()
+  for (const tx of list) {
+    const { category } = categorize(tx, overrides, merchants)
+    if (PARENT[category] === undefined) continue
+    const cell = out.get(category) ?? { count: 0, spend: 0 }
+    cell.count += 1
+    if (tx.amount < 0) cell.spend -= tx.amount
+    out.set(category, cell)
+  }
+  return out
 }

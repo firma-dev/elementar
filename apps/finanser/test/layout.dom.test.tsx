@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { CategoryList } from '../src/components/CategoryList.js'
 import { Unknown } from '../src/components/Unknown.js'
 import { Pick } from '../src/components/Pick.js'
+import { pickable } from '../src/model.js'
 import { categorizeAll } from '../src/categorize.js'
 import type { Categorized, Category, Tx } from '../src/model.js'
 
@@ -151,6 +152,7 @@ describe('разбор непонятного', () => {
     rows,
     totalSpend: 950000,
     named: {},
+    options: pickable(new Set()),
     onMerchantCategory: () => {},
   }
 
@@ -180,7 +182,9 @@ describe('разбор непонятного', () => {
     act(() => {
       root.querySelector<HTMLButtonElement>('.f-pick__button')?.click()
     })
-    expect(root.querySelectorAll('.f-pick__option').length > 20).toBe(true)
+    // Не двадцать семь: девять основных и шесть «не трат». Выключенные
+    // дополнительные сюда не попадают — их включают отдельным разделом.
+    expect(root.querySelectorAll('.f-pick__option')).toHaveLength(15)
   })
 
   it('предлагает категорию по уже названному похожему получателю', () => {

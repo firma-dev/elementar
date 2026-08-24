@@ -576,6 +576,8 @@ describe('получатели', () => {
       tx('2026-02-05', -20000, 'PYATEROCHKA 9012 SPB'),
     ]
     const key = merchantKey('PYATEROCHKA 5566 MOSCOW')
+    // «Подарки» — дополнительная категория, но сказанное человеком не
+    // сворачивается в родителя никогда: он выбрал её, значит различие нужно.
     const rows = categorizeAll(list, {}, { [key]: 'Подарки' })
     expect(rows.every((r) => r.category === 'Подарки')).toBe(true)
     expect(rows.every((r) => r.source === 'merchant')).toBe(true)
@@ -622,7 +624,7 @@ describe('вид операции сильнее словаря', () => {
   it('снимает служебное начало и отдаёт словарю имя получателя', () => {
     expect(operationOf('Оплата в YANDEXGO').rest).toBe('OPLATA V YANDEXGO'.replace('OPLATA V ', ''))
     expect(categorize(tx('Оплата в YANDEXGO'), {}).category).toBe('Такси')
-    expect(categorize(tx('Оплата услуг mBank.AKADO'), {}).category).toBe('Связь и интернет')
+    expect(categorize(tx('Оплата услуг mBank.AKADO'), {}).category).toBe('Связь и подписки')
   })
 
   it('кэшбэк со знаком минус доходом не считается', () => {

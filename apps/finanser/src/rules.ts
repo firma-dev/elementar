@@ -285,7 +285,7 @@ export const RULES: readonly Rule[] = [
     ],
   },
   {
-    category: 'Связь и интернет',
+    category: 'Связь и подписки',
     keywords: [
       'МТС',
       'MTS',

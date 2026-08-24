@@ -1,6 +1,6 @@
 import { useState } from 'preact/hooks'
 import type { JSX } from 'preact'
-import { CATEGORIES, dayLabel, isCategory } from '../model.js'
+import { dayLabel, isCategory } from '../model.js'
 import type { Categorized, Category } from '../model.js'
 import { merchantLabel } from '../merchant.js'
 import { Amount } from './Amount.js'
@@ -8,6 +8,8 @@ import { Pick } from './Pick.js'
 
 export interface TxListProps {
   rows: readonly Categorized[]
+  /** Что предлагать в выборе: основные, включённые дополнительные и «не траты». */
+  options: readonly Category[]
   onCategory: (id: string, category: Category) => void
 }
 
@@ -42,7 +44,7 @@ const MARK: Readonly<Record<Categorized['source'], string>> = {
  * системное поле рисуется по правилам операционной системы и рядом с прямыми
  * рамками корпуса выглядит вставленным из другой программы.
  */
-export function TxList({ rows, onCategory }: TxListProps): JSX.Element {
+export function TxList({ rows, options, onCategory }: TxListProps): JSX.Element {
   const [limit, setLimit] = useState(PAGE)
   const shown = rows.slice(0, limit)
 
@@ -62,7 +64,7 @@ export function TxList({ rows, onCategory }: TxListProps): JSX.Element {
               <Pick
                 quiet
                 value={tx.category}
-                options={CATEGORIES}
+                options={options}
                 label={`Категория операции «${tx.description}»`}
                 onChange={(next) => {
                   if (isCategory(next)) onCategory(tx.id, next)

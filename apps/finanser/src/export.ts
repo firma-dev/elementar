@@ -10,7 +10,7 @@
  * Всё делается в памяти вкладки, через blob: — ни одного запроса наружу.
  */
 import type { Categorized, Category, Tx } from './model.js'
-import { isCategory } from './model.js'
+import { currentName, isCategory } from './model.js'
 import type { MerchantOverrides, Overrides } from './categorize.js'
 import type { SourceInfo } from './store.js'
 
@@ -87,13 +87,20 @@ export function looksLikeExport(text: string): boolean {
   return text.trimStart().startsWith('{') && text.includes('elementar.finanser')
 }
 
+/** Имена, которые когда-то были категориями и теперь зовутся иначе. */
+const RENAMED_ONLY = new Set(['Связь и интернет'])
+
 function categoryMap(raw: unknown): Record<string, Category> {
   const out: Record<string, Category> = {}
   if (typeof raw !== 'object' || raw === null) return out
   for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
-    // Чужая или испорченная категория молча не принимается: лучше потерять
-    // одну правку, чем показать человеку категорию, которой нет в списке.
-    if (typeof value === 'string' && isCategory(value)) out[key] = value
+    if (typeof value !== 'string') continue
+    // Переименованная категория находит свою нынешнюю: выгрузка могла быть
+    // сделана до переразбивки, и правка человека не должна из-за этого
+    // пропасть. Чужая или испорченная по-прежнему не принимается молча —
+    // лучше потерять одну правку, чем показать категорию, которой нет.
+    if (isCategory(value)) out[key] = value
+    else if (RENAMED_ONLY.has(value)) out[key] = currentName(value)
   }
   return out
 }

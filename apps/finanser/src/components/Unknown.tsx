@@ -1,6 +1,6 @@
 import { useState } from 'preact/hooks'
 import type { JSX } from 'preact'
-import { CATEGORIES, isCategory } from '../model.js'
+import { isCategory } from '../model.js'
 import type { Categorized, Category } from '../model.js'
 import { groupByMerchant, merchantLabel, suggestCategory } from '../merchant.js'
 import { formatShare } from '../money.js'
@@ -16,6 +16,8 @@ export interface UnknownProps {
   hasCodes: boolean
   /** Уже названные получатели: из них берутся подсказки для похожих. */
   named: Readonly<Record<string, Category>>
+  /** Что предлагать в выборе: основные, включённые дополнительные и «не траты». */
+  options: readonly Category[]
   onMerchantCategory: (key: string, category: Category) => void
 }
 
@@ -32,6 +34,7 @@ export function Unknown({
   totalSpend,
   hasCodes,
   named,
+  options,
   onMerchantCategory,
 }: UnknownProps): JSX.Element | null {
   const [limit, setLimit] = useState(PAGE)
@@ -91,7 +94,7 @@ export function Unknown({
               })()}
               <Pick
                 value=""
-                options={CATEGORIES}
+                options={options}
                 label={`Категория для получателя ${group.label}`}
                 onChange={(next) => {
                   if (isCategory(next)) onMerchantCategory(group.key, next)

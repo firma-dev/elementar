@@ -1,11 +1,12 @@
 import { useCallback, useMemo, useRef, useState } from 'preact/hooks'
 import type { JSX } from 'preact'
 import type { Category } from './model.js'
-import { dayLabel, monthLabel, monthOf } from './model.js'
+import { dayLabel, monthLabel, monthOf, pickable } from './model.js'
 import { parseStatement, parseStatementText } from './statement.js'
 import { decodeBytes } from './csv.js'
 import { fold } from './text.js'
 import type { ParseResult } from './statement.js'
+import { pendingExtras } from './categorize.js'
 import { byCategory, byMonth, byPlane } from './stats.js'
 import { formatShare } from './money.js'
 import type { Kopeck } from './money.js'
@@ -30,8 +31,10 @@ import {
   accounts,
   activeAccount,
   dropAccount,
+  extras,
   plan,
   renameAccount,
+  toggleExtra,
   setPlan,
   sources,
   source,
@@ -49,6 +52,7 @@ import { PlanView } from './components/PlanView.js'
 import { MonthChart } from './components/MonthChart.js'
 import { MoneyMoves } from './components/MoneyMoves.js'
 import { CategoryList } from './components/CategoryList.js'
+import { Extras } from './components/Extras.js'
 import { Fold } from './components/Fold.js'
 import { Unknown } from './components/Unknown.js'
 import { TxList } from './components/TxList.js'
@@ -258,6 +262,14 @@ export function App(): JSX.Element {
   const allIncome = useMemo(
     () => onAccount.reduce((sum, tx) => (tx.amount > 0 ? sum + tx.amount : sum), 0),
     [onAccount],
+  )
+  const enabledExtras = useMemo(() => new Set(extras.value), [extras.value])
+  /** Что предлагать в выборе категории: выключенные туда не попадают. */
+  const options = useMemo(() => pickable(enabledExtras), [enabledExtras])
+  /** Что лежит за выключенными категориями — считается по разрезу, не по всему. */
+  const pending = useMemo(
+    () => pendingExtras(scope, overrides.value, merchantOverrides.value),
+    [scope, overrides.value, merchantOverrides.value],
   )
   const incomeSources = useMemo(() => byIncomeSource(onAccount, edge), [onAccount, edge])
   const arrival = useMemo(() => nextArrival(incomeSources, edge), [incomeSources, edge])
@@ -502,7 +514,7 @@ export function App(): JSX.Element {
         <p class="f-txcount">
           {visible.length} операций · итог <Amount value={total} kopecks="never" plus />
         </p>
-        <TxList rows={visible} onCategory={setCategory} />
+        <TxList rows={visible} options={options} onCategory={setCategory} />
         {footer}
         {fileInput}
       </main>
@@ -645,6 +657,10 @@ export function App(): JSX.Element {
 
       {/* Все операции, а не отрезок: за один день приходов нет, и раздел
           исчезал бы ровно тогда, когда о нём вспоминают (Д-026). */}
+      {/* Ещё категории — сразу под картиной по категориям: включают их,
+          глядя именно на неё. */}
+      <Extras enabled={enabledExtras} pending={pending} onToggle={toggleExtra} />
+
       <IncomeView rows={onAccount} edge={edge} total={allIncome as Kopeck} />
 
       <Unknown
@@ -652,6 +668,7 @@ export function App(): JSX.Element {
         totalSpend={planes.spend.total}
         hasCodes={info?.hasCodes ?? true}
         named={merchantOverrides.value}
+        options={options}
         onMerchantCategory={setMerchantCategory}
       />
 
