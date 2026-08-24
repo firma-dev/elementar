@@ -130,3 +130,36 @@ describe('дата: числовая из Excel и окно правдоподо
     expect(parseDate('999999')).toBeNull()
   })
 })
+
+describe('комиссии и плата за обслуживание — это трата', () => {
+  it('плата банка попадает в траты, а не в переезды денег', async () => {
+    const { categorizeAll } = await import('../src/categorize.js')
+    const { byPlane } = await import('../src/stats.js')
+    const list = [
+      tx('2026-03-01', -19900, 'Плата за обслуживание'),
+      tx('2026-03-02', -300000, 'Страхование кредита'),
+      tx('2026-03-03', -5000, 'Комиссия за перевод'),
+    ]
+    const totals = byPlane(categorizeAll(list, {}, {}))
+    // byPlane складывает по модулю: 199 + 3000 + 50 рублей.
+    expect(totals.spend.total).toBe(324900)
+    expect(totals.spend.count).toBe(3)
+    expect(totals.move.total).toBe(0)
+  })
+})
+
+describe('словарь правил ловит слово, а не его середину', () => {
+  it('пятибуквенный ключ больше не срабатывает внутри чужого слова', async () => {
+    const { byRules } = await import('../src/categorize.js')
+    // «ЛЕНТА» внутри «VALENTA», «МЕТРО» внутри «METROPOLIS» — аптека и торговый
+    // центр становились продуктами.
+    expect(byRules('VALENTA PHARM')).not.toBe('Продукты')
+    expect(byRules('METROPOLIS TRC MOSCOW')).not.toBe('Продукты')
+  })
+
+  it('само слово по-прежнему ловится, вместе с падежами', async () => {
+    const { byRules } = await import('../src/categorize.js')
+    expect(byRules('LENTA 1234 MOSCOW')).toBe('Продукты')
+    expect(byRules('МЕТРО КЭШ ЭНД КЕРРИ')).toBe('Продукты')
+  })
+})
