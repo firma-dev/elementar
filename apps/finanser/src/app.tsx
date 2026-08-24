@@ -31,8 +31,10 @@ import {
   accounts,
   activeAccount,
   dropAccount,
+  cashSplits,
   extras,
   plan,
+  setCashSplit,
   renameAccount,
   toggleExtra,
   setPlan,
@@ -52,6 +54,7 @@ import { PlanView } from './components/PlanView.js'
 import { MonthChart } from './components/MonthChart.js'
 import { MoneyMoves } from './components/MoneyMoves.js'
 import { CategoryList } from './components/CategoryList.js'
+import { CashView } from './components/CashView.js'
 import { Extras } from './components/Extras.js'
 import { Fold } from './components/Fold.js'
 import { Unknown } from './components/Unknown.js'
@@ -660,6 +663,16 @@ export function App(): JSX.Element {
       {/* Ещё категории — сразу под картиной по категориям: включают их,
           глядя именно на неё. */}
       <Extras enabled={enabledExtras} pending={pending} onToggle={toggleExtra} />
+
+      {/* Наличные — рядом с разбором непонятного: обе про одно, про деньги,
+          о которых выписка не сказала ничего. */}
+      <CashView
+        rows={scope}
+        splits={cashSplits.value}
+        totalSpend={planes.spend.total}
+        options={options}
+        onSplit={setCashSplit}
+      />
 
       <IncomeView rows={onAccount} edge={edge} total={allIncome as Kopeck} />
 

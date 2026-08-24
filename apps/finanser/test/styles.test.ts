@@ -16,6 +16,20 @@ const tokens = readFileSync(new URL('../src/tokens.css', import.meta.url), 'utf8
 /** Правила файла без комментариев: в них цвета упоминаются в объяснениях. */
 const code = css.replace(/\/\*[\s\S]*?\*\//g, '')
 
+/** Блок «где палец» и всё остальное: правила в них разные и по делу. */
+const coarse = code.match(/@media \(pointer: coarse\)\s*\{[\s\S]*?\n\}/)?.[0] ?? ''
+const base = code.replace(coarse, '')
+
+/**
+ * Правило для селектора внутри куска CSS. Селекторы сравниваются целиком, а не
+ * подстрокой: `.f-field input` не должен находиться внутри `.f-fieldset input`.
+ */
+function ruleFor(css: string, selector: string): string {
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const found = css.match(new RegExp(`(^|[,{}\\s])${escaped}\\s*[,{][^}]*\\}`, 'm'))
+  return found?.[0] ?? ''
+}
+
 /** Вся разметка корпуса: по ней проверяется, что класс кем-то используется. */
 function readMarkup(): string {
   const root = new URL('../src/', import.meta.url)
@@ -78,21 +92,24 @@ describe('стиль корпуса', () => {
     expect(code).toMatch(/\.f-head2__track\s*\{[^}]*height:/)
   })
 
-  it('текстовые поля на пальце не мельче 16px', () => {
-    // Меньше — и iOS Safari увеличивает страницу при фокусе (DESIGN.md §4.3).
-    // Правило касается настоящих полей ввода: только они вызывают фокус-зум.
-    expect(code).toMatch(/\.f-search input\s*\{[^}]*font-size:\s*16px/)
+  it('поля ввода на пальце не мельче 16px, а на мониторе не крупнее текста', () => {
+    // Меньше 16px — и iOS Safari увеличивает страницу при фокусе (DESIGN.md
+    // §4.3). Правило про палец, а не про монитор: на мониторе те же поля были
+    // вдвое крупнее окружающего текста и тянули взгляд, ничего не сообщая.
+    const FIELDS = ['.f-search input', '.f-field input', '.f-cash__amount']
+    for (const field of FIELDS) {
+      expect(ruleFor(coarse, field)).toMatch(/font-size:\s*16px/)
+      expect(ruleFor(base, field)).toMatch(/font-size:\s*var\(--el__fs-/)
+    }
   })
 
   it('на пальце у выбора мишень не меньше пальца', () => {
     // Своя кнопка фокус-зума не вызывает, поэтому мишень набирается высотой,
     // а не кеглем: набранная кеглем, она делала подпись к строке выписки самым
     // крупным текстом на экране.
-    const coarse = code.match(/@media \(pointer: coarse\)\s*\{[\s\S]*?\n\}/)?.[0] ?? ''
-    expect(coarse).toContain('.f-pick__button')
-    expect(coarse).toMatch(/min-height/)
-    // И заодно кегль здесь не трогается — плотность прототипа остаётся.
-    expect(coarse).not.toContain('font-size')
+    const pick = ruleFor(coarse, '.f-pick__button')
+    expect(pick).toMatch(/min-height/)
+    expect(pick).not.toMatch(/font-size/)
   })
 
   it('текст набирается смысловым токеном, а не цветом из палитры', () => {

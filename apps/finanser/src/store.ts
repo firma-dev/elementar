@@ -10,6 +10,8 @@
 import { computed, signal } from '@preact/signals'
 import type { Category, Categorized, Tx } from './model.js'
 import { PARENT, currentName } from './model.js'
+import { cleanParts, expandCash } from './cash.js'
+import type { CashPart, CashSplits } from './cash.js'
 import { categorizeAll } from './categorize.js'
 import type { MerchantOverrides, Overrides } from './categorize.js'
 import { summarize } from './insights.js'
@@ -25,6 +27,7 @@ const KEY_SOURCE = 'f.src.v1'
 const KEY_ACCOUNTS = 'f.acc.v1'
 const KEY_PLAN = 'f.plan.v1'
 const KEY_EXTRAS = 'f.extra.v1'
+const KEY_CASH = 'f.cash.v1'
 
 /** Что известно о загруженном файле: имя и что с ним случилось при разборе. */
 export interface SourceInfo {
@@ -134,6 +137,25 @@ export const plan = signal<Plan>(readJson<Plan>(KEY_PLAN, EMPTY_PLAN))
  */
 export const extras = signal<string[]>(readJson<string[]>(KEY_EXTRAS, []))
 
+/**
+ * Разложенные снятия наличных: что человек рассказал про купюры.
+ *
+ * Хранится отдельно от операций и их не меняет: выписка остаётся тем, что
+ * сказал банк, а разбивка — тем, что сказал человек, и она наложена поверх.
+ */
+export const cashSplits = signal<CashSplits>(readJson<CashSplits>(KEY_CASH, {}))
+
+/** Записать разбивку снятия. Пустая — снять разбивку совсем. */
+export function setCashSplit(id: string, parts: readonly CashPart[]): void {
+  const clean = cleanParts(parts)
+  const next: Record<string, readonly CashPart[]> = { ...cashSplits.value }
+  if (clean.length === 0) delete next[id]
+  else next[id] = clean
+  cashSplits.value = next
+  summary.value = null
+  writeJson(KEY_CASH, next)
+}
+
 /** Включить или выключить дополнительную категорию. */
 export function toggleExtra(category: string): void {
   const set = new Set(extras.value)
@@ -155,11 +177,14 @@ export const summary = signal<Summary | null>(null)
 
 /** Операции с категориями. Пересчитывается сама при правке правил или списка. */
 export const categorized = computed<Categorized[]>(() =>
-  categorizeAll(
-    transactions.value,
-    overrides.value,
-    merchantOverrides.value,
-    new Set(extras.value),
+  expandCash(
+    categorizeAll(
+      transactions.value,
+      overrides.value,
+      merchantOverrides.value,
+      new Set(extras.value),
+    ),
+    cashSplits.value,
   ),
 )
 
@@ -346,6 +371,7 @@ export function forgetEverything(): void {
   activeAccount.value = null
   plan.value = EMPTY_PLAN
   extras.value = []
+  cashSplits.value = {}
   summary.value = null
   try {
     globalThis.localStorage?.removeItem(KEY_TX)
@@ -355,6 +381,7 @@ export function forgetEverything(): void {
     globalThis.localStorage?.removeItem(KEY_ACCOUNTS)
     globalThis.localStorage?.removeItem(KEY_PLAN)
     globalThis.localStorage?.removeItem(KEY_EXTRAS)
+    globalThis.localStorage?.removeItem(KEY_CASH)
   } catch {
     // см. writeJson
   }

@@ -762,8 +762,7 @@ input {
   background: var(--el__mark);
 }
 
-/* Поиск: две тысячи операций иначе не пролистать. Кегль 16px не про красоту —
-   ниже него iOS Safari увеличивает страницу при фокусе (DESIGN.md §4.3). */
+/* Поиск: две тысячи операций иначе не пролистать. */
 .f-search {
   display: block;
   margin-bottom: 0.7em;
@@ -775,7 +774,7 @@ input {
   background: var(--el__background);
   color: var(--el__text);
   font-family: inherit;
-  font-size: 16px;
+  font-size: var(--el__fs-s);
   padding: 0.35em 0.5em;
 }
 
@@ -1210,6 +1209,16 @@ input {
    а не кеглем: набранная кеглем, она делала из подписи к строке самый крупный
    текст на экране. */
 @media (pointer: coarse) {
+  /* Кегль 16px — правило DESIGN.md §4.3, и оно про палец, а не про монитор:
+     ниже него iOS Safari увеличивает страницу при фокусе, и вёрстка дёргается.
+     На мониторе те же поля были вдвое крупнее окружающего текста и тянули
+     взгляд на себя, ничего этим не сообщая. */
+  .f-search input,
+  .f-field input,
+  .f-cash__amount {
+    font-size: 16px;
+  }
+
   .f-pick__button {
     min-height: 2.4em;
     padding: 0.35em 0.5em;
@@ -1345,8 +1354,6 @@ input {
   font-size: var(--el__fs-xs);
 }
 
-/* Поле ввода. Кегль 16px — правило DESIGN.md §4.3: ниже него iOS Safari
-   увеличивает страницу при фокусе, и вёрстка дёргается прямо под пальцем. */
 .f-field {
   display: flex;
   align-items: baseline;
@@ -1368,7 +1375,7 @@ input {
   background: none;
   color: var(--el__text);
   font-family: inherit;
-  font-size: 16px;
+  font-size: var(--el__fs-s);
   text-align: end;
   padding: 0.1em 0.2em;
 }
@@ -1750,4 +1757,75 @@ input {
   margin-inline-start: auto;
   font-size: var(--el__fs-xs);
   color: var(--el__text-caption);
+}
+
+/* ───────────────────────── Наличные ───────────────────────── */
+
+/* Снятые купюры выписка не видит: банк и сам не знает, куда они ушли. Здесь не
+   отчёт, а место, где человек рассказывает, — и рассказ должен стоить дёшево:
+   снятие, несколько сумм, готово. */
+
+.f-cash {
+  margin-top: var(--f-step-2);
+}
+
+.f-cash__row {
+  border-bottom: var(--el__border-width-s) solid var(--el__border);
+}
+
+.f-cash__line {
+  display: flex;
+  align-items: baseline;
+  gap: var(--el__gap-s);
+  width: 100%;
+  border: none;
+  background: none;
+  color: inherit;
+  text-align: left;
+  padding: 0.45em 0;
+  cursor: pointer;
+  font-size: var(--el__fs-xs);
+}
+
+.f-cash__day {
+  color: var(--el__text-caption);
+  white-space: nowrap;
+}
+
+.f-cash__sum {
+  white-space: nowrap;
+}
+
+.f-cash__left {
+  margin-inline-start: auto;
+  color: var(--el__text-caption);
+  white-space: nowrap;
+}
+
+.f-cash__left--done {
+  color: var(--el__success);
+}
+
+.f-cash__edit {
+  padding: 0 0 0.7em;
+}
+
+.f-cash__part {
+  display: flex;
+  align-items: center;
+  gap: var(--el__gap-s);
+  flex-wrap: wrap;
+  padding: 0.25em 0;
+}
+
+.f-cash__amount {
+  width: 7em;
+  border: none;
+  border-bottom: var(--el__border-width-s) solid var(--el__text);
+  background: none;
+  color: var(--el__text);
+  font-family: inherit;
+  font-size: var(--el__fs-s);
+  text-align: end;
+  padding: 0.1em 0.2em;
 }
