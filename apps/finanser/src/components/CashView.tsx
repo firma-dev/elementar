@@ -159,18 +159,22 @@ function Editor({
         </div>
       ))}
 
-      <button
-        type="button"
-        class="f-go f-go--small"
-        onClick={() =>
-          onChange([
-            ...parts,
-            { category: options[0] ?? 'Прочее', amount: Math.max(0, left) as Kopeck },
-          ])
-        }
-      >
-        добавить долю
-      </button>
+      {/* Когда раскладывать нечего, кнопки нет. Раньше она оставалась и молча
+          не работала: новая доля создавалась на остаток, остаток был нулём, а
+          нулевые доли выбрасываются до записи. Человек нажимал, ничего не
+          появлялось, и почему — не говорилось. Кнопка, которая не делает
+          ничего, хуже её отсутствия: рядом с ней перестают верить остальным. */}
+      {left > 0 ? (
+        <button
+          type="button"
+          class="f-go f-go--small"
+          onClick={() =>
+            onChange([...parts, { category: options[0] ?? 'Прочее', amount: left as Kopeck }])
+          }
+        >
+          добавить долю
+        </button>
+      ) : null}
     </div>
   )
 }

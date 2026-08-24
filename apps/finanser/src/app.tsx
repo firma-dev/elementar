@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from 'preact/hooks'
 import type { JSX } from 'preact'
 import type { Category } from './model.js'
-import { dayLabel, monthLabel, monthOf, pickable } from './model.js'
+import { dayLabel, monthLabel, monthOf, pickable, statementName } from './model.js'
 import { parseFile, parseStatementText } from './statement.js'
 import { decodeBytes } from './csv.js'
 import { fold } from './text.js'
@@ -194,8 +194,10 @@ export function App(): JSX.Element {
         }
         // Имя файла передаётся как запасной ключ счёта: если банк не выгрузил
         // номер карты, различать счета больше нечем, а имя файла от выгрузки
-        // к выгрузке не меняется (Д-026).
-        accept(await parseFile(bytes, file.name), file.name)
+        // к выгрузке не меняется (Д-026). Через `statementName`, потому что
+        // браузер имя меняет: «выписка (1).csv» — тот же счёт, а не второй.
+        const name = statementName(file.name)
+        accept(await parseFile(bytes, name), name)
       } catch {
         setError('Файл не удалось прочитать. Нужна выгрузка операций из банка: CSV или .xlsx.')
       } finally {

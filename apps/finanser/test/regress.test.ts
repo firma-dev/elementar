@@ -163,3 +163,56 @@ describe('словарь правил ловит слово, а не его се
     expect(byRules('МЕТРО КЭШ ЭНД КЕРРИ')).toBe('Продукты')
   })
 })
+
+describe('наличные: переименованное снятие не удваивает траты', () => {
+  it('доли не разворачиваются, если снятие перестало быть наличными', async () => {
+    const { expandCash } = await import('../src/cash.js')
+    const { categorizeAll } = await import('../src/categorize.js')
+    const снятие = tx('2026-03-01', -800000, 'Снятие наличных Т-Банк')
+    const splits = { [снятие.id]: [{ category: 'Продукты' as never, amount: 800000 as never }] }
+
+    // Пока это наличные — доля добавляется отдельной строкой.
+    const обычно = expandCash(categorizeAll([снятие], {}, {}), splits)
+    expect(обычно).toHaveLength(2)
+
+    // Человек назвал само снятие «Продуктами»: теперь оно трата само по себе,
+    // и доля к ней добавила бы вторые восемь тысяч.
+    const переименовано = expandCash(
+      categorizeAll([снятие], { [снятие.id]: 'Продукты' as never }, {}),
+      splits,
+    )
+    expect(переименовано).toHaveLength(1)
+
+    const сумма = переименовано.reduce((s, t) => s + Math.abs(t.amount), 0)
+    expect(сумма).toBe(800000)
+  })
+})
+
+describe('один файл под другим именем — один счёт', () => {
+  it('следы повторного скачивания снимаются', async () => {
+    const { statementName } = await import('../src/model.js')
+    expect(statementName('выписка.csv')).toBe('выписка')
+    expect(statementName('выписка (1).csv')).toBe('выписка')
+    expect(statementName('выписка (12).xlsx')).toBe('выписка')
+    expect(statementName('выписка-1.csv')).toBe('выписка')
+    expect(statementName('выписка — копия.csv')).toBe('выписка')
+    expect(statementName('statement copy.csv')).toBe('statement')
+  })
+
+  it('осмысленные части имени не срезаются', async () => {
+    const { statementName } = await import('../src/model.js')
+    // Год — не номер повтора.
+    expect(statementName('выписка-2024.csv')).toBe('выписка-2024')
+    // Разные банки остаются разными счетами.
+    expect(statementName('сбер.csv')).not.toBe(statementName('тинькофф.csv'))
+    // Имя без расширения не превращается в пустую строку.
+    expect(statementName('выписка')).toBe('выписка')
+  })
+
+  it('одинаковые операции из двух копий файла дают один счёт', async () => {
+    const { statementName, accountKey } = await import('../src/model.js')
+    const a = accountKey(statementName('выписка.csv'))
+    const b = accountKey(statementName('выписка (1).csv'))
+    expect(a).toBe(b)
+  })
+})
