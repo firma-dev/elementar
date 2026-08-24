@@ -75,7 +75,16 @@ function readJson<T>(key: string, fallback: T): T {
   try {
     const raw = globalThis.localStorage?.getItem(key)
     if (raw === null || raw === undefined) return fallback
-    return JSON.parse(raw) as T
+    const parsed = JSON.parse(raw) as unknown
+    // `JSON.parse('null')` — это null, а не отсутствие значения: без этой
+    // проверки хранимый null проезжает мимо fallback и падает на первом же
+    // обращении к полю.
+    if (parsed === null || parsed === undefined) return fallback
+    // Форма важнее содержимого: массив, прочитанный как объект, роняет весь
+    // рендер на `.filter`, и починить это из интерфейса уже нельзя — экран
+    // белый вместе с кнопкой «забыть всё». Чужую форму отбрасываем к fallback.
+    if (Array.isArray(fallback) !== Array.isArray(parsed)) return fallback
+    return parsed as T
   } catch {
     return fallback
   }
@@ -319,12 +328,15 @@ export function restoreEverything(
   transactions.value = list
   overrides.value = { ...nextOverrides }
   merchantOverrides.value = { ...nextMerchants }
-  sources.value = info === null ? [] : [info]
+  const nextSources = info === null ? [] : [info]
+  sources.value = nextSources
   summary.value = null
   writeJson(KEY_TX, list)
   writeJson(KEY_OVERRIDES, nextOverrides)
   writeJson(KEY_MERCHANTS, nextMerchants)
-  writeJson(KEY_SOURCE, info)
+  // Массив, а не `info`: остальные записи в этот ключ кладут список, и объект
+  // здесь означал бы белый экран при следующем открытии вкладки.
+  writeJson(KEY_SOURCE, nextSources)
 }
 
 /**

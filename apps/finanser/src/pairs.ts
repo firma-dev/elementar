@@ -94,6 +94,12 @@ export function markPairs(rows: readonly Categorized[]): Categorized[] {
   const paired = pairedIncoming(findPairs(rows))
   if (paired.size === 0) return rows as Categorized[]
   return rows.map((tx) =>
-    paired.has(tx.id) ? { ...tx, category: 'Переводы' as const, source: 'operation' as const } : tx,
+    // Рука человека сильнее пары. Человек уже посмотрел на эту операцию и
+    // сказал, чем она является; пара — догадка по совпадению суммы и даты, и
+    // догадка не отменяет сказанного. Без этой проверки правка молча
+    // откатывалась: поставил «Доход», нажал ещё раз, и снова «Переводы».
+    paired.has(tx.id) && tx.source !== 'manual'
+      ? { ...tx, category: 'Переводы' as const, source: 'operation' as const }
+      : tx,
   )
 }

@@ -34,6 +34,15 @@ export interface ExportShape {
     description: string
     mcc: string | null
     bankCategory: string | null
+    /**
+     * Счёт обязателен. Без него круг «выгрузил — загрузил» сводит все операции
+     * на счёт «по умолчанию», и тогда пара перевода между своими картами
+     * перестаёт находиться: `findPairs` требует разных счетов. Приход
+     * удваивается на сумму каждого перевода, и это молча.
+     */
+    account: string
+    /** Валюта — по той же причине: без неё пересчёт по курсу теряется. */
+    currency: string | null
     category: string
     source: Categorized['source']
   }>
@@ -59,6 +68,8 @@ export function buildExport(
       description: tx.description,
       mcc: tx.mcc,
       bankCategory: tx.bankCategory,
+      account: tx.account,
+      currency: tx.currency ?? null,
       category: tx.category,
       source: tx.source,
     })),
@@ -147,6 +158,7 @@ export function readExport(text: string): ImportResult {
       // «по умолчанию», а не отбрасываются. Потерять данные из-за нового поля
       // было бы худшим исходом, чем потерять разрез по счетам.
       account: typeof t['account'] === 'string' && t['account'] !== '' ? t['account'] : 'default',
+      currency: typeof t['currency'] === 'string' && t['currency'] !== '' ? t['currency'] : null,
     })
   }
   if (transactions.length === 0) {

@@ -40,9 +40,21 @@ export function parseAmount(raw: string): Kopeck | null {
   const sep = Math.max(s.lastIndexOf(','), s.lastIndexOf('.'))
   const tail = sep === -1 ? '' : s.slice(sep + 1)
 
-  // Разделитель дробной части — последний из «,» и «.», и только если за ним
-  // стоит одна или две цифры: «1.234» — это тысячи, «1.23» — это рубли и копейки.
-  const fractional = sep !== -1 && tail.length >= 1 && tail.length <= 2 && /^\d+$/.test(tail)
+  // Разделитель дробной части — последний из «,» и «.». Одна или две цифры за
+  // ним — копейки: «1.23». Ровно три — группа тысяч: «1.234» это 1234 рубля.
+  //
+  // Четыре и больше — снова копейки, и это не редкость: валютные и
+  // инвестиционные строки банки отдают с четырьмя знаками, выгрузки из 1С тоже.
+  // Группой тысяч такой хвост быть не может — в группе всегда ровно три цифры.
+  // Без этой ветки «1 234,5678» читалось как 12 345 678 ₽ вместо 1 234,57 ₽:
+  // ошибка в десять тысяч раз, заметная только глазами.
+  const digitTail = sep !== -1 && /^\d+$/.test(tail)
+  const headDigits = sep === -1 ? '' : s.slice(0, sep).replace(/[.,]/g, '')
+  // Ровно три цифры — обычно группа тысяч, но не после голого нуля: «0,455» это
+  // сорок шесть копеек, а не четыреста пятьдесят пять рублей. Ноль не бывает
+  // старшей группой разряда.
+  const thousandsGroup = tail.length === 3 && headDigits !== '' && headDigits !== '0'
+  const fractional = digitTail && !thousandsGroup
   const intPart = fractional ? s.slice(0, sep) : s
   const fracPart = fractional ? tail : ''
 
@@ -50,10 +62,19 @@ export function parseAmount(raw: string): Kopeck | null {
   if (digits === '' && fracPart === '') return null
 
   const rub = digits === '' ? 0 : Number(digits)
-  const kop = fracPart === '' ? 0 : Number(fracPart.padEnd(2, '0'))
-  if (!Number.isFinite(rub) || !Number.isFinite(kop)) return null
+  if (!Number.isFinite(rub)) return null
+
+  // Хвост длиннее двух знаков округляем до копейки, а не отбрасываем: 0,455
+  // это 46 копеек, а не 45. Округление вверх по половине — то же правило, что
+  // у банка в выписке.
+  const kop =
+    fracPart === '' ? 0 : Math.round(Number(`0.${fracPart}`) * 100)
+  if (!Number.isFinite(kop)) return null
 
   const value = rub * 100 + kop
+  // За пределом точности целых чисел арифметика перестаёт быть целочисленной, и
+  // дальше каждая сумма — приблизительная. Лучше «не число», чем тихая ложь.
+  if (!Number.isSafeInteger(value)) return null
   return negative ? -value : value
 }
 
