@@ -12,6 +12,8 @@ import type { Category, Categorized, Tx } from './model.js'
 import { PARENT, currentName } from './model.js'
 import { cleanParts, expandCash } from './cash.js'
 import { markPairs } from './pairs.js'
+import { applyRates } from './rates.js'
+import type { Rates } from './rates.js'
 import type { CashPart, CashSplits } from './cash.js'
 import { categorizeAll } from './categorize.js'
 import type { MerchantOverrides, Overrides } from './categorize.js'
@@ -29,6 +31,7 @@ const KEY_ACCOUNTS = 'f.acc.v1'
 const KEY_PLAN = 'f.plan.v1'
 const KEY_EXTRAS = 'f.extra.v1'
 const KEY_CASH = 'f.cash.v1'
+const KEY_RATES = 'f.rate.v1'
 
 /** Что известно о загруженном файле: имя и что с ним случилось при разборе. */
 export interface SourceInfo {
@@ -157,6 +160,22 @@ export function setCashSplit(id: string, parts: readonly CashPart[]): void {
   writeJson(KEY_CASH, next)
 }
 
+/**
+ * Курсы валют, названные человеком. Сами они не выясняются: любой источник
+ * курса — внешний запрос, а корпус герметичен (ТЗ §1).
+ */
+export const rates = signal<Rates>(readJson<Rates>(KEY_RATES, {}))
+
+/** Назвать курс валюты. Ноль или пусто — снять курс. */
+export function setRate(code: string, kopecksPerUnit: number): void {
+  const next: Record<string, number> = { ...rates.value }
+  if (kopecksPerUnit > 0) next[code] = kopecksPerUnit
+  else delete next[code]
+  rates.value = next
+  summary.value = null
+  writeJson(KEY_RATES, next)
+}
+
 /** Включить или выключить дополнительную категорию. */
 export function toggleExtra(category: string): void {
   const set = new Set(extras.value)
@@ -179,13 +198,16 @@ export const summary = signal<Summary | null>(null)
 /** Операции с категориями. Пересчитывается сама при правке правил или списка. */
 export const categorized = computed<Categorized[]>(() =>
   expandCash(
-    markPairs(
-      categorizeAll(
-        transactions.value,
-        overrides.value,
-        merchantOverrides.value,
-        new Set(extras.value),
+    applyRates(
+      markPairs(
+        categorizeAll(
+          transactions.value,
+          overrides.value,
+          merchantOverrides.value,
+          new Set(extras.value),
+        ),
       ),
+      rates.value,
     ),
     cashSplits.value,
   ),
@@ -375,6 +397,7 @@ export function forgetEverything(): void {
   plan.value = EMPTY_PLAN
   extras.value = []
   cashSplits.value = {}
+  rates.value = {}
   summary.value = null
   try {
     globalThis.localStorage?.removeItem(KEY_TX)
@@ -385,6 +408,7 @@ export function forgetEverything(): void {
     globalThis.localStorage?.removeItem(KEY_PLAN)
     globalThis.localStorage?.removeItem(KEY_EXTRAS)
     globalThis.localStorage?.removeItem(KEY_CASH)
+    globalThis.localStorage?.removeItem(KEY_RATES)
   } catch {
     // см. writeJson
   }

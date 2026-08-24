@@ -8,7 +8,7 @@ import { fold } from './text.js'
 import type { ParseResult } from './statement.js'
 import { pendingExtras } from './categorize.js'
 import { byCategory, byMonth, byPlane } from './stats.js'
-import { formatShare } from './money.js'
+import { formatAmount, formatShare, parseAmount } from './money.js'
 import type { Kopeck } from './money.js'
 import {
   PERIODS,
@@ -24,6 +24,7 @@ import {
 import type { PeriodKey } from './period.js'
 import { limitFor, toGoal } from './plan.js'
 import { byIncomeSource, nextArrival } from './income.js'
+import { foreignCurrencies, stillForeign } from './rates.js'
 import { buildExport, downloadJson, looksLikeExport, readExport } from './export.js'
 import { demoCsv } from './demo.js'
 import {
@@ -44,7 +45,10 @@ import {
   cashSplits,
   extras,
   plan,
+  rates,
   setCashSplit,
+  setRate,
+  transactions,
   renameAccount,
   toggleExtra,
   setPlan,
@@ -189,6 +193,24 @@ export function App(): JSX.Element {
     [accept],
   )
 
+  /**
+   * Перетаскивание файла на страницу.
+   *
+   * На настольном экране это короче диалога выбора: выписка обычно лежит в
+   * «Загрузках», которые видны рядом с окном браузера. Диалог при этом никуда
+   * не девается — на телефоне перетаскивать нечем.
+   */
+  const [dragging, setDragging] = useState(false)
+  const onDrop = useCallback(
+    (event: JSX.TargetedDragEvent<HTMLElement>): void => {
+      event.preventDefault()
+      setDragging(false)
+      const file = event.dataTransfer?.files?.[0]
+      if (file !== undefined) void load(file)
+    },
+    [load],
+  )
+
   const onPick = useCallback(
     (event: JSX.TargetedEvent<HTMLInputElement>): void => {
       const file = event.currentTarget.files?.[0]
@@ -277,6 +299,8 @@ export function App(): JSX.Element {
     () => onAccount.reduce((sum, tx) => (tx.amount > 0 ? sum + tx.amount : sum), 0),
     [onAccount],
   )
+  /** Валюты, которые банк не пересчитал. Пусто — говорить не о чем. */
+  const currencies = useMemo(() => foreignCurrencies(transactions.value), [transactions.value])
   const enabledExtras = useMemo(() => new Set(extras.value), [extras.value])
   /** Что предлагать в выборе категории: выключенные туда не попадают. */
   const options = useMemo(() => pickable(enabledExtras), [enabledExtras])
@@ -366,7 +390,15 @@ export function App(): JSX.Element {
 
   if (!hasData.value) {
     return (
-      <main class="f-page">
+      <main
+        class={dragging ? 'f-page f-page--drop' : 'f-page'}
+        onDragOver={(event) => {
+          event.preventDefault()
+          setDragging(true)
+        }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={onDrop}
+      >
         {header}
         <div class="f-empty">
           <h1 class="f-empty__title">
@@ -383,7 +415,7 @@ export function App(): JSX.Element {
             aria-disabled={busy}
             onClick={() => fileRef.current?.click()}
           >
-            {busy ? 'Читаю…' : 'Загрузить выписку'}
+            {busy ? 'Читаю…' : dragging ? 'Отпустите файл' : 'Загрузить выписку'}
           </button>
 
           {error === null ? null : <p class="f-err">{error}</p>}
@@ -565,7 +597,15 @@ export function App(): JSX.Element {
   }
 
   return (
-    <main class="f-page">
+    <main
+      class={dragging ? 'f-page f-page--drop' : 'f-page'}
+      onDragOver={(event) => {
+        event.preventDefault()
+        setDragging(true)
+      }}
+      onDragLeave={() => setDragging(false)}
+      onDrop={onDrop}
+    >
       {header}
       {/* Наверху — только то, чем человек переключает картину. Строка про
           свежесть данных ушла в подвал: она отвечает на вопрос, который
@@ -577,12 +617,47 @@ export function App(): JSX.Element {
         {refresh}
       </div>
 
-      {loaded.some((s) => s.foreign > 0) ? (
-        <p class="f-note f-hint">
-          {loaded.reduce((n, s) => n + s.foreign, 0)} операций в валюте банк не пересчитал в рубли —
-          они посчитаны как рубли, и сумма из-за них завышена или занижена.
-        </p>
-      ) : null}
+      {/* Валюта: не предупреждение, а поле. Предупреждение не превращает
+          неправду в правду — тысяча лир продолжала складываться с тысячей
+          рублей. Курс называет человек: сам он не выясняется, любой источник
+          курса это внешний запрос (ТЗ §1). */}
+      {currencies.size === 0 ? null : (
+        <div class="f-rates">
+          {/* Предупреждение уходит, когда курс назван: висящее «0 операций
+              не пересчитано» — это тревога о том, чего уже нет. */}
+          {stillForeign(rows, rates.value) === 0 ? (
+            <p class="f-note">
+              Операции в валюте пересчитаны по названному курсу. {[...currencies.keys()].join(', ')}{' '}
+              — курс средний за период, а не на день покупки: точнее из выписки не узнать.
+            </p>
+          ) : (
+            <p class="f-note f-hint">
+              {stillForeign(rows, rates.value)} операций в валюте банк не пересчитал в рубли. Пока
+              курс не назван, они посчитаны как рубли — и сумма из-за них неверна.
+            </p>
+          )}
+          {[...currencies].map(([code, count]) => (
+            <label key={code} class="f-field">
+              <span class="f-field__k">
+                {code} · {count} оп. · рублей за единицу
+              </span>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={
+                  rates.value[code] === undefined
+                    ? ''
+                    : formatAmount(rates.value[code] ?? 0, { kopecks: 'auto', abs: true })
+                }
+                onChange={(event) => {
+                  const raw = (event.currentTarget as HTMLInputElement).value
+                  setRate(code, Math.abs(parseAmount(raw) ?? 0))
+                }}
+              />
+            </label>
+          ))}
+        </div>
+      )}
 
       {/* Период — это режим, а не фильтр: ниже меняется не только число, но и
           то, о чём вообще идёт речь. На коротких отрезках это дневной ритм —

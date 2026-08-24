@@ -320,6 +320,7 @@ export function parseRows(rows: readonly (readonly string[])[], fallbackAccount 
     // расход раздельно. Во втором случае знак несёт сама колонка, а не число:
     // расход там записан положительным, и без разворота знака траты сложились
     // бы с доходами в одну кучу.
+    let foreignCurrency: string | null = null
     let amount: Kopeck | null = parseAmount(at(row, columns.amount))
     if (amount === null && (columns.credit !== undefined || columns.debit !== undefined)) {
       const credit = parseAmount(at(row, columns.credit)) ?? 0
@@ -339,6 +340,7 @@ export function parseRows(rows: readonly (readonly string[])[], fallbackAccount 
         converted += 1
       } else {
         foreign += 1
+        foreignCurrency = currency.trim().toUpperCase()
       }
     }
     if (amount === null || amount === 0) {
@@ -368,6 +370,7 @@ export function parseRows(rows: readonly (readonly string[])[], fallbackAccount 
       description: description === '' ? 'Без описания' : description,
       mcc: mccRaw === '' || mccRaw === '0' ? null : mccRaw,
       bankCategory: bankRaw === '' ? null : bankRaw,
+      currency: foreignCurrency,
     })
   }
 
