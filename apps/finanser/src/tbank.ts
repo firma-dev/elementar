@@ -9,7 +9,7 @@ import { parseCsv, decodeBytes, sniffNotCsv } from './csv.js'
 import { parseAmount } from './money.js'
 import type { Kopeck } from './money.js'
 import type { Tx } from './model.js'
-import { txId } from './model.js'
+import { statementKey, txId } from './model.js'
 
 /** Как называется колонка в разных выгрузках. Сравнение — по нормализованному имени. */
 const COLUMNS = {
@@ -87,6 +87,13 @@ export interface ParseResult {
   skipped: number
   /** Операция в валюте, пересчитанная по сумме платежа банка. */
   converted: number
+  /**
+   * Операции в валюте, которые пересчитать не удалось: банк не дал рублёвой
+   * суммы платежа. Они посчитаны как рубли — и это неправда, о которой человек
+   * должен узнать. Молчаливо смешивать евро с рублями нельзя: сумма выглядит
+   * правдоподобно и потому не проверяется.
+   */
+  foreign: number
   /** Заголовок не опознан — колонок даты или суммы в файле нет. */
   error: string | null
   /**
@@ -115,6 +122,7 @@ export function parseStatement(bytes: Uint8Array): ParseResult {
       rows: 0,
       skipped: 0,
       converted: 0,
+      foreign: 0,
       error: wrongFormat,
       hasCodes: false,
     }
@@ -130,6 +138,7 @@ export function parseStatementText(text: string): ParseResult {
     rows: 0,
     skipped: 0,
     converted: 0,
+    foreign: 0,
     error: null,
     hasCodes: false,
   }
@@ -155,9 +164,13 @@ export function parseStatementText(text: string): ParseResult {
 
   const body = rows.slice(1)
   const transactions: Tx[] = []
+  // Идентификаторы получают ключ выписки, чтобы одинаковые покупки с разных
+  // счетов не схлопнулись при склейке. Ключ считается после разбора — из дат
+  // и числа строк, — поэтому проставляется вторым проходом.
   const seen = new Map<string, number>()
   let skipped = 0
   let converted = 0
+  let foreign = 0
 
   const at = (row: readonly string[], index: number | undefined): string =>
     index === undefined ? '' : (row[index] ?? '')
@@ -185,6 +198,8 @@ export function parseStatementText(text: string): ParseResult {
       if (pay !== null && isRouble(payCurrency)) {
         amount = pay
         converted += 1
+      } else {
+        foreign += 1
       }
     }
     if (amount === null || amount === 0) {
@@ -211,11 +226,18 @@ export function parseStatementText(text: string): ParseResult {
   }
 
   transactions.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
+  const last = transactions[0]
+  const first = transactions[transactions.length - 1]
+  if (first !== undefined && last !== undefined) {
+    const key = statementKey(first.date, last.date, transactions.length)
+    for (const tx of transactions) tx.id = `${key}:${tx.id}`
+  }
   return {
     transactions,
     rows: body.length,
     skipped,
     converted,
+    foreign,
     error: null,
     hasCodes: columns.mcc !== undefined || columns.category !== undefined,
   }

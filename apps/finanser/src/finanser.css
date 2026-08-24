@@ -109,6 +109,21 @@ input {
   font-size: 1rem;
 }
 
+/* Плашка обновления (§13.6). Жёлтая, как маркер: это не ошибка и не тревога,
+   а предложение — версия уже скачана и ждёт нажатия. */
+.f-update {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6em;
+  flex-wrap: wrap;
+  background: var(--el__mark);
+  border: var(--el__border-width-s) solid var(--el__text);
+  padding: 0.5em 0.7em;
+  margin-top: 0.8em;
+  font-size: var(--el__fs-xs);
+}
+
 .f-head {
   display: flex;
   justify-content: space-between;
@@ -281,6 +296,70 @@ input {
 }
 
 /* ───────────────────────── Две плитки ───────────────────────── */
+
+/* Список склеенных выписок: видно, из чего сложилась картина. */
+.f-sources {
+  margin-bottom: 1em;
+  border-top: var(--el__border-width-s) solid var(--el__border);
+}
+
+.f-sources__row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6em;
+  padding: 0.35em 0;
+  border-bottom: var(--el__border-width-s) solid var(--el__border);
+  font-size: var(--el__fs-xs);
+}
+
+.f-sources__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.f-sources__meta {
+  margin-inline-start: auto;
+  color: var(--el__text-caption);
+  white-space: nowrap;
+}
+
+/* Выбор периода: год выписки редко совпадает с вопросом. Сетка встык, как
+   переключатель лет в модели дизайн-сессии — рамка одна на всю группу. */
+.f-periods {
+  display: flex;
+  border: var(--el__border-width-s) solid var(--el__text);
+  margin-bottom: 1em;
+}
+
+.f-period {
+  flex: 1;
+  appearance: none;
+  background: none;
+  border: 0;
+  border-inline-end: var(--el__border-width-s) solid var(--el__text);
+  color: var(--el__text);
+  font: inherit;
+  font-size: var(--el__fs-xs);
+  letter-spacing: var(--el__ls-caps-s);
+  text-transform: uppercase;
+  padding: 0.45em 0.3em;
+  cursor: pointer;
+}
+
+.f-period:last-child {
+  border-inline-end: 0;
+}
+
+.f-period:hover {
+  background: var(--el__surface);
+}
+
+.f-period--on {
+  background: var(--el__text);
+  color: var(--el__background);
+}
 
 .f-tiles {
   display: grid;
@@ -501,9 +580,11 @@ input {
   min-width: 0;
 }
 
+/* Ранг набран тем же серым, что и остальное служебное: gray-400 давал
+   контраст 2,76:1 при норме 4,5:1 — цифру было почти не видно. */
 .f-cat__rank {
   font-size: var(--el__fs-xs);
-  color: var(--el__color-gray-400);
+  color: var(--el__text-caption);
 }
 
 .f-cat__name {
@@ -682,6 +763,20 @@ input {
   white-space: nowrap;
 }
 
+/* Подсказка по уже названным получателям. Жёлтая, как маркер: это предложение,
+   а не сделанное действие — нажать должен человек. */
+.f-suggest {
+  appearance: none;
+  border: var(--el__border-width-s) solid var(--el__text);
+  background: var(--el__mark);
+  color: var(--el__color-gray-950);
+  font: inherit;
+  font-size: var(--el__fs-xs);
+  padding: 0.15em 0.4em;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
 .f-unknown__pick select {
   border: var(--el__border-width-s) solid var(--el__text);
   background: var(--el__background);
@@ -802,6 +897,27 @@ input {
   background: var(--el__mark);
 }
 
+/* Поиск: две тысячи операций иначе не пролистать. Кегль 16px не про красоту —
+   ниже него iOS Safari увеличивает страницу при фокусе (DESIGN.md §4.3). */
+.f-search {
+  display: block;
+  margin-bottom: 0.7em;
+}
+
+.f-search input {
+  width: 100%;
+  border: var(--el__border-width-s) solid var(--el__text);
+  background: var(--el__background);
+  color: var(--el__text);
+  font-family: inherit;
+  font-size: 16px;
+  padding: 0.4em 0.6em;
+}
+
+.f-search input::placeholder {
+  color: var(--el__text-caption);
+}
+
 .f-txcount {
   font-size: var(--el__fs-xs);
   color: var(--el__text-caption);
@@ -855,6 +971,31 @@ input {
   cursor: pointer;
 }
 
+/* iOS Safari увеличивает страницу при фокусе на поле мельче 16px, и вёрстка
+   дёргается на каждой смене категории — а это главное действие на телефоне.
+   Правило из DESIGN.md §4.3; оно применяется только там, где палец, чтобы на
+   мониторе плотность прототипа сохранилась. */
+/* Подсказка по уже названным получателям. Жёлтая, как маркер: это предложение,
+   а не сделанное действие — нажать должен человек. */
+.f-suggest {
+  appearance: none;
+  border: var(--el__border-width-s) solid var(--el__text);
+  background: var(--el__mark);
+  color: var(--el__color-gray-950);
+  font: inherit;
+  font-size: var(--el__fs-xs);
+  padding: 0.15em 0.4em;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+@media (pointer: coarse) {
+  .f-tx__cat select,
+  .f-unknown__pick select {
+    font-size: 16px;
+  }
+}
+
 .f-tx__sum {
   font-size: var(--el__fs-s);
   white-space: nowrap;
@@ -890,6 +1031,49 @@ input {
 }
 
 /* ─────────────────────────── Подвал ─────────────────────────── */
+
+/* Словарь правил: показываем, по каким основаниям раскладываются чужие деньги. */
+.f-rules__row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6em;
+  padding: 0.4em 0;
+  border-bottom: var(--el__border-width-s) solid var(--el__border);
+  font-size: var(--el__fs-s);
+}
+
+.f-rules__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.f-rules__cat {
+  margin-inline-start: auto;
+  color: var(--el__text-caption);
+  white-space: nowrap;
+}
+
+.f-rules__group {
+  padding: 0.5em 0;
+  border-bottom: var(--el__border-width-s) solid var(--el__border);
+}
+
+.f-rules__cat--head {
+  display: block;
+  margin: 0 0 0.25em;
+  color: var(--el__text);
+  font-size: var(--el__fs-s);
+}
+
+.f-rules__words {
+  display: block;
+  font-size: var(--el__fs-xs);
+  color: var(--el__text-caption);
+  line-height: 1.6;
+  word-break: break-word;
+}
 
 .f-foot {
   margin-top: 1.8em;

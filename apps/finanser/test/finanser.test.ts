@@ -10,7 +10,7 @@ import { planeOfTx } from '../src/plane.js'
 import { groupByMerchant, merchantKey, merchantLabel } from '../src/merchant.js'
 import { completeMonths, subscriptions, summarize } from '../src/insights.js'
 import { dayLabel, monthLabel, txId } from '../src/model.js'
-import { buildExport } from '../src/export.js'
+import { buildExport, looksLikeExport, readExport } from '../src/export.js'
 import type { Tx } from '../src/model.js'
 
 describe('деньги — целые копейки', () => {
@@ -492,9 +492,11 @@ describe('выгрузка JSON', () => {
       skipped: 0,
       converted: 0,
       loadedAt: '2026-01-06',
+      foreign: 0,
       hasCodes: true,
+      key: 'test',
     })
-    expect(data).toMatchObject({ format: 'elementar.finanser', version: 1, units: 'kopeck' })
+    expect(data).toMatchObject({ format: 'elementar.finanser', version: 2, units: 'kopeck' })
     expect(data.transactions[0]).toMatchObject({
       amount: -123450,
       category: 'Продукты',
@@ -694,5 +696,93 @@ describe('новые категории', () => {
     expect(merchantKey('Оплата в platipomiru 6728 БИК 044525974 ИНН 7710140679')).toBe(
       merchantKey('Оплата в platipomiru'),
     )
+  })
+})
+
+describe('перенос: выгрузка и возврат', () => {
+  const rows = () =>
+    categorizeAll(
+      [tx('2026-01-05', -123450, 'PYATEROCHKA'), tx('2026-01-06', -5000, 'OOO ZAGADKA')],
+      {},
+    )
+
+  it('возит правки вместе с операциями', () => {
+    const data = buildExport(rows(), null, { a: 'Подарки' }, { ZAGADKA: 'Дети' })
+    const back = readExport(JSON.stringify(data))
+    expect(back.error).toBeNull()
+    expect(back.transactions).toHaveLength(2)
+    expect(back.overrides).toEqual({ a: 'Подарки' })
+    expect(back.merchantOverrides).toEqual({ ZAGADKA: 'Дети' })
+  })
+
+  it('копейки переживают круг без потерь', () => {
+    const back = readExport(JSON.stringify(buildExport(rows(), null)))
+    expect(back.transactions[0]?.amount).toBe(-123450)
+  })
+
+  it('не принимает чужой и битый файл', () => {
+    expect(readExport('не json').error).not.toBeNull()
+    expect(readExport('{"format":"чужой"}').error).not.toBeNull()
+    expect(readExport('{"format":"elementar.finanser"}').error).not.toBeNull()
+  })
+
+  it('молча выбрасывает несуществующую категорию, а не показывает её', () => {
+    const data = buildExport(rows(), null)
+    const spoiled = { ...data, overrides: { a: 'Криптовалюта', b: 'Подарки' } }
+    const back = readExport(JSON.stringify(spoiled))
+    expect(back.overrides).toEqual({ b: 'Подарки' })
+  })
+
+  it('узнаёт свою выгрузку до разбора таблицы', () => {
+    expect(looksLikeExport(JSON.stringify(buildExport(rows(), null)))).toBe(true)
+    expect(looksLikeExport('Дата операции;Сумма операции')).toBe(false)
+  })
+})
+
+describe('несколько выписок', () => {
+  it('одинаковые покупки с разных счетов не схлопываются', () => {
+    // Две одинаковые чашки кофе в один день с дебетовой и с кредитной карты.
+    // Без ключа выписки у них совпадал бы идентификатор, и вторая исчезала бы
+    // при склейке — то есть пропадали бы деньги.
+    const one = [HEADER, row('05.01.2026', '-300,00', 'Кафе', 'SURF COFFEE')].join('\n')
+    const two = [
+      HEADER,
+      row('05.01.2026', '-300,00', 'Кафе', 'SURF COFFEE'),
+      row('06.01.2026', '-900,00', 'Кафе', 'SURF COFFEE'),
+    ].join('\n')
+    const a = parseStatementText(one).transactions
+    const b = parseStatementText(two).transactions
+    expect(a[0]?.id).not.toBe(b[b.length - 1]?.id)
+  })
+
+  it('повторная загрузка того же файла не плодит дублей', () => {
+    const csv = [
+      HEADER,
+      row('05.01.2026', '-300,00', 'Кафе', 'SURF COFFEE'),
+      row('06.01.2026', '-900,00', 'Кафе', 'DODO PIZZA'),
+    ].join('\n')
+    const first = parseStatementText(csv).transactions.map((t) => t.id)
+    const again = parseStatementText(csv).transactions.map((t) => t.id)
+    expect(again).toEqual(first)
+  })
+})
+
+describe('валюта', () => {
+  it('считает операции, которые пересчитать не удалось', () => {
+    // Банк дал сумму только в евро — пересчитать не во что. Такая строка
+    // попадает в рубли и портит год; молчать об этом нельзя.
+    const csv = [
+      HEADER,
+      row('05.01.2026', '-25,00', 'Рестораны', 'CAFE ROMA', 'OK', 'EUR', '-25,00', 'EUR'),
+      row('06.01.2026', '-30,00', 'Рестораны', 'CAFE ROMA', 'OK', 'EUR', '-3 000,00', 'RUB'),
+    ].join('\n')
+    const res = parseStatementText(csv)
+    expect(res.converted).toBe(1)
+    expect(res.foreign).toBe(1)
+  })
+
+  it('на рублёвой выписке молчит', () => {
+    const csv = [HEADER, row('05.01.2026', '-100,00', 'Кафе', 'SURF COFFEE')].join('\n')
+    expect(parseStatementText(csv).foreign).toBe(0)
   })
 })

@@ -14,11 +14,13 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="финансер" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <!-- Светлая тема без варианта: токен-слой прототипа (Д-017) тёмного режима
-         не описывает, а подбирать его за дизайнера — значит развести корпус
-         с прототипом молча. -->
-    <meta name="theme-color" content="#FFFFFF" />
-    <meta name="color-scheme" content="light" />
+    <!-- Тёмная сторона взята из блока `.dark` в токенах дизайнера, своих цветов
+         не добавлено (Д-017). `color-scheme: light dark` нужен, чтобы холст под
+         страницей браузер покрасил сам: инлайн-скрипта темы здесь нет, и без
+         этого первый кадр был бы светлым на тёмном устройстве. -->
+    <meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#121214" media="(prefers-color-scheme: dark)" />
+    <meta name="color-scheme" content="light dark" />
     <meta name="referrer" content="no-referrer" />
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="i/app-192.png" type="image/png" />

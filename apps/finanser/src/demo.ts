@@ -33,6 +33,13 @@ const MERCHANTS: readonly Merchant[] = [
   { name: 'MOSGORTRANS', min: 60, max: 120 },
   { name: 'LEROY MERLIN', min: 800, max: 9000 },
   { name: 'ZAGADKA TRADE SPB', min: 300, max: 2200 },
+  // Ниже — намеренно неопознаваемые имена. Без них «Разбор непонятного» в демо
+  // пуст, и человек не видит ни того, что словарь знает не всё, ни того, как
+  // это чинится одним движением. Суммы у них небольшие: демо должно показать
+  // механизм, а не убедить, что финансер ничего не умеет.
+  { name: 'OOO SVETLYJ PUT MOSKVA RUS', min: 200, max: 900 },
+  { name: 'IP KOROLEV A A MOSCOW RUS', min: 150, max: 700 },
+  { name: 'MASTERSKAYA 12 MOSCOW RUS', min: 300, max: 1200 },
 ]
 
 const DAYS_IN_MONTH = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31] as const

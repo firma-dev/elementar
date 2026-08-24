@@ -205,3 +205,31 @@ export function groupByMerchant(rows: readonly Categorized[]): MerchantGroup[] {
   }
   return [...map.values()].sort((a, b) => b.total - a.total)
 }
+
+/**
+ * Подсказка по уже сделанным правкам.
+ *
+ * Человек назвал «VV_9688» продуктами — почти наверняка «VV_6939_KCO» тоже
+ * продукты. Терминалы одной сети отличаются номером, а имя остаётся общим.
+ *
+ * Это именно подсказка, а не автоматическое действие. Угаданная категория
+ * выглядит так же правдоподобно, как верная, и один раз это уже стоило
+ * четверти годовых трат (Д-018): решение остаётся за человеком.
+ *
+ * Совпадением считается общее слово от четырёх букв. Короче — совпадают
+ * случайно; целиком — это не подсказка, а тот же самый ключ.
+ */
+export function suggestCategory(
+  key: string,
+  named: Readonly<Record<string, Category>>,
+): { category: Category; from: string } | null {
+  const words = new Set(key.split(' ').filter((w) => w.length >= 4))
+  if (words.size === 0) return null
+  for (const [known, category] of Object.entries(named)) {
+    if (known === key) continue
+    for (const word of known.split(' ')) {
+      if (word.length >= 4 && words.has(word)) return { category, from: known }
+    }
+  }
+  return null
+}

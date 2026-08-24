@@ -25,9 +25,13 @@ export interface SourceInfo {
   rows: number
   skipped: number
   converted: number
+  /** Валютные операции, посчитанные как рубли. См. `ParseResult.foreign`. */
+  foreign: number
   loadedAt: string
   /** Были ли в файле MCC и категория банка. См. `ParseResult.hasCodes`. */
   hasCodes: boolean
+  /** Ключ выписки: по нему её операции отличаются от операций других счетов. */
+  key: string
 }
 
 function readJson<T>(key: string, fallback: T): T {
@@ -60,7 +64,16 @@ export const overrides = signal<Overrides>(readJson<Overrides>(KEY_OVERRIDES, {}
 export const merchantOverrides = signal<MerchantOverrides>(
   readJson<MerchantOverrides>(KEY_MERCHANTS, {}),
 )
-export const source = signal<SourceInfo | null>(readJson<SourceInfo | null>(KEY_SOURCE, null))
+/**
+ * Загруженные выписки. Список, а не одна: у человека дебетовая, кредитная и
+ * накопительный, и картина года по одной карте — не картина года.
+ */
+export const sources = signal<SourceInfo[]>(readJson<SourceInfo[]>(KEY_SOURCE, []))
+
+/** Последняя загруженная — для строки над картиной. */
+export const source = computed<SourceInfo | null>(
+  () => sources.value[sources.value.length - 1] ?? null,
+)
 
 /** Сводка считается по нажатию — держим её отдельным сигналом, а не computed. */
 export const summary = signal<Summary | null>(null)
@@ -72,11 +85,64 @@ export const categorized = computed<Categorized[]>(() =>
 
 export const hasData = computed(() => transactions.value.length > 0)
 
-export function setStatement(list: Tx[], info: SourceInfo): void {
+/**
+ * Добавить выписку к уже загруженным.
+ *
+ * Именно добавить, а не заменить: раньше вторая выписка стирала первую, и
+ * свести два счёта было невозможно. Повторная загрузка того же файла ничего не
+ * задваивает — идентификаторы считаны из содержимого (`statementKey`), и
+ * совпадающие строки просто перекрываются.
+ */
+export function addStatement(list: Tx[], info: SourceInfo): void {
+  const byId = new Map<string, Tx>()
+  for (const tx of transactions.value) byId.set(tx.id, tx)
+  for (const tx of list) byId.set(tx.id, tx)
+  const merged = [...byId.values()].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
+
+  const nextSources = sources.value.filter((s) => s.name !== info.name).concat(info)
+  transactions.value = merged
+  sources.value = nextSources
+  summary.value = null
+  writeJson(KEY_TX, merged)
+  writeJson(KEY_SOURCE, nextSources)
+}
+
+/** Убрать одну выписку из склейки вместе с её операциями. */
+export function dropStatement(name: string): void {
+  const gone = sources.value.filter((s) => s.name === name)
+  if (gone.length === 0) return
+  const keys = new Set(gone.map((s) => s.key))
+  const left = transactions.value.filter((tx) => !keys.has(tx.id.split(':')[0] ?? ''))
+  const nextSources = sources.value.filter((s) => s.name !== name)
+  transactions.value = left
+  sources.value = nextSources
+  summary.value = null
+  writeJson(KEY_TX, left)
+  writeJson(KEY_SOURCE, nextSources)
+}
+
+/**
+ * Вернуть всё из своей же выгрузки: операции и обе таблицы правок.
+ *
+ * Отдельно от `setStatement`, потому что смысл другой: там человек принёс
+ * новую выписку, здесь — вернул то, что уже размечал. Правки не дописываются
+ * к текущим, а заменяют их целиком: иначе после переезда получился бы
+ * невидимый гибрид двух разметок.
+ */
+export function restoreEverything(
+  list: Tx[],
+  nextOverrides: Overrides,
+  nextMerchants: MerchantOverrides,
+  info: SourceInfo | null,
+): void {
   transactions.value = list
-  source.value = info
+  overrides.value = { ...nextOverrides }
+  merchantOverrides.value = { ...nextMerchants }
+  sources.value = info === null ? [] : [info]
   summary.value = null
   writeJson(KEY_TX, list)
+  writeJson(KEY_OVERRIDES, nextOverrides)
+  writeJson(KEY_MERCHANTS, nextMerchants)
   writeJson(KEY_SOURCE, info)
 }
 
@@ -91,6 +157,15 @@ export function setCategory(id: string, category: Category): void {
 /** Правка категории у получателя целиком: одна на всю «Пятёрочку» за год. */
 export function setMerchantCategory(key: string, category: Category): void {
   const next: Record<string, Category> = { ...merchantOverrides.value, [key]: category }
+  merchantOverrides.value = next
+  summary.value = null
+  writeJson(KEY_MERCHANTS, next)
+}
+
+/** Снять правку с получателя: он снова попадёт под словарь. */
+export function clearMerchantCategory(key: string): void {
+  const next: Record<string, Category> = { ...merchantOverrides.value }
+  delete next[key]
   merchantOverrides.value = next
   summary.value = null
   writeJson(KEY_MERCHANTS, next)
@@ -119,7 +194,7 @@ export function forgetEverything(): void {
   transactions.value = []
   overrides.value = {}
   merchantOverrides.value = {}
-  source.value = null
+  sources.value = []
   summary.value = null
   try {
     globalThis.localStorage?.removeItem(KEY_TX)

@@ -2,7 +2,7 @@ import { useState } from 'preact/hooks'
 import type { JSX } from 'preact'
 import { CATEGORIES, isCategory } from '../model.js'
 import type { Categorized, Category } from '../model.js'
-import { groupByMerchant } from '../merchant.js'
+import { groupByMerchant, merchantLabel, suggestCategory } from '../merchant.js'
 import { formatShare } from '../money.js'
 import { Amount } from './Amount.js'
 
@@ -12,6 +12,8 @@ export interface UnknownProps {
   totalSpend: number
   /** Были ли в выписке MCC и категория банка. */
   hasCodes: boolean
+  /** Уже названные получатели: из них берутся подсказки для похожих. */
+  named: Readonly<Record<string, Category>>
   onMerchantCategory: (key: string, category: Category) => void
 }
 
@@ -27,6 +29,7 @@ export function Unknown({
   rows,
   totalSpend,
   hasCodes,
+  named,
   onMerchantCategory,
 }: UnknownProps): JSX.Element | null {
   const [limit, setLimit] = useState(PAGE)
@@ -75,6 +78,23 @@ export function Unknown({
             </div>
             <label class="f-unknown__pick">
               <span class="f-unknown__count">{group.count} оп.</span>
+              {(() => {
+                const hint = suggestCategory(group.key, named)
+                if (hint === null) return null
+                return (
+                  <button
+                    type="button"
+                    class="f-suggest"
+                    title={`Похоже на «${merchantLabel(hint.from)}», который вы назвали`}
+                    onClick={(event) => {
+                      event.preventDefault()
+                      onMerchantCategory(group.key, hint.category)
+                    }}
+                  >
+                    похоже на «{hint.category}»
+                  </button>
+                )
+              })()}
               <span class="f-sr">Категория для получателя {group.label}</span>
               <select
                 value=""

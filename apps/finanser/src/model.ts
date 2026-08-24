@@ -170,6 +170,27 @@ function fnv1a(input: string): string {
  * различаются порядковым номером дубля — он же переживает перезагрузку, если
  * порядок строк в выписке не изменился.
  */
-export function txId(date: string, amount: Kopeck, description: string, duplicate: number): string {
-  return `${fnv1a(`${date}|${amount}|${description}`)}${duplicate === 0 ? '' : `-${duplicate}`}`
+export function txId(
+  date: string,
+  amount: Kopeck,
+  description: string,
+  duplicate: number,
+  statement = '',
+): string {
+  const body = fnv1a(`${date}|${amount}|${description}`)
+  const tail = duplicate === 0 ? '' : `-${duplicate}`
+  return statement === '' ? `${body}${tail}` : `${statement}:${body}${tail}`
+}
+
+/**
+ * Ключ выписки. Нужен, когда человек грузит несколько счетов сразу.
+ *
+ * Без него две одинаковые покупки кофе с дебетовой и с кредитной карты имеют
+ * один и тот же идентификатор, и вторая молча исчезает при склейке — то есть
+ * пропадают деньги. С ключом они различаются, а повторная загрузка того же
+ * файла по-прежнему даёт те же идентификаторы и не плодит дублей: ключ считан
+ * из содержимого, а не из времени загрузки.
+ */
+export function statementKey(from: string, to: string, count: number): string {
+  return fnv1a(`${from}|${to}|${count}`)
 }

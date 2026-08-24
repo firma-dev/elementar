@@ -43,7 +43,7 @@ export function CategoryList({
       ? 'var(--el__data-negative)'
       : i < 3
         ? 'var(--el__color-gray-700)'
-        : 'var(--el__color-gray-400)'
+        : 'var(--el__color-gray-500)'
 
   return (
     <ul role="list">
