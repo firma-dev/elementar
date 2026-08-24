@@ -1,9 +1,9 @@
-import { useState } from 'preact/hooks'
 import type { JSX } from 'preact'
 import type { Categorized } from '../model.js'
 import { byPlane, byPlaneCategory } from '../stats.js'
 import { planeOfTx } from '../plane.js'
 import { Amount } from './Amount.js'
+import { Fold } from './Fold.js'
 
 /**
  * Движения денег. Отдельно от трат, потому что переводы, наличные и кредиты
@@ -12,7 +12,6 @@ import { Amount } from './Amount.js'
  * вместо флага «исключить переводы», который человек забудет включить.
  */
 export function MoneyMoves({ rows }: { rows: readonly Categorized[] }): JSX.Element | null {
-  const [open, setOpen] = useState(false)
   const planes = byPlane(rows)
   if (planes.move.count === 0) return null
 
@@ -28,15 +27,8 @@ export function MoneyMoves({ rows }: { rows: readonly Categorized[] }): JSX.Elem
   }
 
   return (
-    <section class="f-moves">
-      <div class="f-moves__head">
-        <h2 class="f-eyebrow f-eyebrow--quiet">Движения денег · не траты</h2>
-        <button type="button" class="f-linkish" aria-expanded={open} onClick={() => setOpen(!open)}>
-          {open ? 'свернуть' : 'раскрыть'}
-        </button>
-      </div>
-
-      <p class="f-note" style="margin-top:0.5em">
+    <Fold title="Движения денег · не траты" meta={`${planes.move.count} оп.`}>
+      <p class="f-note">
         Переводы, наличные и кредиты в картину года не входят: деньги переехали, а не потратились.
       </p>
 
@@ -61,17 +53,15 @@ export function MoneyMoves({ rows }: { rows: readonly Categorized[] }): JSX.Elem
         </div>
       </dl>
 
-      {open ? (
-        <ul class="f-moves__rows" role="list">
-          {moved.map((row) => (
-            <li key={row.category} class="f-moves__row">
-              <span class="f-moves__name">{row.category}</span>
-              <span class="f-moves__kind">{row.count} оп.</span>
-              <Amount value={row.spend} kopecks="never" />
-            </li>
-          ))}
-        </ul>
-      ) : null}
-    </section>
+      <ul class="f-moves__rows" role="list">
+        {moved.map((row) => (
+          <li key={row.category} class="f-moves__row">
+            <span class="f-moves__name">{row.category}</span>
+            <span class="f-moves__kind">{row.count} оп.</span>
+            <Amount value={row.spend} kopecks="never" />
+          </li>
+        ))}
+      </ul>
+    </Fold>
   )
 }

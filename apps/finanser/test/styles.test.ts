@@ -34,13 +34,21 @@ describe('стиль корпуса', () => {
     expect(own).toEqual([])
   })
 
-  it('поля ввода на пальце не мельче 16px', () => {
-    // Меньше — и iOS Safari увеличивает страницу при фокусе, а смена категории
-    // это главное действие на телефоне (DESIGN.md §4.3).
-    const coarse = code.match(/@media \(pointer: coarse\)\s*\{[\s\S]*?\n\}/)?.[0] ?? ''
-    expect(coarse).toContain('select')
-    expect(coarse).toContain('font-size: 16px')
+  it('текстовые поля на пальце не мельче 16px', () => {
+    // Меньше — и iOS Safari увеличивает страницу при фокусе (DESIGN.md §4.3).
+    // Правило касается настоящих полей ввода: только они вызывают фокус-зум.
     expect(code).toMatch(/\.f-search input\s*\{[^}]*font-size:\s*16px/)
+  })
+
+  it('на пальце у выбора мишень не меньше пальца', () => {
+    // Своя кнопка фокус-зума не вызывает, поэтому мишень набирается высотой,
+    // а не кеглем: набранная кеглем, она делала подпись к строке выписки самым
+    // крупным текстом на экране.
+    const coarse = code.match(/@media \(pointer: coarse\)\s*\{[\s\S]*?\n\}/)?.[0] ?? ''
+    expect(coarse).toContain('.f-pick__button')
+    expect(coarse).toMatch(/min-height/)
+    // И заодно кегль здесь не трогается — плотность прототипа остаётся.
+    expect(coarse).not.toContain('font-size')
   })
 
   it('текст не набирается серым с недостаточным контрастом', () => {

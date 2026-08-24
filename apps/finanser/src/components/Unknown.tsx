@@ -5,6 +5,8 @@ import type { Categorized, Category } from '../model.js'
 import { groupByMerchant, merchantLabel, suggestCategory } from '../merchant.js'
 import { formatShare } from '../money.js'
 import { Amount } from './Amount.js'
+import { Fold } from './Fold.js'
+import { Pick } from './Pick.js'
 
 export interface UnknownProps {
   rows: readonly Categorized[]
@@ -45,13 +47,8 @@ export function Unknown({
   const afterShown = tailSum
 
   return (
-    <section class="f-unknown">
-      <div class="f-unknown__head">
-        <h2 class="f-eyebrow">Разбор непонятного</h2>
-        <span class="f-unknown__share">{formatShare(unknownSum, totalSpend)}% трат</span>
-      </div>
-
-      <p class="f-note" style="margin-top:0.5em">
+    <Fold title="Разбор непонятного" meta={`${formatShare(unknownSum, totalSpend)}% трат`}>
+      <p class="f-note">
         Один получатель — одна строка, самые дорогие сверху. Категория, поставленная здесь, ложится
         на все его операции и на будущие выписки тоже.
         {shown.length < groups.length
@@ -76,7 +73,7 @@ export function Unknown({
               </span>
               <Amount class="f-unknown__sum" value={group.total} kopecks="never" />
             </div>
-            <label class="f-unknown__pick">
+            <span class="f-unknown__pick">
               <span class="f-unknown__count">{group.count} оп.</span>
               {(() => {
                 const hint = suggestCategory(group.key, named)
@@ -86,31 +83,21 @@ export function Unknown({
                     type="button"
                     class="f-suggest"
                     title={`Похоже на «${merchantLabel(hint.from)}», который вы назвали`}
-                    onClick={(event) => {
-                      event.preventDefault()
-                      onMerchantCategory(group.key, hint.category)
-                    }}
+                    onClick={() => onMerchantCategory(group.key, hint.category)}
                   >
                     похоже на «{hint.category}»
                   </button>
                 )
               })()}
-              <span class="f-sr">Категория для получателя {group.label}</span>
-              <select
+              <Pick
                 value=""
-                onChange={(event) => {
-                  const next = (event.currentTarget as HTMLSelectElement).value
+                options={CATEGORIES}
+                label={`Категория для получателя ${group.label}`}
+                onChange={(next) => {
                   if (isCategory(next)) onMerchantCategory(group.key, next)
                 }}
-              >
-                <option value="">— выбрать —</option>
-                {CATEGORIES.map((category) => (
-                  <option key={category} value={category}>
-                    {category}
-                  </option>
-                ))}
-              </select>
-            </label>
+              />
+            </span>
           </li>
         ))}
       </ul>
@@ -120,6 +107,6 @@ export function Unknown({
           Ещё · осталось {tail.length} на {Math.round(tailSum / 100)}
         </button>
       ) : null}
-    </section>
+    </Fold>
   )
 }

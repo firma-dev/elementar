@@ -38,7 +38,7 @@ export function RulesView({ named, manualCount, onForget, onBack }: RulesViewPro
 
       <h2 class="f-eyebrow f-secline">Ваши правки</h2>
       {mine.length === 0 ? (
-        <p class="f-note" style="margin-top:0.6em">
+        <p class="f-note">
           Пока ни одной. Назовите получателя в «Разборе непонятного» — правка появится здесь и будет
           применяться ко всем его операциям, включая будущие выписки.
         </p>
@@ -58,16 +58,14 @@ export function RulesView({ named, manualCount, onForget, onBack }: RulesViewPro
         </ul>
       )}
       {manualCount > 0 ? (
-        <p class="f-note" style="margin-top:0.6em">
+        <p class="f-note">
           Кроме того, {manualCount} операций вы поправили поштучно — такие правки видны в самой
           выписке точкой у категории.
         </p>
       ) : null}
 
-      <h2 class="f-eyebrow f-secline" style="margin-top:1.6em">
-        Встроенный словарь · {total} слов
-      </h2>
-      <p class="f-note" style="margin-top:0.6em">
+      <h2 class="f-eyebrow f-secline">Встроенный словарь · {total} слов</h2>
+      <p class="f-note">
         По этим словам финансер узнаёт получателя в описании операции. Словарь — часть сборки и
         отсюда не меняется: ваша правка всегда сильнее его.
       </p>

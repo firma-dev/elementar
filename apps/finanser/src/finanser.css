@@ -81,10 +81,28 @@ a:hover {
 }
 
 button,
-select,
 input {
   font: inherit;
   border-radius: var(--el__radius);
+}
+
+/* ───────────────────── Лестница отступов ───────────────────── */
+
+/* Отступы между блоками считались в `em`, а кегль у блоков разный: у сводки
+   один, у выписки другой. Одно и то же «1.6em» давало на экране 26 и 17
+   пикселей, и рядом с ними жили 6,6 и 20,8 — пять разных зазоров подряд. Глаз
+   читает это как небрежность, даже не умея назвать причину.
+
+   Отсюда четыре ступени в `rem`: они не зависят от кегля соседа, поэтому
+   одинаковый шаг остаётся одинаковым. Пятой ступени нет намеренно — как только
+   она появится, вернётся та же каша.
+
+   Ступени выведены из спейсеров дизайн-системы, своих чисел здесь нет. */
+:root {
+  --f-step-1: calc(var(--el__spacer-s) * 0.5); /* строка и её подпись   */
+  --f-step-2: var(--el__spacer-s); /* внутри блока          */
+  --f-step-3: var(--el__spacer-m); /* между блоками         */
+  --f-step-4: var(--el__spacer-l); /* между разделами       */
 }
 
 /* Экранного диктора касается, глаза — нет. */
@@ -120,7 +138,7 @@ input {
   background: var(--el__mark);
   border: var(--el__border-width-s) solid var(--el__text);
   padding: 0.5em 0.7em;
-  margin-top: 0.8em;
+  margin-top: var(--f-step-2);
   font-size: var(--el__fs-xs);
 }
 
@@ -157,10 +175,13 @@ input {
   color: var(--el__text-caption);
 }
 
+/* Заметка всегда идёт следом за чем-то и всегда отбивается одинаково: раньше
+   этот зазор ставили руками в разметке, каждый раз новым числом. */
 .f-note {
   font-size: var(--el__fs-xs);
   color: var(--el__text-caption);
   line-height: 1.6;
+  margin-top: var(--f-step-2);
 }
 
 /* ──────────────────────── Пустой экран ──────────────────────── */
@@ -236,7 +257,7 @@ input {
 }
 
 .f-err {
-  margin-top: 1em;
+  margin-top: var(--f-step-2);
   border: var(--el__border-width-s) solid var(--el__error);
   color: var(--el__error);
   padding: 0.6em 0.8em;
@@ -245,7 +266,7 @@ input {
 }
 
 .f-howto {
-  margin-top: 1.4em;
+  margin-top: var(--f-step-3);
   background: var(--el__surface);
   border: var(--el__border-width-s) solid var(--el__text);
   padding: 0.9em 0.9em 0.4em;
@@ -265,12 +286,12 @@ input {
 }
 
 .f-demo {
-  margin-top: 1.1em;
+  margin-top: var(--f-step-3);
   font-size: var(--el__fs-s);
 }
 
 .f-hermetic {
-  margin-top: 1.5em;
+  margin-top: var(--f-step-3);
 }
 
 /* ───────────────────── Строка над картиной ───────────────────── */
@@ -299,7 +320,7 @@ input {
 
 /* Список склеенных выписок: видно, из чего сложилась картина. */
 .f-sources {
-  margin-bottom: 1em;
+  margin-bottom: var(--f-step-3);
   border-top: var(--el__border-width-s) solid var(--el__border);
 }
 
@@ -330,7 +351,7 @@ input {
 .f-periods {
   display: flex;
   border: var(--el__border-width-s) solid var(--el__text);
-  margin-bottom: 1em;
+  margin-bottom: var(--f-step-3);
 }
 
 .f-period {
@@ -365,16 +386,19 @@ input {
   display: grid;
   grid-template-columns: 1.7fr 1fr;
   gap: 0.7em;
-  margin-bottom: 1.2em;
+  margin-bottom: var(--f-step-3);
   align-items: stretch;
 }
 
+/* Числа в обеих плитках стоят на одной высоте: `space-between` растаскивал их
+   по краям, и «поступления» висели ниже «трат» без всякой причины. Подпись
+   прижата к низу отдельно — она и держит нижний край. */
 .f-tile {
   border: var(--el__border-width-s) solid var(--el__text);
   padding: 0.6em 0.75em 0.7em;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 0.4em;
 }
 
@@ -407,7 +431,7 @@ input {
   border: var(--el__border-width-s) solid var(--el__text);
   box-shadow: var(--el__shadow-m);
   padding: 0.7em 0.7em 0.6em;
-  margin-bottom: 1.3em;
+  margin-bottom: var(--f-step-3);
 }
 
 .f-chart__head {
@@ -493,59 +517,10 @@ input {
   background: var(--el__text);
 }
 
-.f-month {
-  border: var(--el__border-width-m) solid var(--el__text);
-  box-shadow: var(--el__shadow-m);
-  background: var(--el__surface);
-  padding: 0.8em 0.8em 0.7em;
-  margin-bottom: 1.3em;
-}
-
-.f-month__head {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 0.6em;
-  margin-bottom: 0.8em;
-}
-
-.f-month__name {
-  font-size: var(--el__fs-s);
-  letter-spacing: var(--el__ls-caps-s);
-  text-transform: uppercase;
-}
-
-.f-month__nums {
-  display: flex;
-  gap: 1.4em;
-  align-items: baseline;
-  margin-bottom: 1em;
-  flex-wrap: wrap;
-}
-
-.f-month__k {
-  font-size: var(--el__fs-xs);
-  color: var(--el__text-caption);
-  text-transform: uppercase;
-  letter-spacing: var(--el__ls-caps-s);
-}
-
-.f-month__v {
-  font-size: var(--el__fs-lg);
-}
-
-.f-month__v--in {
-  color: var(--el__success);
-}
-
-.f-month__link {
-  margin-top: 0.8em;
-  font-size: var(--el__fs-xs);
-}
-
 /* ───────────────────────── Категории ───────────────────────── */
 
 .f-secline {
+  margin-top: var(--f-step-4);
   border-bottom: var(--el__border-width-s) solid var(--el__text);
   padding-bottom: 0.4em;
 }
@@ -683,34 +658,30 @@ input {
   gap: 0.6em;
   border-bottom: var(--el__border-width-s) solid var(--el__text);
   padding-bottom: 0.4em;
-  margin-top: 0.4em;
+  margin-top: var(--f-step-2);
 }
 
 .f-tile__sub {
+  margin-top: auto;
+  padding-top: 0.4em;
   font-size: var(--el__fs-xs);
   color: var(--el__text-caption);
+}
+
+/* Возврат к периоду набран кеглем заголовка, рядом с которым стоит. Набранный
+   основным кеглем, он был выше заголовка, и строка разреза становилась на
+   шесть пикселей выше — ровно в тот момент, когда человек ткнул в месяц. */
+.f-scope .f-linkish {
+  font-size: var(--el__fs-xs);
 }
 
 /* ────────────────────── Разбор непонятного ────────────────────── */
 
 .f-unknown {
-  margin-top: 1.6em;
+  margin-top: var(--f-step-3);
   border: var(--el__border-width-m) solid var(--el__text);
   box-shadow: var(--el__shadow-m);
   padding: 0.8em 0.8em 0.6em;
-}
-
-.f-unknown__head {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 0.6em;
-}
-
-.f-unknown__share {
-  font-size: var(--el__fs-xs);
-  color: var(--el__text-caption);
-  white-space: nowrap;
 }
 
 /* Подсказка про выгрузку без кодов: не ошибка, но и не проходная строка. */
@@ -777,29 +748,12 @@ input {
   white-space: nowrap;
 }
 
-.f-unknown__pick select {
-  border: var(--el__border-width-s) solid var(--el__text);
-  background: var(--el__background);
-  color: var(--el__text);
-  font-size: var(--el__fs-xs);
-  padding: 0.2em 0.25em;
-  max-width: 13em;
-  cursor: pointer;
-}
-
 /* ─────────────────────── Движения денег ─────────────────────── */
 
 .f-moves {
-  margin-top: 1.6em;
+  margin-top: var(--f-step-3);
   border-top: var(--el__border-width-s) solid var(--el__text);
   padding-top: 0.7em;
-}
-
-.f-moves__head {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 0.6em;
 }
 
 .f-moves__nums {
@@ -854,7 +808,11 @@ input {
 /* ─────────────────────────── Выписка ─────────────────────────── */
 
 .f-all {
-  margin-top: 1.5em;
+  display: flex;
+  align-items: baseline;
+  gap: var(--el__gap-m);
+  flex-wrap: wrap;
+  margin-top: var(--f-step-4);
   font-size: var(--el__fs-xs);
 }
 
@@ -954,47 +912,36 @@ input {
   margin-top: 0.2em;
 }
 
-/* Метка источника категории: цвет говорит, кто её поставил. */
+/* Метка источника категории: цвет говорит, кто её поставил. Красная — человек,
+   чёрная — разобрано наверняка, серая — догадка по коду, жёлтая в рамке —
+   не разобрано вовсе. */
 .f-tx__mark {
   width: 0.5em;
   height: 0.5em;
   flex-shrink: 0;
 }
 
-.f-tx__cat select {
-  border: none;
-  background: none;
-  color: var(--el__text-caption);
-  font-size: var(--el__fs-xs);
-  padding: 0;
-  max-width: 12em;
-  cursor: pointer;
+.f-tx__mark--said {
+  background: var(--el__accent);
+}
+
+.f-tx__mark--sure {
+  background: var(--el__text);
+}
+
+.f-tx__mark--guess {
+  background: var(--el__text-caption);
+}
+
+.f-tx__mark--none {
+  background: var(--el__mark);
+  border: var(--el__border-width-s) solid var(--el__text);
 }
 
 /* iOS Safari увеличивает страницу при фокусе на поле мельче 16px, и вёрстка
    дёргается на каждой смене категории — а это главное действие на телефоне.
    Правило из DESIGN.md §4.3; оно применяется только там, где палец, чтобы на
    мониторе плотность прототипа сохранилась. */
-/* Подсказка по уже названным получателям. Жёлтая, как маркер: это предложение,
-   а не сделанное действие — нажать должен человек. */
-.f-suggest {
-  appearance: none;
-  border: var(--el__border-width-s) solid var(--el__text);
-  background: var(--el__mark);
-  color: var(--el__color-gray-950);
-  font: inherit;
-  font-size: var(--el__fs-xs);
-  padding: 0.15em 0.4em;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-@media (pointer: coarse) {
-  .f-tx__cat select,
-  .f-unknown__pick select {
-    font-size: 16px;
-  }
-}
 
 .f-tx__sum {
   font-size: var(--el__fs-s);
@@ -1076,7 +1023,7 @@ input {
 }
 
 .f-foot {
-  margin-top: 1.8em;
+  margin-top: var(--f-step-4);
   padding-top: 0.7em;
   border-top: var(--el__border-width-s) solid var(--el__border);
   font-size: var(--el__fs-xs);
@@ -1084,6 +1031,11 @@ input {
   line-height: 1.6;
 }
 
+/* Вес действия. Раньше всё до одного было синей ссылкой — и «вся выписка», и
+   «словарь правил», и «забыть всё». Одинаковый вид у шага вперёд, у справки и
+   у стирания данных читается как небрежность и заодно прячет опасное среди
+   бытового. Три веса: рамка — шаг вперёд, синее — обычное действие, серое —
+   служебное, красное — то, что не отменить. */
 .f-linkish {
   appearance: none;
   border: 0;
@@ -1111,21 +1063,13 @@ input {
    же язык — рамка, капс, без заливок. Тон карточки задаёт только цвет рамки. */
 
 .f-sum {
-  margin-top: 1.6em;
+  margin-top: var(--f-step-3);
   border-top: var(--el__border-width-s) solid var(--el__text);
   padding-top: 0.7em;
 }
 
-.f-sum__head {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 0.6em;
-  margin-bottom: 0.5em;
-}
-
 .f-summary {
-  margin-top: 0.8em;
+  margin-top: var(--f-step-2);
 }
 
 .f-card {
@@ -1158,7 +1102,7 @@ input {
 }
 
 .f-subs {
-  margin-top: 1.2em;
+  margin-top: var(--f-step-3);
 }
 
 .f-subs__title {
@@ -1211,4 +1155,199 @@ input {
 .f-sub--off .f-sub__name,
 .f-sub--off .f-sub__sum {
   color: var(--el__text-caption);
+}
+
+/* ─────────────────── Сворачиваемый раздел ─────────────────── */
+
+/* Заголовок раздела — целиком кнопка: промахнуться мимо мишени в одну строку
+   на телефоне легко, поэтому мишень — вся строка. Закрытый раздел показывает
+   слева знак, справа — короткую приписку (доля, число операций), чтобы решение
+   «открывать или нет» принималось без открывания. */
+
+.f-fold {
+  margin-top: var(--f-step-3);
+}
+
+.f-fold__head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6em;
+  width: 100%;
+  border: none;
+  background: none;
+  color: inherit;
+  text-align: left;
+  padding: 0.35em 0;
+  border-bottom: var(--el__border-width-s) solid var(--el__text);
+  cursor: pointer;
+}
+
+/* Плюс и минус одной ширины: иначе заголовок дёргается влево-вправо при каждом
+   раскрытии, а именно из такой мелочи собирается ощущение шаткости. */
+.f-fold__sign {
+  display: inline-block;
+  width: 1ch;
+  flex-shrink: 0;
+  color: var(--el__text-caption);
+}
+
+.f-fold__title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.f-fold__meta {
+  margin-left: auto;
+  font-size: var(--el__fs-xs);
+  color: var(--el__text-caption);
+  white-space: nowrap;
+}
+
+.f-fold__body {
+  padding-top: var(--f-step-1);
+}
+
+.f-sum__act {
+  margin-top: var(--f-step-2);
+}
+
+/* ────────────────────────── Выбор ────────────────────────── */
+
+/* Свой список вместо нативного `<select>`. Нативное поле рисует операционная
+   система: собственные скругления, собственная тень, собственная стрелка,
+   собственный шрифт в раскрытом списке. Здесь всё сделано из прямых рамок и
+   одного OCR, и поле выглядит вставленным из другой программы — а смена
+   категории на этом экране главное действие, так что чужеродность попадается
+   на глаза чаще всего остального. */
+
+.f-pick {
+  position: relative;
+  display: inline-block;
+}
+
+.f-pick__button {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35em;
+  max-width: 13em;
+  border: var(--el__border-width-s) solid var(--el__text);
+  background: var(--el__background);
+  color: var(--el__text);
+  font-size: var(--el__fs-xs);
+  padding: 0.2em 0.35em;
+  cursor: pointer;
+  text-align: left;
+}
+
+/* Тихий вид — для строк выписки, где категория подпись, а не поле ввода. */
+.f-pick--quiet .f-pick__button {
+  border-color: transparent;
+  background: none;
+  color: var(--el__text-caption);
+  padding: 0;
+  max-width: 12em;
+}
+
+.f-pick--quiet .f-pick__button:hover {
+  color: var(--el__text);
+}
+
+.f-pick__value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.f-pick__caret {
+  flex-shrink: 0;
+  width: 0.4em;
+  height: 0.4em;
+  border-right: var(--el__border-width-s) solid currentcolor;
+  border-bottom: var(--el__border-width-s) solid currentcolor;
+  transform: translateY(-0.15em) rotate(45deg);
+}
+
+.f-pick__list {
+  position: absolute;
+  z-index: 2;
+  top: calc(100% + 2px);
+  left: 0;
+  min-width: 11em;
+  max-height: 14em;
+  overflow-y: auto;
+  background: var(--el__background);
+  border: var(--el__border-width-s) solid var(--el__text);
+  box-shadow: var(--el__shadow-s);
+}
+
+.f-pick__option {
+  display: block;
+  width: 100%;
+  border: none;
+  background: none;
+  color: var(--el__text);
+  font-size: var(--el__fs-xs);
+  text-align: left;
+  padding: 0.3em 0.5em;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.f-pick__option--on {
+  background: var(--el__mark);
+  color: var(--el__color-gray-950);
+}
+
+/* Правило DESIGN.md §4.3 — «на пальце не мельче 16px» — написано про поля
+   ввода: iOS Safari увеличивает страницу при фокусе на `input` и `select`
+   мельче этого кегля, и вёрстка дёргается. Своя кнопка фокус-зума не вызывает,
+   поэтому раздувать шрифт не нужно — нужен палец. Мишень набирается высотой,
+   а не кеглем: набранная кеглем, она делала из подписи к строке самый крупный
+   текст на экране. */
+@media (pointer: coarse) {
+  .f-pick__button {
+    min-height: 2.4em;
+    padding: 0.35em 0.5em;
+  }
+
+  .f-pick--quiet .f-pick__button {
+    padding: 0.35em 0;
+  }
+
+  .f-pick__option {
+    min-height: 2.4em;
+    display: flex;
+    align-items: center;
+  }
+}
+
+/* Шаг вперёд: единственное действие на экране, ради которого он и открыт. */
+.f-go {
+  display: inline-block;
+  border: var(--el__border-width-s) solid var(--el__text);
+  background: var(--el__background);
+  color: var(--el__text);
+  font: inherit;
+  padding: 0.3em 0.6em;
+  cursor: pointer;
+}
+
+.f-go:hover {
+  background: var(--el__mark);
+  color: var(--el__color-gray-950);
+}
+
+.f-linkish--quiet {
+  color: var(--el__text-caption);
+}
+
+.f-linkish--quiet:hover {
+  color: var(--el__text);
+}
+
+.f-linkish--danger {
+  color: var(--el__accent);
 }

@@ -32,6 +32,7 @@ import { Amount } from './components/Amount.js'
 import { MonthChart } from './components/MonthChart.js'
 import { MoneyMoves } from './components/MoneyMoves.js'
 import { CategoryList } from './components/CategoryList.js'
+import { Fold } from './components/Fold.js'
 import { Unknown } from './components/Unknown.js'
 import { TxList } from './components/TxList.js'
 import { SummaryView } from './components/SummaryView.js'
@@ -264,7 +265,7 @@ export function App(): JSX.Element {
             </ol>
           </section>
 
-          <p class="f-note" style="margin-top:0.9em">
+          <p class="f-note">
             Сюда же можно вернуть свою выгрузку JSON — вместе с ней вернутся все проставленные вами
             категории.
           </p>
@@ -294,7 +295,11 @@ export function App(): JSX.Element {
           ? (info?.name ?? '')
           : `${loaded.length} выписки · ${rows.length} операций`}
       </span>
-      <button type="button" class="f-linkish" onClick={() => fileRef.current?.click()}>
+      <button
+        type="button"
+        class="f-linkish f-linkish--quiet"
+        onClick={() => fileRef.current?.click()}
+      >
         добавить
       </button>
     </div>
@@ -310,7 +315,11 @@ export function App(): JSX.Element {
           <li key={s.name} class="f-sources__row">
             <span class="f-sources__name">{s.name}</span>
             <span class="f-sources__meta">{s.rows} операций</span>
-            <button type="button" class="f-linkish" onClick={() => dropStatement(s.name)}>
+            <button
+              type="button"
+              class="f-linkish f-linkish--quiet"
+              onClick={() => dropStatement(s.name)}
+            >
               убрать
             </button>
           </li>
@@ -320,7 +329,7 @@ export function App(): JSX.Element {
 
   const footer = (
     <footer class="f-foot">
-      <button type="button" class="f-linkish" onClick={() => setView('rules')}>
+      <button type="button" class="f-linkish f-linkish--quiet" onClick={() => setView('rules')}>
         словарь правил →
       </button>
       <br />
@@ -328,7 +337,7 @@ export function App(): JSX.Element {
       компьютере так делать не стоит —{' '}
       <button
         type="button"
-        class="f-linkish"
+        class="f-linkish f-linkish--danger"
         onClick={() => {
           forgetEverything()
           setMonth(null)
@@ -438,11 +447,25 @@ export function App(): JSX.Element {
             {month === null ? 'Траты за период' : `Траты · ${monthLabel(month)}`}
           </span>
           <Amount class="f-tile__v" value={planes.spend.total} kopecks="never" />
-          {month === null ? null : (
-            <span class="f-tile__sub">
-              {formatShare(planes.spend.total, yearPlanes.spend.total)}% года
-            </span>
-          )}
+          {/* Подпись стоит всегда, даже когда месяц не выбран. Раньше она
+              появлялась только с выбором месяца, и плитка вырастала на двадцать
+              пикселей — график уезжал вниз ровно из-под пальца, которым по нему
+              и ткнули. Пустое место оставлять нечестно: во весь период там
+              стоит средний месяц, он и отвечает, много это или мало. */}
+          <span class="f-tile__sub">
+            {month === null ? (
+              <>
+                в среднем{' '}
+                <Amount
+                  value={months.length === 0 ? 0 : Math.round(planes.spend.total / months.length)}
+                  kopecks="never"
+                />{' '}
+                в месяц
+              </>
+            ) : (
+              `${formatShare(planes.spend.total, yearPlanes.spend.total)}% года`
+            )}
+          </span>
         </div>
         <div class="f-tile">
           <span class="f-tile__k">Поступления</span>
@@ -490,26 +513,22 @@ export function App(): JSX.Element {
 
       <MoneyMoves rows={scope} />
 
-      <section class="f-sum">
-        <div class="f-sum__head">
-          <h2 class="f-eyebrow">Счётная сводка</h2>
+      <Fold title="Счётная сводка" meta={summary.value === null ? 'не посчитана' : undefined}>
+        <p class="f-note">
+          Финансер ничего не считает в фоне. Сводка появится, когда вы её попросите.
+        </p>
+        <p class="f-sum__act">
           <button type="button" class="f-linkish" onClick={() => compute(scope)}>
             {summary.value === null ? 'посчитать →' : 'пересчитать'}
           </button>
-        </div>
-        {summary.value === null ? (
-          <p class="f-note">
-            Финансер ничего не считает в фоне. Сводка появится, когда вы её попросите.
-          </p>
-        ) : (
-          <SummaryView summary={summary.value} />
-        )}
-      </section>
+        </p>
+        {summary.value === null ? null : <SummaryView summary={summary.value} />}
+      </Fold>
 
       <p class="f-all">
         <button
           type="button"
-          class="f-linkish"
+          class="f-go"
           onClick={() => {
             setCategoryFilter(null)
             setView('txs')
@@ -518,11 +537,10 @@ export function App(): JSX.Element {
           {month === null
             ? `вся выписка · ${rows.length} операций →`
             : `выписка за ${monthLabel(month)} · ${scope.length} операций →`}
-        </button>
-        {' · '}
+        </button>{' '}
         <button
           type="button"
-          class="f-linkish"
+          class="f-linkish f-linkish--quiet"
           onClick={() =>
             downloadJson(
               buildExport(rows, info, overrides.value, merchantOverrides.value),

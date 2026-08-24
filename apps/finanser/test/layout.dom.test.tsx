@@ -1,8 +1,10 @@
 // @vitest-environment happy-dom
 import { render } from 'preact'
+import { act } from 'preact/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { CategoryList } from '../src/components/CategoryList.js'
 import { Unknown } from '../src/components/Unknown.js'
+import { Pick } from '../src/components/Pick.js'
 import { categorizeAll } from '../src/categorize.js'
 import type { Categorized, Category, Tx } from '../src/model.js'
 
@@ -135,6 +137,14 @@ describe('список категорий', () => {
   })
 })
 
+/** Разбор живёт в свёрнутом разделе: сначала открыть, потом проверять. */
+const open = (host: HTMLElement): void => {
+  // Состояние хука доезжает до разметки не сразу — `act` дожидается перерисовки.
+  act(() => {
+    host.querySelector<HTMLButtonElement>('.f-fold__head')?.click()
+  })
+}
+
 describe('разбор непонятного', () => {
   const props = {
     rows,
@@ -145,25 +155,86 @@ describe('разбор непонятного', () => {
 
   it('говорит про выгрузку без кодов и молчит, когда коды есть', () => {
     render(<Unknown {...props} hasCodes={false} />, root)
+    // Пока раздел закрыт, из него не видно ничего, кроме заголовка.
+    expect(root.querySelector('.f-hint')).toBeNull()
+    open(root)
     expect(root.querySelector('.f-hint')?.textContent).toContain('нет кодов операций')
 
     document.body.innerHTML = ''
     const second = document.createElement('div')
     document.body.appendChild(second)
     render(<Unknown {...props} hasCodes />, second)
+    open(second)
     expect(second.querySelector('.f-hint')).toBeNull()
   })
 
-  it('в каждой строке есть выбор категории со всем списком', () => {
+  it('в каждой строке есть свой выбор категории, а не нативный select', () => {
     render(<Unknown {...props} hasCodes />, root)
-    const select = root.querySelector('select')
-    expect(select).not.toBeNull()
-    // Первый пункт — приглашение, дальше весь список категорий.
-    expect((select?.options.length ?? 0) > 20).toBe(true)
+    open(root)
+    // Нативного поля здесь быть не должно: его рисует операционная система.
+    expect(root.querySelector('select')).toBeNull()
+    expect(root.querySelector('.f-pick__button')).not.toBeNull()
+    // Список раскрывается только по нажатию — закрытым он ничего не занимает.
+    expect(root.querySelector('.f-pick__list')).toBeNull()
+    act(() => {
+      root.querySelector<HTMLButtonElement>('.f-pick__button')?.click()
+    })
+    expect(root.querySelectorAll('.f-pick__option').length > 20).toBe(true)
   })
 
   it('предлагает категорию по уже названному похожему получателю', () => {
     render(<Unknown {...props} hasCodes named={{ 'ZAGADKA TORG': 'Дети' as Category }} />, root)
+    open(root)
     expect(root.querySelector('.f-suggest')?.textContent).toContain('Дети')
+  })
+})
+
+describe('выбор', () => {
+  const options = ['Продукты', 'Кафе', 'Транспорт']
+  const draw = (onChange = (): void => {}): void => {
+    render(<Pick value="" options={options} label="Категория" onChange={onChange} />, root)
+  }
+  const key = (name: string): void => {
+    act(() => {
+      root
+        .querySelector('.f-pick__button')
+        ?.dispatchEvent(new KeyboardEvent('keydown', { key: name, bubbles: true }))
+    })
+  }
+
+  it('показывает приглашение, пока ничего не выбрано', () => {
+    draw()
+    expect(root.querySelector('.f-pick__value')?.textContent).toBe('— выбрать —')
+  })
+
+  it('открывается стрелкой и выбирает с клавиатуры', () => {
+    const picked = vi.fn()
+    draw(picked as unknown as () => void)
+    key('ArrowDown')
+    expect(root.querySelector('.f-pick__list')).not.toBeNull()
+    key('ArrowDown')
+    key('Enter')
+    // Открылись на первом пункте, шагнули на второй — выбран он.
+    expect(picked).toHaveBeenCalledWith('Кафе')
+    // После выбора список закрывается сам.
+    expect(root.querySelector('.f-pick__list')).toBeNull()
+  })
+
+  it('закрывается по Esc, ничего не выбрав', () => {
+    const picked = vi.fn()
+    draw(picked as unknown as () => void)
+    key('ArrowDown')
+    key('Escape')
+    expect(root.querySelector('.f-pick__list')).toBeNull()
+    expect(picked).not.toHaveBeenCalled()
+  })
+
+  it('End уводит на последний пункт', () => {
+    const picked = vi.fn()
+    draw(picked as unknown as () => void)
+    key('ArrowDown')
+    key('End')
+    key('Enter')
+    expect(picked).toHaveBeenCalledWith('Транспорт')
   })
 })

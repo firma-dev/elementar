@@ -4,6 +4,7 @@ import { CATEGORIES, dayLabel, isCategory } from '../model.js'
 import type { Categorized, Category } from '../model.js'
 import { merchantLabel } from '../merchant.js'
 import { Amount } from './Amount.js'
+import { Pick } from './Pick.js'
 
 export interface TxListProps {
   rows: readonly Categorized[]
@@ -24,20 +25,22 @@ const SOURCE_HINT: Readonly<Record<Categorized['source'], string>> = {
 }
 
 /** Цвет метки говорит, кто поставил категорию. Взято из прототипа. */
+/** Метка источника категории. Цвет живёт в стилях, здесь только имя вида. */
 const MARK: Readonly<Record<Categorized['source'], string>> = {
-  manual: 'var(--el__accent)',
-  merchant: 'var(--el__accent)',
-  operation: 'var(--el__text)',
-  rule: 'var(--el__text)',
-  mcc: 'var(--el__text-caption)',
-  bank: 'var(--el__text-caption)',
-  fallback: 'var(--el__mark)',
+  manual: 'f-tx__mark--said',
+  merchant: 'f-tx__mark--said',
+  operation: 'f-tx__mark--sure',
+  rule: 'f-tx__mark--sure',
+  mcc: 'f-tx__mark--guess',
+  bank: 'f-tx__mark--guess',
+  fallback: 'f-tx__mark--none',
 }
 
 /**
  * Выписка. Категория правится прямо в строке — правка сильнее любого правила и
- * запоминается (ТЗ §2 п.3). Выбор сделан нативным `<select>`: на телефоне это
- * системное колесо, которое работает без нашего кода.
+ * запоминается (ТЗ §2 п.3). Выбор — свой (`Pick`), а не нативный `<select>`:
+ * системное поле рисуется по правилам операционной системы и рядом с прямыми
+ * рамками корпуса выглядит вставленным из другой программы.
  */
 export function TxList({ rows, onCategory }: TxListProps): JSX.Element {
   const [limit, setLimit] = useState(PAGE)
@@ -54,29 +57,18 @@ export function TxList({ rows, onCategory }: TxListProps): JSX.Element {
             <span class="f-tx__desc" title={tx.description}>
               {merchantLabel(tx.description)}
             </span>
-            <label class="f-tx__cat" title={SOURCE_HINT[tx.source]}>
-              <span
-                class="f-tx__mark"
-                style={`background:${MARK[tx.source]};${
-                  tx.source === 'fallback' ? 'border:1px solid var(--el__text)' : ''
-                }`}
-                aria-hidden="true"
-              />
-              <span class="f-sr">Категория операции «{tx.description}»</span>
-              <select
+            <span class="f-tx__cat" title={SOURCE_HINT[tx.source]}>
+              <span class={`f-tx__mark ${MARK[tx.source]}`} aria-hidden="true" />
+              <Pick
+                quiet
                 value={tx.category}
-                onChange={(event) => {
-                  const next = (event.currentTarget as HTMLSelectElement).value
+                options={CATEGORIES}
+                label={`Категория операции «${tx.description}»`}
+                onChange={(next) => {
                   if (isCategory(next)) onCategory(tx.id, next)
                 }}
-              >
-                {CATEGORIES.map((category) => (
-                  <option key={category} value={category}>
-                    {category}
-                  </option>
-                ))}
-              </select>
-            </label>
+              />
+            </span>
           </span>
           <Amount
             class={tx.amount > 0 ? 'f-tx__sum f-tx__sum--in' : 'f-tx__sum'}
