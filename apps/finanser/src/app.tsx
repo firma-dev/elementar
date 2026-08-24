@@ -776,11 +776,17 @@ export function App(): JSX.Element {
         }}
       />
 
-      {/* Все операции, а не отрезок: за один день приходов нет, и раздел
-          исчезал бы ровно тогда, когда о нём вспоминают (Д-026). */}
-      {/* Ещё категории — сразу под картиной по категориям: включают их,
-          глядя именно на неё. */}
-      <Extras enabled={enabledExtras} pending={pending} onToggle={toggleExtra} />
+      {/* Порядок разделов: сначала то, что сообщает, потом то, что настраивает.
+          Разбор непонятного и наличные — первыми: они сильнее всего меняют
+          картину, всё остальное её только объясняет. */}
+      <Unknown
+        rows={scope}
+        totalSpend={planes.spend.total}
+        hasCodes={info?.hasCodes ?? true}
+        named={merchantOverrides.value}
+        options={options}
+        onMerchantCategory={setMerchantCategory}
+      />
 
       {/* Наличные — рядом с разбором непонятного: обе про одно, про деньги,
           о которых выписка не сказала ничего. */}
@@ -796,26 +802,12 @@ export function App(): JSX.Element {
           не выбирает каждый день, а обнаруживает раз в полгода. */}
       <Regular rows={onAccount} edge={edge} />
 
+      {/* Все операции, а не отрезок: за один день приходов нет, и раздел
+          исчезал бы ровно тогда, когда о нём вспоминают (Д-026). */}
+
       <IncomeView rows={onAccount} edge={edge} total={allIncome as Kopeck} />
 
-      <Unknown
-        rows={scope}
-        totalSpend={planes.spend.total}
-        hasCodes={info?.hasCodes ?? true}
-        named={merchantOverrides.value}
-        options={options}
-        onMerchantCategory={setMerchantCategory}
-      />
-
       <MoneyMoves rows={scope} />
-
-      <PlanView
-        plan={plan.value}
-        setAside={setAside as Kopeck}
-        open={planOpen}
-        onOpenChange={setPlanOpen}
-        onChange={setPlan}
-      />
 
       <Fold title="Счётная сводка" meta={summary.value === null ? 'не посчитана' : undefined}>
         <p class="f-note">
@@ -829,6 +821,17 @@ export function App(): JSX.Element {
         {summary.value === null ? null : <SummaryView summary={summary.value} />}
       </Fold>
 
+      {/* Ещё категории — сразу под картиной по категориям: включают их,
+          глядя именно на неё. */}
+      <Extras enabled={enabledExtras} pending={pending} onToggle={toggleExtra} />
+
+      <PlanView
+        plan={plan.value}
+        setAside={setAside as Kopeck}
+        open={planOpen}
+        onOpenChange={setPlanOpen}
+        onChange={setPlan}
+      />
       <Balance onAccount={balance as Kopeck | null} next={arrival} saved={plan.value.saved} />
 
       <p class="f-all">
