@@ -1784,3 +1784,19 @@ input {
   font-size: var(--el__fs-xs);
   color: var(--el__text-caption);
 }
+
+/* Банк — подпись над группой счетов, а не второй уровень переключения: два
+   уровня стоили бы двух касаний вместо одного. Появляется, только когда
+   названо больше одного банка. */
+.f-accs__bank {
+  margin-top: var(--f-step-1);
+}
+
+.f-accs__bankname {
+  display: block;
+  font-size: var(--el__fs-xs);
+  color: var(--el__text-caption);
+  text-transform: uppercase;
+  letter-spacing: var(--el__ls-caps-s);
+  margin-bottom: 0.2em;
+}

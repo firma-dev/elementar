@@ -26,6 +26,12 @@ export interface AccountsProps {
  *
  * «Все счета» стоит первым и выбран по умолчанию: вопрос «сколько я трачу»
  * задают про все деньги, а не про одну карту.
+ *
+ * Банк — не второй уровень переключения, а подпись над группой. Два уровня
+ * стоили бы двух касаний вместо одного, а счетов у человека обычно три-пять:
+ * прятать их за банком значило бы платить каждый день за порядок, который
+ * виден и так. Подпись появляется, только когда банк назван, и только когда
+ * названо больше одного: над единственной группой она ничего не сообщает.
  */
 /**
  * Классы тонов перечислены, а не собраны из шаблона.
@@ -48,6 +54,28 @@ export function Accounts({
   if (list.length < 2) return null
 
   const current = list.find((a) => a.key === editing) ?? null
+  const groups = groupByBank(list)
+  const named = groups.filter((g) => g.bank !== '').length
+
+  const chip = (account: Account): JSX.Element => (
+    <button
+      key={account.key}
+      type="button"
+      class={[
+        'f-acc',
+        TONE[account.tone % TONE.length] ?? TONE[0],
+        active === account.key ? 'f-acc--on' : '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
+      aria-pressed={active === account.key}
+      title={`${account.bank === '' ? '' : `${account.bank} · `}${counts[account.key] ?? 0} операций`}
+      onClick={() => onSelect(account.key)}
+    >
+      <span class="f-acc__dot" aria-hidden="true" />
+      {account.name}
+    </button>
+  )
 
   return (
     <div class="f-accs">
@@ -60,26 +88,17 @@ export function Accounts({
         >
           все счета
         </button>
-        {list.map((account) => (
-          <button
-            key={account.key}
-            type="button"
-            class={[
-              'f-acc',
-              TONE[account.tone % TONE.length] ?? TONE[0],
-              active === account.key ? 'f-acc--on' : '',
-            ]
-              .filter(Boolean)
-              .join(' ')}
-            aria-pressed={active === account.key}
-            title={`${counts[account.key] ?? 0} операций`}
-            onClick={() => onSelect(account.key)}
-          >
-            <span class="f-acc__dot" aria-hidden="true" />
-            {account.name}
-          </button>
-        ))}
+        {named < 2 ? list.map(chip) : null}
       </div>
+
+      {named < 2
+        ? null
+        : groups.map((group) => (
+            <div key={group.bank} class="f-accs__bank">
+              <span class="f-accs__bankname">{group.bank === '' ? 'без банка' : group.bank}</span>
+              <div class="f-accs__row">{group.list.map(chip)}</div>
+            </div>
+          ))}
 
       {active === null ? null : (
         <p class="f-accs__act">
@@ -134,4 +153,16 @@ export function Accounts({
       )}
     </div>
   )
+}
+
+/** Счета по банкам. Безымянные — последней группой: они не банк, а «пока не сказано». */
+function groupByBank(list: readonly Account[]): Array<{ bank: string; list: Account[] }> {
+  const byBank = new Map<string, Account[]>()
+  for (const account of list) {
+    const group = byBank.get(account.bank) ?? []
+    group.push(account)
+    byBank.set(account.bank, group)
+  }
+  const out = [...byBank.entries()].map(([bank, group]) => ({ bank, list: group }))
+  return out.sort((a, b) => (a.bank === '' ? 1 : b.bank === '' ? -1 : a.bank.localeCompare(b.bank)))
 }
