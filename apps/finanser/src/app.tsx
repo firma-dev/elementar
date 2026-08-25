@@ -896,35 +896,46 @@ export function App(): JSX.Element {
 
         </section>
 
-        <div class="f-side">
-          <section class="f-block f-block--save">
-            <SavingsView rows={onAccount} edge={edge} plan={plan.value} onChange={setPlan} />
-          </section>
+        {/* Доходы — блок наравне с расходами, а не приписка сбоку. Деньги
+            приходят и уходят: это две половины одного вопроса, и разный вес у
+            них означал бы, что одна половина важнее. */}
+        <section class="f-block f-block--income">
+          <h2 class="f-block__title">Доходы</h2>
 
-          <section class="f-block f-block--income">
-            <h2 class="f-block__title">Доходы</h2>
+          {/* Все операции, а не отрезок: за один день приходов нет, и раздел
+              исчезал бы ровно тогда, когда о нём вспоминают (Д-026). */}
+          <IncomeView
+            rows={onAccount}
+            edge={edge}
+            total={allIncome as Kopeck}
+            onExclude={(ids) => {
+              // Не удаление, а переклассификация: операции остаются в выписке и
+              // видны в «Движениях денег». Выбросить их значило бы разойтись с
+              // тем, что человек видит в приложении банка.
+              for (const id of ids) setCategory(id, 'Переводы')
+            }}
+          />
+        </section>
 
-            {/* Все операции, а не отрезок: за один день приходов нет, и раздел
-                исчезал бы ровно тогда, когда о нём вспоминают (Д-026). */}
-            <IncomeView rows={onAccount} edge={edge} total={allIncome as Kopeck} />
-          </section>
+        <section class="f-block f-block--save">
+          <SavingsView rows={onAccount} edge={edge} plan={plan.value} onChange={setPlan} />
+        </section>
 
-          <section class="f-block f-block--tools">
-            <h2 class="f-block__title">Настройка</h2>
-            <Extras enabled={enabledExtras} pending={pending} onToggle={toggleExtra} />
-            <Fold title="Счётная сводка" meta={summary.value === null ? 'не посчитана' : undefined}>
-              <p class="f-note">
-                Финансер ничего не считает в фоне. Сводка появится, когда вы её попросите.
-              </p>
-              <p class="f-sum__act">
-                <button type="button" class="f-linkish" onClick={() => compute(scope)}>
-                  {summary.value === null ? 'посчитать →' : 'пересчитать'}
-                </button>
-              </p>
-              {summary.value === null ? null : <SummaryView summary={summary.value} />}
-            </Fold>
-          </section>
-        </div>
+        <section class="f-block f-block--tools">
+          <h2 class="f-block__title">Настройка</h2>
+          <Extras enabled={enabledExtras} pending={pending} onToggle={toggleExtra} />
+          <Fold title="Счётная сводка" meta={summary.value === null ? 'не посчитана' : undefined}>
+            <p class="f-note">
+              Финансер ничего не считает в фоне. Сводка появится, когда вы её попросите.
+            </p>
+            <p class="f-sum__act">
+              <button type="button" class="f-linkish" onClick={() => compute(scope)}>
+                {summary.value === null ? 'посчитать →' : 'пересчитать'}
+              </button>
+            </p>
+            {summary.value === null ? null : <SummaryView summary={summary.value} />}
+          </Fold>
+        </section>
       </div>
 
       <p class="f-all">

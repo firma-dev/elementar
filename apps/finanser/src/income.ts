@@ -56,6 +56,15 @@ export interface IncomeSource {
   /** Обычное число месяца, когда приходит. Для регулярных. */
   typicalDay: number
   lastDate: string
+  /**
+   * Операции источника.
+   *
+   * Нужны, чтобы источник можно было убрать целиком: банк называет переводом
+   * от человека и зарплату, и возврат долга, и деньги, переложенные с чужой
+   * карты. Отличить их выписка не даёт, а человек — сразу. Без списка
+   * идентификаторов убирать было бы нечего.
+   */
+  ids: readonly string[]
 }
 
 const SALARY = /ZARPLATA|ZP |AVANS|OKLAD|SALARY|PREMI|ЗАРПЛАТ|АВАНС|ОКЛАД|ПРЕМИ/
@@ -139,19 +148,26 @@ export function regularMonthly(list: readonly IncomeSource[]): Kopeck {
 export function byIncomeSource(rows: readonly Categorized[], edge: string): IncomeSource[] {
   const groups = new Map<
     string,
-    { label: string; amounts: number[]; dates: string[]; sample: string }
+    { label: string; amounts: number[]; dates: string[]; sample: string; ids: string[] }
   >()
   for (const tx of rows) {
     if (tx.amount <= 0) continue
+    // Знака суммы мало: приходом считается только то, что и по категории приход.
+    // Иначе сюда попадали переводы между своими счетами, возвраты и всё, что
+    // человек уже назвал не доходом, — и кнопка «не доход» ничего не меняла:
+    // операция получала категорию «Переводы» и оставалась в списке источников.
+    if (planeOfTx(tx.category, tx.amount) !== 'income') continue
     const key = merchantKey(tx.description)
     const group = groups.get(key) ?? {
       label: merchantLabel(tx.description),
       amounts: [],
       dates: [],
       sample: tx.description,
+      ids: [],
     }
     group.amounts.push(tx.amount)
     group.dates.push(tx.date)
+    group.ids.push(tx.id)
     groups.set(key, group)
   }
 
@@ -177,6 +193,7 @@ export function byIncomeSource(rows: readonly Categorized[], edge: string): Inco
       typical: median(group.amounts) as Kopeck,
       steady: steadiness(group.amounts),
       typicalDay: median(dates.map((d) => Number(d.slice(8, 10)))),
+      ids: group.ids,
       lastDate: last,
     })
   }

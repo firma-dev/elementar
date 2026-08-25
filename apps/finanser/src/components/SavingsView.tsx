@@ -197,11 +197,11 @@ function shortMonth(month: string): string {
  */
 function fillClass(verdict: MonthVerdict): string {
   switch (verdict) {
-    case 'взято':
+    case 'норма':
       return 'f-save__mfill f-save__mfill--ok'
-    case 'недобрано':
+    case 'недобор':
       return 'f-save__mfill f-save__mfill--short'
-    case 'пропущено':
+    case 'ничего':
       return 'f-save__mfill f-save__mfill--miss'
     default:
       return 'f-save__mfill f-save__mfill--none'
@@ -209,7 +209,7 @@ function fillClass(verdict: MonthVerdict): string {
 }
 
 function verdictClass(verdict: MonthVerdict): string {
-  return verdict === 'пропущено'
+  return verdict === 'ничего'
     ? 'f-save__verdict f-save__verdict--miss'
     : 'f-save__verdict'
 }

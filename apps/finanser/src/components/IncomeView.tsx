@@ -6,12 +6,22 @@ import { INCOME_KIND_LABEL, byIncomeSource } from '../income.js'
 import { dayLabel } from '../model.js'
 import { Amount } from './Amount.js'
 import { Fold } from './Fold.js'
+import { Confirm } from './Confirm.js'
 
 export interface IncomeViewProps {
   rows: readonly Categorized[]
   /** Край данных: по нему судят, сколько раз источник мог прийти. */
   edge: string
   total: Kopeck
+  /**
+   * Убрать источник из доходов: его операции перестают считаться приходом.
+   *
+   * Банк называет переводом от человека и зарплату, и возврат долга, и деньги,
+   * переложенные с собственной карты в другом банке. Выписка их не различает, а
+   * человек различает сразу — значит, решение за ним, и оно должно быть здесь,
+   * рядом со строкой, а не в списке из шестисот операций.
+   */
+  onExclude: (ids: readonly string[]) => void
 }
 
 /**
@@ -31,7 +41,7 @@ export interface IncomeViewProps {
  * выбранный отрезок отвечает на другой вопрос и стоит отдельно, в строке
  * «Пришло за …».
  */
-export function IncomeView({ rows, edge, total }: IncomeViewProps): JSX.Element | null {
+export function IncomeView({ rows, edge, total, onExclude }: IncomeViewProps): JSX.Element | null {
   const sources = byIncomeSource(rows, edge)
   if (sources.length === 0) return null
 
@@ -73,6 +83,15 @@ export function IncomeView({ rows, edge, total }: IncomeViewProps): JSX.Element 
                 </span>
               ) : null}
               <span class="f-inc__last">последний — {dayLabel(source.lastDate)}</span>
+              {/* Убрать — рядом со строкой, тихой ссылкой. Действие обратимое:
+                  операции не удаляются, а перестают считаться приходом, и их
+                  видно в «Движениях денег». */}
+              <Confirm
+                label="не доход"
+                question={`убрать «${source.label}» из доходов?`}
+                confirm="да, убрать"
+                onConfirm={() => onExclude(source.ids)}
+              />
             </div>
           </li>
         ))}
