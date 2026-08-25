@@ -2026,3 +2026,12 @@ input {
   padding-top: var(--f-step-2);
   border-top: var(--el__border-width-s) solid var(--el__border);
 }
+
+/* Напоминание сохранить копию. Тише плашки отказа хранилища: там уже потеряно,
+   здесь пока нет. Рамкой снизу, а не со всех сторон — это строка в потоке, а не
+   врезка, требующая остановиться. */
+.f-backup {
+  padding-bottom: var(--f-step-1);
+  border-bottom: var(--el__border-width-s) solid var(--el__border);
+  margin-bottom: var(--f-step-3);
+}

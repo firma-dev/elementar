@@ -99,3 +99,30 @@ describe('отказ записи не проходит молча', () => {
     expect(store.storageFailed.value).toBe(true)
   })
 })
+
+describe('напоминание сохранить копию', () => {
+  it('молчит, пока терять нечего', async () => {
+    vi.resetModules()
+    const store = await import('../src/store.js')
+    expect(store.transactions.value).toHaveLength(0)
+    expect(store.backupDue('2026-08-25')).toBe(false)
+  })
+
+  it('зовёт сразу, если не сохраняли ни разу', async () => {
+    vi.resetModules()
+    const store = await import('../src/store.js')
+    store.addManual('2026-08-25', -25000 as never, 'кофе', null)
+    expect(store.backupDue('2026-08-25')).toBe(true)
+  })
+
+  it('молчит неделю после сохранения и зовёт на восьмой день', async () => {
+    vi.resetModules()
+    const store = await import('../src/store.js')
+    store.addManual('2026-08-25', -25000 as never, 'кофе', null)
+    store.markSaved('2026-08-25')
+    expect(store.backupDue('2026-08-26')).toBe(false)
+    expect(store.backupDue('2026-08-31')).toBe(false)
+    // Семь дней — срок, за который Safari сносит хранилище неоткрытого сайта.
+    expect(store.backupDue('2026-09-01')).toBe(true)
+  })
+})

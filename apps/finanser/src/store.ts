@@ -32,6 +32,7 @@ const KEY_PLAN = 'f.plan.v1'
 const KEY_EXTRAS = 'f.extra.v1'
 const KEY_CASH = 'f.cash.v1'
 const KEY_RATES = 'f.rate.v1'
+const KEY_SAVED = 'f.saved.v1'
 
 /** Что известно о загруженном файле: имя и что с ним случилось при разборе. */
 export interface SourceInfo {
@@ -256,6 +257,39 @@ export function addStatement(list: Tx[], info: SourceInfo): void {
   summary.value = null
   writeJson(KEY_TX, merged)
   writeJson(KEY_SOURCE, nextSources)
+}
+
+/**
+ * Когда в последний раз выгружали. ISO-дата, пустая строка — ни разу.
+ *
+ * Нужна не для статистики, а для одного вопроса: пора ли напомнить. Safari
+ * сносит хранилище сайта, на который не заходили неделю, а `localStorage`
+ * ничем не защищён — `navigator.storage.persist()` его не спасает. Значит
+ * единственная настоящая защита года разметки — файл на устройстве человека,
+ * и предложить его сделать должно приложение, а не человек вспомнить.
+ */
+export const savedAt = signal<string>(readJson<string>(KEY_SAVED, ''))
+
+/** Отметить, что выгрузка сделана. */
+export function markSaved(day: string): void {
+  savedAt.value = day
+  writeJson(KEY_SAVED, day)
+}
+
+/**
+ * Пора ли предложить выгрузку.
+ *
+ * Неделя — не круглое число, а срок, за который Safari сносит хранилище
+ * неоткрытого сайта. Порог по количеству правок нужен, чтобы не звать
+ * человека сохранять пустоту: пока в приложении нечего терять, напоминание —
+ * просто шум, который приучают пропускать.
+ */
+export function backupDue(day: string): boolean {
+  if (transactions.value.length === 0) return false
+  const last = savedAt.value
+  if (last === '') return true
+  const diff = new Date(`${day}T00:00:00Z`).getTime() - new Date(`${last}T00:00:00Z`).getTime()
+  return diff >= 7 * 86_400_000
 }
 
 /** Счёт для того, что человек записал руками, когда никакой счёт не выбран. */
@@ -493,12 +527,14 @@ export function forgetEverything(): void {
   cashSplits.value = {}
   rates.value = {}
   summary.value = null
+  savedAt.value = ''
   try {
     globalThis.localStorage?.removeItem(KEY_TX)
     globalThis.localStorage?.removeItem(KEY_OVERRIDES)
     globalThis.localStorage?.removeItem(KEY_MERCHANTS)
     globalThis.localStorage?.removeItem(KEY_SOURCE)
     globalThis.localStorage?.removeItem(KEY_ACCOUNTS)
+    globalThis.localStorage?.removeItem(KEY_SAVED)
     globalThis.localStorage?.removeItem(KEY_PLAN)
     globalThis.localStorage?.removeItem(KEY_EXTRAS)
     globalThis.localStorage?.removeItem(KEY_CASH)

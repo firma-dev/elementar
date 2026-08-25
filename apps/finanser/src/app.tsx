@@ -32,7 +32,9 @@ import {
   clearMerchantCategory,
   compute,
   addManual,
+  backupDue,
   dropManual,
+  markSaved,
   forgetEverything,
   storageFailed,
   hasData,
@@ -758,6 +760,29 @@ export function App(): JSX.Element {
         onDrop={dropManual}
       />
 
+      {/* Напоминание о выгрузке. Не тревога и не модалка: строка с действием.
+          Safari сносит хранилище сайта, на который не заходили неделю, и
+          единственная настоящая защита года разметки — файл на устройстве.
+          Вспомнить об этом должно приложение, а не человек. */}
+      {backupDue(today()) ? (
+        <p class="f-note f-backup">
+          Выписка и правки живут только в этом браузере.{' '}
+          <button
+            type="button"
+            class="f-linkish"
+            onClick={() => {
+              downloadJson(
+                buildExport(rows, info, overrides.value, merchantOverrides.value),
+                'финансер.json',
+              )
+              markSaved(today())
+            }}
+          >
+            сохранить копию →
+          </button>
+        </p>
+      ) : null}
+
       {/* Период — это режим, а не фильтр: ниже меняется не только число, но и
           то, о чём вообще идёт речь. На коротких отрезках это дневной ритм —
           сколько уже потрачено и сколько осталось; на длинных — картина по
@@ -933,12 +958,15 @@ export function App(): JSX.Element {
         <button
           type="button"
           class="f-linkish f-linkish--quiet"
-          onClick={() =>
+          onClick={() => {
             downloadJson(
               buildExport(rows, info, overrides.value, merchantOverrides.value),
               'финансер.json',
             )
-          }
+            // Ручная выгрузка — тоже сохранение: напоминать о ней сразу после
+            // того, как человек её сделал, значит не смотреть на него вовсе.
+            markSaved(today())
+          }}
         >
           выгрузить JSON →
         </button>
