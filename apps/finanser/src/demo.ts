@@ -10,7 +10,7 @@
  * файл человека, — тот же разбор, те же правила, те же ошибки, если они есть.
  */
 
-const HEADER = 'Дата операции;Дата платежа;Сумма операции;Валюта операции;Описание'
+const HEADER = 'Дата операции;Дата платежа;Сумма операции;Валюта операции;Описание;Остаток'
 
 interface Merchant {
   name: string
@@ -57,9 +57,20 @@ function money(kopecks: number): string {
   return `${sign}${Math.trunc(abs / 100)},${String(abs % 100).padStart(2, '0')}`
 }
 
-function line(date: string, kopecks: number, description: string): string {
-  return `${date};${date.slice(0, 10)};${money(kopecks)};RUB;"${description}"`
+function line(date: string, kopecks: number, description: string, balance: number): string {
+  return `${date};${date.slice(0, 10)};${money(kopecks)};RUB;"${description}";${money(balance)}`
 }
+
+/**
+ * Остаток на счёте после последней операции.
+ *
+ * Демо без остатка показывало «банк не выгрузил остаток» — пустое место там,
+ * где у настоящего человека стоит число, и половина связей между блоками
+ * (сколько можно тратить до зарплаты) не показывалась вовсе. Начальный остаток
+ * подбирается так, чтобы конечный вышел ровно этот: складывать наугад значило
+ * бы получить то минус двести тысяч, то три миллиона.
+ */
+const CLOSING_BALANCE = 7_384_000
 
 /**
  * Год выписки в том же виде, в каком её отдаёт банк.
@@ -71,7 +82,13 @@ function line(date: string, kopecks: number, description: string): string {
  */
 export function demoCsv(endsAt = new Date().toISOString().slice(0, 10)): string {
   const random = rng(20260824)
-  const rows: string[] = []
+  /**
+   * Операции копятся записями, а не строками: остаток считается нарастающим
+   * итогом, и для него нужен настоящий хронологический порядок. Строки же
+   * начинаются с «ДД.ММ.ГГГГ», и обычная сортировка выстроила бы их по числу
+   * месяца — первыми все первые числа всех месяцев подряд.
+   */
+  const entries: { key: string; stamp: string; kopecks: number; description: string }[] = []
   const pick = <T>(list: readonly T[]): T => list[Math.floor(random() * list.length)] as T
   const between = (lo: number, hi: number): number => lo + Math.floor(random() * (hi - lo))
 
@@ -89,7 +106,13 @@ export function demoCsv(endsAt = new Date().toISOString().slice(0, 10)): string 
   }
   const push = (date: Date, kopecks: number, description: string, hour = 12): void => {
     if (date > end) return
-    rows.push(line(`${dd(date)} ${String(hour).padStart(2, '0')}:${'12'}`, kopecks, description))
+    const hh = String(hour).padStart(2, '0')
+    entries.push({
+      key: `${date.toISOString().slice(0, 10)} ${hh}`,
+      stamp: `${dd(date)} ${hh}:12`,
+      kopecks,
+      description,
+    })
   }
 
   for (let back = 11; back >= 0; back -= 1) {
@@ -132,6 +155,16 @@ export function demoCsv(endsAt = new Date().toISOString().slice(0, 10)): string 
     }
   }
 
-  rows.sort()
+  entries.sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0))
+
+  // Начальный остаток подбирается от конечного: сумма всех операций известна,
+  // значит и то, с чего год начинался, — тоже.
+  const net = entries.reduce((sum, e) => sum + e.kopecks, 0)
+  let running = CLOSING_BALANCE - net
+
+  const rows = entries.map((e) => {
+    running += e.kopecks
+    return line(e.stamp, e.kopecks, e.description, running)
+  })
   return `${HEADER}\n${rows.join('\n')}\n`
 }

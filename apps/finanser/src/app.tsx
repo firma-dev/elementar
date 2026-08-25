@@ -91,6 +91,13 @@ import { RulesView } from './components/RulesView.js'
  */
 type View = 'year' | 'txs' | 'rules'
 
+/** Месяц цели для демо: восемь месяцев вперёд. */
+function demoGoalMonth(): string {
+  const now = new Date()
+  const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 8, 1))
+  return d.toISOString().slice(0, 7)
+}
+
 /** Сегодняшний день по часам устройства. Отдельной функцией — её видно в тестах. */
 function today(): string {
   return new Date().toISOString().slice(0, 10)
@@ -253,6 +260,18 @@ export function App(): JSX.Element {
 
   const loadDemo = useCallback((): void => {
     accept(parseStatementText(demoCsv(), 'пример выписки'), 'пример выписки')
+    // Демо приходит с заполненным планом. Без него копилка показывала нули и
+    // шесть месяцев «без плана»: половина экрана уходила на объяснение, что
+    // здесь ничего нет, — а демо существует ровно затем, чтобы показать, как
+    // выглядит заполненное приложение.
+    setPlan({
+      income: 18_500_000 as Kopeck,
+      fixed: 7_200_000 as Kopeck,
+      save: 5_000_000 as Kopeck,
+      saved: 32_000_000 as Kopeck,
+      goal: 60_000_000 as Kopeck,
+      goalDate: demoGoalMonth(),
+    })
   }, [accept])
 
   /**
@@ -774,7 +793,12 @@ export function App(): JSX.Element {
       {/* Три числа, за которыми возвращаются каждый день. Отдельной полосой над
           блоками: они не про расходы и не про копилку, они про «сколько есть
           сейчас», и внутри любого блока читались бы как его часть. */}
-<Balance onAccount={balance as Kopeck | null} next={arrival} />
+<Balance
+        onAccount={balance as Kopeck | null}
+        next={arrival}
+        edge={edge}
+        owedToSavings={toGoal(plan.value, setAside as Kopeck)}
+      />
 
       {/* Три блока. Каждый отвечает на свой вопрос и не залезает в чужой:
           расходы — «куда ушло», копилка — «сколько отложено и успеваем ли»,

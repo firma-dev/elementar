@@ -2057,16 +2057,26 @@ input {
 
 /* ──────────────────────────── Копилка ──────────────────────────── */
 
+/* Весь блок капсом, как остальные подписи корпуса. Через `text-transform`, а не
+   заглавными в строках: в исходнике остаётся читаемый русский, а экранный
+   диктор произносит слово, а не буквы по одной. */
+.f-save {
+  text-transform: uppercase;
+  letter-spacing: var(--el__ls-caps-s);
+}
+
 .f-save__now {
   display: flex;
   align-items: baseline;
   gap: var(--f-step-1);
   flex-wrap: wrap;
+  margin-bottom: var(--f-step-2);
 }
 
 .f-save__sum {
   font-size: var(--el__fs-2xl);
   line-height: 1.05;
+  letter-spacing: 0;
 }
 
 .f-save__of {
@@ -2077,7 +2087,7 @@ input {
 /* Полоса пути. Жёсткая заливка без скруглений — как всё остальное. */
 .f-save__track {
   height: 0.6rem;
-  margin: var(--f-step-2) 0;
+  margin: 0 0 var(--f-step-2);
   background: var(--el__surface);
   border: var(--el__border-width-s) solid var(--el__border);
 }
@@ -2088,11 +2098,18 @@ input {
   background: var(--el__text);
 }
 
+/* Факты — вертикальным списком, подпись над числом. В две колонки они
+   разъезжались: подпись из трёх слов переносилась, соседняя нет, и строки
+   переставали стоять на одной линии. */
 .f-save__facts {
   display: grid;
-  gap: var(--f-step-1) var(--f-step-3);
-  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: var(--f-step-2);
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
   margin: 0 0 var(--f-step-2);
+}
+
+.f-save__facts > div {
+  min-width: 0;
 }
 
 .f-save__k {
@@ -2101,31 +2118,176 @@ input {
 }
 
 .f-save__v {
-  margin: 0;
-  font-size: var(--el__fs-m);
-}
-
-.f-save__v--word {
-  text-transform: lowercase;
+  margin: 0.15em 0 0;
+  font-size: var(--el__fs-lg);
+  letter-spacing: 0;
 }
 
 .f-save__unit,
 .f-save__none {
   font-size: var(--el__fs-xs);
   color: var(--el__text-caption);
+  letter-spacing: var(--el__ls-caps-s);
 }
 
-/* Срок. Не упрёк, а арифметика: рамкой слева, чтобы отделялось от чисел, но не
+/* Срок. Не упрёк, а арифметика: линией слева, чтобы отделялось от чисел, но не
    кричало рамкой со всех сторон. */
 .f-save__due {
   margin: 0 0 var(--f-step-2);
   padding-left: var(--f-step-2);
   border-left: var(--el__border-width-m) solid var(--el__border);
   font-size: var(--el__fs-s);
+  line-height: 1.5;
 }
 
 .f-save__due--late {
   border-left-color: var(--el__accent);
+}
+
+/* ─────────────────── Копилка: как шли месяцы ─────────────────── */
+
+.f-save__quality {
+  margin-bottom: var(--f-step-2);
+  padding-top: var(--f-step-2);
+  border-top: var(--el__border-width-s) solid var(--el__border);
+}
+
+.f-save__qk {
+  margin: 0 0 var(--f-step-2);
+  font-size: var(--el__fs-xs);
+  color: var(--el__text-caption);
+  font-weight: inherit;
+}
+
+.f-save__months {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35em;
+}
+
+/* Месяц одной строкой: имя, дорожка, число, вердикт. Колонки фиксированные,
+   чтобы дорожки стояли друг под другом — иначе сравнивать месяцы нечем.
+   Имя получило место под «сентябрь 26»: раньше колонки не хватало, и половина
+   месяцев обрезалась многоточием. */
+.f-save__month {
+  display: grid;
+  grid-template-columns: 7.5rem 1fr auto 6.5rem;
+  align-items: center;
+  gap: var(--f-step-1);
+  font-size: var(--el__fs-xs);
+}
+
+.f-save__mname {
+  color: var(--el__text-caption);
+  white-space: nowrap;
+  /* Без разрядки: капс с ней не помещался, и «апрель 26» обрезалось в
+     «апрель…». Разрядка нужна коротким меткам, а не подписи строки. */
+  letter-spacing: 0;
+}
+
+/* Дорожка — это план. Её правый край и есть цель месяца, поэтому отдельной
+   риски плана не нужно: полоса до края значит «взято». */
+.f-save__mtrack {
+  position: relative;
+  height: 0.5rem;
+  background: var(--el__surface);
+  border: var(--el__border-width-s) solid var(--el__border);
+  min-width: 0;
+}
+
+.f-save__mfill {
+  display: block;
+  height: 100%;
+}
+
+/* Выполненный месяц — обычным тёмным, а не зелёным. Зелёный здесь был самым
+   ярким пятном на экране и хвалил за норму; норма — это не событие. Красное
+   остаётся ровно за одним случаем: месяц, в который не отложено ничего. */
+.f-save__mfill--ok {
+  background: var(--el__text);
+}
+
+.f-save__mfill--short {
+  background: var(--el__data-tertiary);
+}
+
+.f-save__mfill--miss {
+  background: var(--el__accent);
+}
+
+.f-save__mfill--none {
+  background: var(--el__border);
+}
+
+.f-save__mnum {
+  text-align: right;
+  white-space: nowrap;
+  letter-spacing: 0;
+}
+
+.f-save__verdict {
+  text-align: right;
+  color: var(--el__text-caption);
+  white-space: nowrap;
+}
+
+.f-save__verdict--miss {
+  color: var(--el__accent);
+}
+
+/* Поля — по одному в строке, подпись слева, число справа.
+   В сетке из двух колонок они разъезжались: «В копилку за месяц» переносилось
+   на две строки, «К месяцу» оставалось на одной, и соседние поля вставали на
+   разной высоте. Одна колонка выглядит длиннее, но читается ровно. */
+.f-save__fields {
+  display: grid;
+  gap: 0;
+  padding-top: var(--f-step-2);
+  border-top: var(--el__border-width-s) solid var(--el__border);
+}
+
+/* На узком экране подпись встаёт над полем. В строку они не помещались:
+   «В копилку за месяц» капсом с разрядкой плюс поле в девять em шире, чем вся
+   колонка на телефоне, и подпись наезжала на число. */
+.f-save__fields .f-field {
+  display: grid;
+  gap: 0.2em;
+  padding: 0.4em 0;
+  border-bottom: var(--el__border-width-s) solid var(--el__border);
+  min-width: 0;
+}
+
+@media (min-width: 30rem) {
+  .f-save__fields .f-field {
+    grid-template-columns: 1fr auto;
+    align-items: baseline;
+    gap: var(--f-step-2);
+  }
+}
+
+.f-save__fields .f-field:last-child {
+  border-bottom: 0;
+}
+
+.f-save__fields .f-field__k {
+  font-size: var(--el__fs-xs);
+  color: var(--el__text-caption);
+}
+
+.f-save__fields input {
+  width: 100%;
+  max-width: 9rem;
+  justify-self: end;
+  text-align: right;
+  border: 0;
+  border-bottom: var(--el__border-width-s) solid var(--el__border);
+  background: none;
+  font: inherit;
+  color: var(--el__text);
+  letter-spacing: 0;
+  padding: 0.1em 0;
 }
 
 /* ─────────────────── Копилка: как шли месяцы ─────────────────── */
@@ -2199,16 +2361,6 @@ input {
 
 .f-save__mfill--none {
   background: var(--el__border);
-}
-
-/* Отметка плана поверх полосы: без ориентира «взято» и «недобрано» различались
-   бы только цветом. */
-.f-save__mmark {
-  position: absolute;
-  top: -2px;
-  bottom: -2px;
-  width: var(--el__border-width-m);
-  background: var(--el__text);
 }
 
 .f-save__mnum {

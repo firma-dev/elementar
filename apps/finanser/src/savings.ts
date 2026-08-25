@@ -162,3 +162,46 @@ export function progress(plan: Plan): number | null {
   if (plan.goal <= 0) return null
   return Math.max(0, Math.min(1, plan.saved / plan.goal))
 }
+
+/**
+ * Сколько можно тратить в день до ближайшего прихода.
+ *
+ * Единственное число, которое связывает остаток на счёте, дату зарплаты и
+ * копилку в один ответ. Порознь они не говорят ничего: «на счёте 73 840» — это
+ * много или мало? Смотря сколько дней до зарплаты и сколько из этих денег уже
+ * обещано копилке.
+ *
+ * Из остатка вычитается то, что ещё предстоит отложить по плану: копилка — не
+ * «остаток на потом», а обязательство наравне с арендой. Не вычесть её значит
+ * разрешить потратить те же деньги дважды.
+ */
+export interface DailyRoom {
+  /** Дней до прихода включительно, минимум один. */
+  days: number
+  /** Свободно всего: остаток минус недоотложенное. Может быть отрицательным. */
+  free: Kopeck
+  /** Сколько в день. Отрицательное свободное даёт ноль — тратить нечего. */
+  perDay: Kopeck
+}
+
+export function dailyRoom(
+  balance: Kopeck | null,
+  nextIncome: string | null,
+  from: string,
+  owedToSavings: Kopeck,
+): DailyRoom | null {
+  if (balance === null || nextIncome === null) return null
+  const days = Math.max(1, daysBetween(from, nextIncome))
+  const free = (balance - Math.max(0, owedToSavings)) as Kopeck
+  return {
+    days,
+    free,
+    perDay: (free <= 0 ? 0 : Math.floor(free / days)) as Kopeck,
+  }
+}
+
+/** Дней между датами `ГГГГ-ММ-ДД`. Отрицательное — вторая раньше первой. */
+export function daysBetween(a: string, b: string): number {
+  const ms = new Date(`${b}T00:00:00Z`).getTime() - new Date(`${a}T00:00:00Z`).getTime()
+  return Math.round(ms / 86_400_000)
+}

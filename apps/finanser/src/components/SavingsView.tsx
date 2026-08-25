@@ -93,19 +93,22 @@ export function SavingsView({ rows, edge, plan, onChange }: SavingsProps): JSX.E
           нечего — а число, которое всё исправит, назвать может. */}
       {due === null ? null : (
         <p class={due.needed !== null && due.needed > rate ? 'f-save__due f-save__due--late' : 'f-save__due'}>
+          {/* Месяц во всех ветках стоит в именительном: «к апрелю» требует
+              таблицы падежей ради одной строки, а «к апрель 2027» — это брак.
+              Фраза перестроена так, чтобы склонение не понадобилось. */}
           {due.needed === null ? (
-            <>Срок {monthLabel(plan.goalDate)} прошёл, а цель не взята.</>
+            <>Срок — {monthLabel(plan.goalDate)}. Он прошёл, а цель не взята.</>
           ) : due.needed === 0 ? (
             <>Цель взята.</>
           ) : due.needed > rate ? (
             <>
-              Чтобы успеть к {monthLabel(plan.goalDate)}, надо откладывать{' '}
+              Срок — {monthLabel(plan.goalDate)}. Чтобы успеть, надо откладывать{' '}
               <Amount value={due.needed} kopecks="never" /> в месяц — на{' '}
               <Amount value={(due.needed - rate) as Kopeck} kopecks="never" /> больше нынешнего.
             </>
           ) : (
             <>
-              К {monthLabel(plan.goalDate)} успеваете: нужно{' '}
+              Срок — {monthLabel(plan.goalDate)}. Успеваете: нужно{' '}
               <Amount value={due.needed} kopecks="never" /> в месяц, откладывается больше.
             </>
           )}
@@ -136,7 +139,17 @@ export function SavingsView({ rows, edge, plan, onChange }: SavingsProps): JSX.E
  * это единственное, что стоит заметить с одного взгляда.
  */
 function Quality({ history }: { history: readonly SavedMonth[] }): JSX.Element {
-  const top = Math.max(...history.map((r) => Math.max(r.saved, r.planned)), 1)
+  /**
+   * Шкала — это план, а не самый большой месяц.
+   *
+   * По самому большому месяцу все полосы становились относительными друг
+   * другу: шесть месяцев ровно по плану давали шесть одинаковых полос во всю
+   * ширину, и понять по ним было нечего. Когда шкала — план, конец дорожки и
+   * есть цель: полоса до края значит «взято», короче — видно на сколько.
+   * Отдельная риска плана после этого не нужна, а раньше она всегда упиралась
+   * в конец полосы и читалась как дефект отрисовки.
+   */
+  const fallback = Math.max(...history.map((r) => r.saved), 1)
 
   return (
     <div class="f-save__quality">
@@ -144,22 +157,13 @@ function Quality({ history }: { history: readonly SavedMonth[] }): JSX.Element {
       <ul class="f-save__months" role="list">
         {history.map((row) => {
           const verdict = verdictOf(row)
+          const scale = row.planned > 0 ? row.planned : fallback
+          const width = Math.min(100, Math.round((row.saved / scale) * 100))
           return (
             <li key={row.month} class="f-save__month">
-              <span class="f-save__mname">{monthLabel(row.month)}</span>
+              <span class="f-save__mname">{shortMonth(row.month)}</span>
               <span class="f-save__mtrack">
-                <span
-                  class={fillClass(verdict)}
-                  style={`width:${Math.round((row.saved / top) * 100)}%`}
-                />
-                {/* Отметка плана поверх полосы: без неё «взято» и «недобрано»
-                    отличаются только цветом, а глазом нужен ориентир. */}
-                {row.planned > 0 ? (
-                  <span
-                    class="f-save__mmark"
-                    style={`left:${Math.min(100, Math.round((row.planned / top) * 100))}%`}
-                  />
-                ) : null}
+                <span class={fillClass(verdict)} style={`width:${width}%`} />
               </span>
               <Amount class="f-save__mnum" value={row.saved} kopecks="never" />
               <span class={verdictClass(verdict)}>{verdict}</span>
@@ -169,6 +173,19 @@ function Quality({ history }: { history: readonly SavedMonth[] }): JSX.Element {
       </ul>
     </div>
   )
+}
+
+/**
+ * «март 26» вместо «март 2026».
+ *
+ * Полное имя не помещалось в колонку и обрезалось многоточием: «апрель 2…»,
+ * «август 2…». Обрезанный год не сообщает ничего, а рваный край колонки виден
+ * сразу. Две цифры года читаются так же однозначно — в истории копилки соседние
+ * века не встречаются.
+ */
+function shortMonth(month: string): string {
+  const full = monthLabel(month)
+  return full.replace(/\s(\d{2})(\d{2})$/, ' $2')
 }
 
 /**
