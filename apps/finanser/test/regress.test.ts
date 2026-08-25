@@ -216,3 +216,36 @@ describe('один файл под другим именем — один счё
     expect(a).toBe(b)
   })
 })
+
+describe('пара переводов видна и расцепляется', () => {
+  it('приход, засчитанный переводом, помечен так, что его можно найти', async () => {
+    const { markPairs } = await import('../src/pairs.js')
+    const { categorizeAll } = await import('../src/categorize.js')
+    const list = [
+      tx('2026-03-10', -5000000, 'Внешний перевод по номеру телефона', 'карта-A'),
+      tx('2026-03-11', 5000000, 'Пополнение по СБП', 'карта-B'),
+    ]
+    const marked = markPairs(categorizeAll(list, {}, {}))
+    // Ровно по этому следу раздел «Движения денег» показывает догадку.
+    const guessed = marked.filter(
+      (t) => t.amount > 0 && t.category === 'Переводы' && t.source === 'operation',
+    )
+    expect(guessed).toHaveLength(1)
+    expect(guessed[0]?.description).toBe('Пополнение по СБП')
+  })
+
+  it('расцепление переживает пересчёт: рука сильнее пары', async () => {
+    const { markPairs } = await import('../src/pairs.js')
+    const { categorizeAll } = await import('../src/categorize.js')
+    const list = [
+      tx('2026-03-10', -5000000, 'Внешний перевод по номеру телефона', 'карта-A'),
+      tx('2026-03-11', 5000000, 'Пополнение по СБП', 'карта-B'),
+    ]
+    const incoming = list[1]!
+    // «Это не перевод» ставит категорию рукой.
+    const marked = markPairs(categorizeAll(list, { [incoming.id]: 'Доход' }, {}))
+    const row = marked.find((t) => t.id === incoming.id)
+    expect(row?.category).toBe('Доход')
+    expect(row?.source).toBe('manual')
+  })
+})

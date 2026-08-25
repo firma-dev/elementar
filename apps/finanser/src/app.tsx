@@ -903,7 +903,10 @@ export function App(): JSX.Element {
           не выбирает каждый день, а обнаруживает раз в полгода. */}
       <Regular rows={onAccount} edge={edge} />
 
-      <MoneyMoves rows={scope} />
+      <MoneyMoves
+        rows={scope}
+        onUnpair={(id) => setCategory(id, 'Доход')}
+      />
 
       <Balance onAccount={balance as Kopeck | null} next={arrival} saved={plan.value.saved} />
 

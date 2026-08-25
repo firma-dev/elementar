@@ -2017,3 +2017,12 @@ input {
 .f-more-link {
   margin: var(--f-step-3) 0 0;
 }
+
+/* Догадка о переводе между своими. Отделена от списка движений рамкой сверху:
+   это не итог, а предположение, и человек должен видеть границу между тем, что
+   посчитано, и тем, что угадано. */
+.f-moves__guess {
+  margin-top: var(--f-step-2);
+  padding-top: var(--f-step-2);
+  border-top: var(--el__border-width-s) solid var(--el__border);
+}
