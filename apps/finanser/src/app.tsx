@@ -82,8 +82,16 @@ import { TxList } from './components/TxList.js'
 import { SummaryView } from './components/SummaryView.js'
 import { RulesView } from './components/RulesView.js'
 
-/** Два экрана: картина и выписка. Операции — второй шаг, а не вкладка. */
-type View = 'year' | 'txs' | 'rules'
+/**
+ * Экраны. «Картина» — ежедневный, остальные открываются по надобности.
+ *
+ * `more` появился, когда на картине набралось восемь сворачиваемых разделов:
+ * их заголовки занимали почти всю первую прокрутку на телефоне, при том что
+ * четыре из них — настройка, а не ответ на вопрос «сколько я потратил».
+ * Каждый день нужны разбор непонятного, наличные, «уходит само» и движения
+ * денег; доход, план, лишние категории и сводка — раз в месяц и реже.
+ */
+type View = 'year' | 'txs' | 'rules' | 'more'
 
 /** Сегодняшний день по часам устройства. Отдельной функцией — её видно в тестах. */
 function today(): string {
@@ -587,6 +595,48 @@ export function App(): JSX.Element {
     )
   }
 
+  if (view === 'more') {
+    return (
+      <main class="f-page">
+        {header}
+        <p class="f-txhead">
+          <button type="button" class="f-linkish" onClick={() => setView('year')}>
+            ← к картине
+          </button>
+        </p>
+
+        {/* Все операции, а не отрезок: за один день приходов нет, и раздел
+            исчезал бы ровно тогда, когда о нём вспоминают (Д-026). */}
+        <IncomeView rows={onAccount} edge={edge} total={allIncome as Kopeck} />
+
+        <PlanView
+          plan={plan.value}
+          setAside={setAside as Kopeck}
+          open={planOpen}
+          onOpenChange={setPlanOpen}
+          onChange={setPlan}
+        />
+
+        <Extras enabled={enabledExtras} pending={pending} onToggle={toggleExtra} />
+
+        <Fold title="Счётная сводка" meta={summary.value === null ? 'не посчитана' : undefined}>
+          <p class="f-note">
+            Финансер ничего не считает в фоне. Сводка появится, когда вы её попросите.
+          </p>
+          <p class="f-sum__act">
+            <button type="button" class="f-linkish" onClick={() => compute(scope)}>
+              {summary.value === null ? 'посчитать →' : 'пересчитать'}
+            </button>
+          </p>
+          {summary.value === null ? null : <SummaryView summary={summary.value} />}
+        </Fold>
+
+        {footer}
+        {fileInput}
+      </main>
+    )
+  }
+
   if (view === 'txs') {
     const total = visible.reduce((sum, tx) => sum + tx.amount, 0)
     return (
@@ -758,9 +808,11 @@ export function App(): JSX.Element {
             : null
         }
         onSetPlan={() => {
+          // План переехал на экран «подробнее», поэтому ссылка из полосы
+          // предела ведёт туда же и сразу раскрывает нужный раздел: человек
+          // нажал «задать план», а не «пойти поискать, где он лежит».
           setPlanOpen(true)
-          // Раздел раскрывается перерисовкой, а она случится не сейчас:
-          // до неё блока в разметке ещё нет, и прокручивать не к чему.
+          setView('more')
           requestAnimationFrame(() =>
             document.querySelector('.f-plan')?.scrollIntoView({ block: 'center' }),
           )
@@ -851,37 +903,18 @@ export function App(): JSX.Element {
           не выбирает каждый день, а обнаруживает раз в полгода. */}
       <Regular rows={onAccount} edge={edge} />
 
-      {/* Все операции, а не отрезок: за один день приходов нет, и раздел
-          исчезал бы ровно тогда, когда о нём вспоминают (Д-026). */}
-
-      <IncomeView rows={onAccount} edge={edge} total={allIncome as Kopeck} />
-
       <MoneyMoves rows={scope} />
 
-      <Fold title="Счётная сводка" meta={summary.value === null ? 'не посчитана' : undefined}>
-        <p class="f-note">
-          Финансер ничего не считает в фоне. Сводка появится, когда вы её попросите.
-        </p>
-        <p class="f-sum__act">
-          <button type="button" class="f-linkish" onClick={() => compute(scope)}>
-            {summary.value === null ? 'посчитать →' : 'пересчитать'}
-          </button>
-        </p>
-        {summary.value === null ? null : <SummaryView summary={summary.value} />}
-      </Fold>
-
-      {/* Ещё категории — сразу под картиной по категориям: включают их,
-          глядя именно на неё. */}
-      <Extras enabled={enabledExtras} pending={pending} onToggle={toggleExtra} />
-
-      <PlanView
-        plan={plan.value}
-        setAside={setAside as Kopeck}
-        open={planOpen}
-        onOpenChange={setPlanOpen}
-        onChange={setPlan}
-      />
       <Balance onAccount={balance as Kopeck | null} next={arrival} saved={plan.value.saved} />
+
+      {/* Выход к тому, что нужно раз в месяц, а не каждый день. Отдельным
+          экраном, а не ещё четырьмя заголовками: на телефоне восемь свёрнутых
+          разделов занимали всю первую прокрутку. */}
+      <p class="f-more-link">
+        <button type="button" class="f-linkish f-linkish--quiet" onClick={() => setView('more')}>
+          доход, план, категории, сводка →
+        </button>
+      </p>
 
       <p class="f-all">
         <button
