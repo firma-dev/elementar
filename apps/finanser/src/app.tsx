@@ -31,6 +31,8 @@ import {
   categorized,
   clearMerchantCategory,
   compute,
+  addManual,
+  dropManual,
   forgetEverything,
   storageFailed,
   hasData,
@@ -61,6 +63,7 @@ import { applyUpdate, updateReady } from './pwa.js'
 import { dark, toggleTheme } from './theme.js'
 import { Amount } from './components/Amount.js'
 import { Confirm } from './components/Confirm.js'
+import { Quick } from './components/Quick.js'
 import { Accounts } from './components/Accounts.js'
 import { Balance } from './components/Balance.js'
 import { DayChart } from './components/DayChart.js'
@@ -111,7 +114,15 @@ export function App(): JSX.Element {
   const [category, setCategoryFilter] = useState<Category | null>(null)
   const [query, setQuery] = useState('')
   /** Какой отрезок смотрим. Год — то, с чего корпус начинался (ТЗ §1). */
-  const [period, setPeriod] = useState<PeriodKey>('year')
+  /**
+   * Месяц, а не год.
+   *
+   * Приложение открывают в обычный день с вопросом «сколько я уже потратил», а
+   * не «куда всё ушло за год». Год — это разбор раз в квартал, и он в одном
+   * нажатии отсюда; месяц — то, на что смотрят постоянно, и он же совпадает с
+   * тем, как сбрасывается бюджет.
+   */
+  const [period, setPeriod] = useState<PeriodKey>('month')
   /** Выбранный день внутри короткого периода. */
   const [day, setDay] = useState<string | null>(null)
   /** Раскрыт ли план: его открывает и «задать план» из полосы предела. */
@@ -515,22 +526,6 @@ export function App(): JSX.Element {
     </p>
   )
 
-  /**
-   * Кнопка открывает выбор файла — то же, что «загрузить выписку» на пустом
-   * экране. Называлась «обновить», и это читалось как обновление приложения
-   * или страницы, тем более что стояла в правом верхнем углу, где такие кнопки
-   * и живут. Слова те же, что на первом экране: термин у одного действия
-   * должен быть один.
-   *
-   * Регистр задаёт CSS (`text-transform` на `.f-go`), в разметке — строчные,
-   * как во всех остальных подписях.
-   */
-  const refresh = (
-    <button type="button" class="f-go f-go--small" onClick={() => fileRef.current?.click()}>
-      загрузить выписку
-    </button>
-  )
-
   const accountSwitch = (
     <Accounts
       list={accounts.value}
@@ -657,7 +652,6 @@ export function App(): JSX.Element {
         {/* Обёртка есть всегда, даже когда счёт один и переключатель молчит:
             без неё «обновить» уезжало к левому краю. */}
         <div class="f-top__accs">{accountSwitch}</div>
-        {refresh}
       </div>
 
       {/* Валюта: не предупреждение, а поле. Предупреждение не превращает
@@ -701,6 +695,18 @@ export function App(): JSX.Element {
           ))}
         </div>
       )}
+
+      {/* Быстрая запись стоит первой: это единственное действие, ради
+          которого приложение открывают в обычный день. Выписка приезжает раз в
+          месяц, наличные тратятся сегодня. */}
+      <Quick
+        options={options}
+        onAdd={(amount, description, category) =>
+          addManual(edge > today() ? edge : today(), amount as never, description, category)
+        }
+        onCategory={setCategory}
+        onDrop={dropManual}
+      />
 
       {/* Период — это режим, а не фильтр: ниже меняется не только число, но и
           то, о чём вообще идёт речь. На коротких отрезках это дневной ритм —
@@ -899,6 +905,13 @@ export function App(): JSX.Element {
           }
         >
           выгрузить JSON →
+        </button>
+        {/* Загрузка выписки переехала сюда из правого верхнего угла. Она
+            случается раз в месяц, а стояла заметнее всего на экране — заметнее
+            записи траты, ради которой приложение открывают каждый день. Рядом с
+            выгрузкой ей и место: обе операции про файлы. */}
+        <button type="button" class="f-linkish f-linkish--quiet" onClick={() => fileRef.current?.click()}>
+          загрузить выписку →
         </button>
       </p>
 

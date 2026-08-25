@@ -30,8 +30,14 @@ export function MonthChart({
   const peekKey = hovered ?? selected ?? months[months.length - 1]?.month ?? null
   const peek = months.find((m) => m.month === peekKey)
 
+  /**
+   * Цвет столбика. Обычный берётся из смыслового токена, а не из палитры:
+   * палитра при смене темы не переворачивается, и `gray-700` оставался одним и
+   * тем же серым и на белой бумаге, и на чёрной. Тот же токен стоит базовым у
+   * `.f-chart__bar`, поэтому дневной и месячный графики выглядят одинаково.
+   */
   const barColor = (active: boolean, hover: boolean): string =>
-    active ? 'var(--el__text)' : hover ? 'var(--el__data-negative)' : 'var(--el__color-gray-700)'
+    active ? 'var(--el__text)' : hover ? 'var(--el__data-negative)' : 'var(--el__data-tertiary)'
 
   return (
     <section class="f-chart" onMouseLeave={() => onHover(null)}>

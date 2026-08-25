@@ -407,6 +407,11 @@ input {
 .f-chart__bar {
   width: 100%;
   min-height: 2px;
+  /* Обычный столбик. Без этой строки дневной график был пуст: цвет давали
+     только модификаторы «выбран» и «сверх нормы», а нормы нет, пока не задан
+     план. Человек открывал «месяц» и видел пустую рамку с осью — при том что
+     траты за месяц посчитаны и написаны строкой выше. */
+  background: var(--el__data-tertiary);
 }
 
 /* Красный только у дней сверх дневной нормы. Если красить всё, красное
@@ -431,7 +436,11 @@ input {
   text-align: center;
   white-space: nowrap;
   padding-top: 0.3em;
-  overflow: hidden;
+  /* Не обрезать. В месяце тридцать один столбик, на телефоне это девять
+     пикселей на каждый, а подписано каждое пятое число — соседи пустые.
+     `overflow: hidden` резал «10» пополам, и под графиком стояло «1(», «1!»,
+     «2(»: не цифры, а мусор. Метке разрешено занять пустое место соседей. */
+  overflow: visible;
   color: var(--el__text-caption);
 }
 
@@ -1943,5 +1952,62 @@ input {
   border: var(--el__border-width-m) solid var(--el__accent);
   padding: var(--f-step-2);
   margin-bottom: var(--f-step-3);
+  color: var(--el__text);
+}
+
+/* ──────────────────────────── Быстрая запись ──────────────────────────── */
+
+/* Главное действие дня стоит первым и выглядит как одна строка. Рамка толще
+   остальных: это единственное место на экране, куда пишут, и оно должно быть
+   видно сразу, без поиска глазами. */
+.f-quick {
+  margin-bottom: var(--f-step-3);
+}
+
+.f-quick__form {
+  display: flex;
+  gap: var(--f-step-1);
+  align-items: stretch;
+}
+
+.f-quick__input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: var(--el__fs-m);
+  color: var(--el__text);
+  background: var(--el__background);
+  border: var(--el__border-width-m) solid var(--el__text);
+  padding: var(--f-step-1) var(--f-step-2);
+}
+
+/* Подсказка внутри поля тише текста, который человек напишет сам: она пример,
+   а не значение. */
+.f-quick__input::placeholder {
+  color: var(--el__text-caption);
+  opacity: 1;
+}
+
+.f-quick__hint {
+  margin: var(--f-step-1) 0 0;
+  font-size: var(--el__fs-xs);
+  color: var(--el__text-caption);
+}
+
+/* Что понято из строки. Показывается обязательно: угадывание, которого не
+   видно, нельзя ни проверить, ни поправить — и человек перестаёт доверять
+   остальным числам на экране. */
+.f-quick__added {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--f-step-1) var(--f-step-2);
+  margin-top: var(--f-step-1);
+  padding: var(--f-step-1) 0 0;
+  border-top: var(--el__border-width-s) solid var(--el__border);
+  font-size: var(--el__fs-s);
+}
+
+.f-quick__what {
   color: var(--el__text);
 }

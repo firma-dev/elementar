@@ -9,7 +9,7 @@
  */
 import { computed, signal } from '@preact/signals'
 import type { Category, Categorized, Tx } from './model.js'
-import { PARENT, currentName } from './model.js'
+import { PARENT, currentName, txId } from './model.js'
 import { cleanParts, expandCash } from './cash.js'
 import { markPairs } from './pairs.js'
 import { applyRates } from './rates.js'
@@ -256,6 +256,77 @@ export function addStatement(list: Tx[], info: SourceInfo): void {
   summary.value = null
   writeJson(KEY_TX, merged)
   writeJson(KEY_SOURCE, nextSources)
+}
+
+/** Счёт для того, что человек записал руками, когда никакой счёт не выбран. */
+const MANUAL_ACCOUNT = 'вручную'
+
+/**
+ * Записать операцию руками.
+ *
+ * Ежедневный путь, а не запасной: выписка приезжает раз в месяц, а наличные
+ * тратятся сегодня. Без этого приложение умеет отвечать только на вопрос «куда
+ * ушло», и то задним числом.
+ *
+ * Идентификатор считается от полей, поэтому два одинаковых кофе по 200 ₽ в
+ * один день дали бы один и тот же ключ и схлопнулись бы в одну операцию.
+ * Счётчик повторов ищет первый свободный: дедупликация повторного импорта
+ * остаётся, а две настоящие траты остаются двумя.
+ */
+export function addManual(
+  date: string,
+  amount: Kopeck,
+  description: string,
+  category: Category | null,
+): string {
+  const account = activeAccount.value ?? MANUAL_ACCOUNT
+  const taken = new Set(transactions.value.map((tx) => tx.id))
+  let duplicate = 0
+  let id = txId(date, amount, description, duplicate, account)
+  while (taken.has(id)) {
+    duplicate += 1
+    id = txId(date, amount, description, duplicate, account)
+  }
+
+  const tx: Tx = {
+    id,
+    date,
+    amount,
+    description,
+    mcc: null,
+    bankCategory: null,
+    account,
+  }
+
+  if (!accounts.value.some((a) => a.key === account)) {
+    const next = [
+      ...accounts.value,
+      { key: account, name: 'Вручную', bank: '', tone: accounts.value.length % 6 },
+    ]
+    accounts.value = next
+    writeJson(KEY_ACCOUNTS, next)
+  }
+
+  const merged = [tx, ...transactions.value].sort((a, b) =>
+    a.date < b.date ? 1 : a.date > b.date ? -1 : 0,
+  )
+  transactions.value = merged
+  summary.value = null
+  writeJson(KEY_TX, merged)
+
+  // Категория, названная при вводе, — это рука человека, а не догадка: она
+  // сильнее любого правила и переживает перезагрузку выписки.
+  if (category !== null) setCategory(id, category)
+  return id
+}
+
+/** Убрать операцию, записанную руками. Импортированные не трогает. */
+export function dropManual(id: string): void {
+  const merged = transactions.value.filter((tx) => tx.id !== id)
+  transactions.value = merged
+  summary.value = null
+  writeJson(KEY_TX, merged)
+  clearCategory(id)
 }
 
 /**
