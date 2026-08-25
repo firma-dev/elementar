@@ -26,9 +26,41 @@ export interface Plan {
    * счёт человек обычно не выгружает, — поэтому вводится рукой.
    */
   saved: Kopeck
+  /**
+   * Цель: сколько всего надо накопить. Ноль — цели нет, и тогда не показывается
+   * ни полоса, ни срок: пустая шкала врёт не меньше неверной.
+   */
+  goal: Kopeck
+  /**
+   * К какому месяцу, `ГГГГ-ММ`. Пустая строка — срок не назначен, и тогда
+   * приложение говорит только «при нынешнем темпе — вот когда», не упрекая
+   * человека сроком, которого он не ставил.
+   */
+  goalDate: string
 }
 
-export const EMPTY_PLAN: Plan = { income: 0, fixed: 0, save: 0, saved: 0 }
+export const EMPTY_PLAN: Plan = { income: 0, fixed: 0, save: 0, saved: 0, goal: 0, goalDate: '' }
+
+/**
+ * Достроить план, прочитанный из хранилища.
+ *
+ * Планы, сохранённые до появления цели, полей `goal` и `goalDate` не имеют — в
+ * них будет `undefined`, и любое сравнение с ним даст ложь молча. Разбираем
+ * здесь один раз, а не проверяем в каждой формуле.
+ */
+export function normalizePlan(raw: Partial<Plan> | null | undefined): Plan {
+  if (raw === null || raw === undefined) return EMPTY_PLAN
+  const num = (v: unknown): Kopeck =>
+    typeof v === 'number' && Number.isFinite(v) ? (Math.round(v) as Kopeck) : (0 as Kopeck)
+  return {
+    income: num(raw.income),
+    fixed: num(raw.fixed),
+    save: num(raw.save),
+    saved: num(raw.saved),
+    goal: num(raw.goal),
+    goalDate: typeof raw.goalDate === 'string' ? raw.goalDate : '',
+  }
+}
 
 /** Заполнен ли план хоть на что-то. Пустой не показывается: пустая шкала врёт. */
 export function hasPlan(plan: Plan): boolean {

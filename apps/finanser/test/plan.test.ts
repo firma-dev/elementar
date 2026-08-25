@@ -2,7 +2,14 @@ import { describe, expect, it } from 'vitest'
 import { EMPTY_PLAN, hasPlan, limitFor, living, toGoal } from '../src/plan.js'
 import type { Plan } from '../src/plan.js'
 
-const plan: Plan = { income: 20000000, fixed: 7000000, save: 5000000, saved: 10103500 }
+const plan: Plan = {
+  income: 20000000,
+  fixed: 7000000,
+  save: 5000000,
+  saved: 10103500,
+  goal: 0,
+  goalDate: '',
+}
 
 describe('план', () => {
   it('на жизнь остаётся то, что не обязательное и не в копилку', () => {

@@ -31,9 +31,7 @@ import {
   categorized,
   clearMerchantCategory,
   compute,
-  addManual,
   backupDue,
-  dropManual,
   markSaved,
   forgetEverything,
   storageFailed,
@@ -65,35 +63,33 @@ import { applyUpdate, updateReady } from './pwa.js'
 import { dark, toggleTheme } from './theme.js'
 import { Amount } from './components/Amount.js'
 import { Confirm } from './components/Confirm.js'
-import { Quick } from './components/Quick.js'
 import { Accounts } from './components/Accounts.js'
 import { Balance } from './components/Balance.js'
 import { DayChart } from './components/DayChart.js'
 import { IncomeView } from './components/IncomeView.js'
 import { Regular } from './components/Regular.js'
 import { Head } from './components/Head.js'
-import { PlanView } from './components/PlanView.js'
 import { MonthChart } from './components/MonthChart.js'
 import { MoneyMoves } from './components/MoneyMoves.js'
 import { CategoryList } from './components/CategoryList.js'
 import { CashView } from './components/CashView.js'
 import { Extras } from './components/Extras.js'
 import { Fold } from './components/Fold.js'
+import { SavingsView } from './components/SavingsView.js'
 import { Unknown } from './components/Unknown.js'
 import { TxList } from './components/TxList.js'
 import { SummaryView } from './components/SummaryView.js'
 import { RulesView } from './components/RulesView.js'
 
 /**
- * Экраны. «Картина» — ежедневный, остальные открываются по надобности.
+ * Один экран — сводка. Всё, что отвечает на вопросы «сколько», «на что» и
+ * «сколько отложено», лежит на нём: вкладок и вторых страниц нет.
  *
- * `more` появился, когда на картине набралось восемь сворачиваемых разделов:
- * их заголовки занимали почти всю первую прокрутку на телефоне, при том что
- * четыре из них — настройка, а не ответ на вопрос «сколько я потратил».
- * Каждый день нужны разбор непонятного, наличные, «уходит само» и движения
- * денег; доход, план, лишние категории и сводка — раз в месяц и реже.
+ * Два исключения — выписка целиком и словарь правил. Это не разделы сводки, а
+ * выход к сырым данным: шестьсот строк операций в сводку не кладутся, и место
+ * им за её пределами.
  */
-type View = 'year' | 'txs' | 'rules' | 'more'
+type View = 'year' | 'txs' | 'rules'
 
 /** Сегодняшний день по часам устройства. Отдельной функцией — её видно в тестах. */
 function today(): string {
@@ -597,48 +593,6 @@ export function App(): JSX.Element {
     )
   }
 
-  if (view === 'more') {
-    return (
-      <main class="f-page">
-        {header}
-        <p class="f-txhead">
-          <button type="button" class="f-linkish" onClick={() => setView('year')}>
-            ← к картине
-          </button>
-        </p>
-
-        {/* Все операции, а не отрезок: за один день приходов нет, и раздел
-            исчезал бы ровно тогда, когда о нём вспоминают (Д-026). */}
-        <IncomeView rows={onAccount} edge={edge} total={allIncome as Kopeck} />
-
-        <PlanView
-          plan={plan.value}
-          setAside={setAside as Kopeck}
-          open={planOpen}
-          onOpenChange={setPlanOpen}
-          onChange={setPlan}
-        />
-
-        <Extras enabled={enabledExtras} pending={pending} onToggle={toggleExtra} />
-
-        <Fold title="Счётная сводка" meta={summary.value === null ? 'не посчитана' : undefined}>
-          <p class="f-note">
-            Финансер ничего не считает в фоне. Сводка появится, когда вы её попросите.
-          </p>
-          <p class="f-sum__act">
-            <button type="button" class="f-linkish" onClick={() => compute(scope)}>
-              {summary.value === null ? 'посчитать →' : 'пересчитать'}
-            </button>
-          </p>
-          {summary.value === null ? null : <SummaryView summary={summary.value} />}
-        </Fold>
-
-        {footer}
-        {fileInput}
-      </main>
-    )
-  }
-
   if (view === 'txs') {
     const total = visible.reduce((sum, tx) => sum + tx.amount, 0)
     return (
@@ -748,36 +702,6 @@ export function App(): JSX.Element {
         </div>
       )}
 
-      {/* Напоминание о выгрузке. Не тревога и не модалка: строка с действием.
-          Safari сносит хранилище сайта, на который не заходили неделю, и
-          единственная настоящая защита года разметки — файл на устройстве.
-          Вспомнить об этом должно приложение, а не человек. */}
-      {backupDue(today()) ? (
-        <p class="f-note f-backup">
-          Выписка и правки живут только в этом браузере.{' '}
-          <button
-            type="button"
-            class="f-linkish"
-            onClick={() => {
-              downloadJson(
-                buildExport(rows, info, overrides.value, merchantOverrides.value),
-                'финансер.json',
-              )
-              markSaved(today())
-            }}
-          >
-            сохранить копию →
-          </button>
-        </p>
-      ) : null}
-
-      {/* Две колонки на широком экране. В одну картина занимала две с
-          половиной высоты монитора: чтобы увидеть категории, надо было
-          прокрутить мимо графика, а «картина года» тем и хороша, что видна
-          целиком. Слева то, что отвечает «сколько», справа — «на что».
-
-          На телефоне колонка одна: там ширины нет, и порядок сверху вниз
-          остаётся прежним. */}
       {/* Период — это режим, а не фильтр: ниже меняется не только число, но и
           то, о чём вообще идёт речь. На коротких отрезках это дневной ритм —
           сколько уже потрачено и сколько осталось; на длинных — картина по
@@ -828,11 +752,9 @@ export function App(): JSX.Element {
             : null
         }
         onSetPlan={() => {
-          // План переехал на экран «подробнее», поэтому ссылка из полосы
-          // предела ведёт туда же и сразу раскрывает нужный раздел: человек
-          // нажал «задать план», а не «пойти поискать, где он лежит».
+          // Раздел раскрывается перерисовкой, а она случится не сейчас: до неё
+          // блока в разметке ещё нет, и прокручивать не к чему.
           setPlanOpen(true)
-          setView('more')
           requestAnimationFrame(() =>
             document.querySelector('.f-plan')?.scrollIntoView({ block: 'center' }),
           )
@@ -849,10 +771,20 @@ export function App(): JSX.Element {
           Период и главные числа остаются во всю ширину: они общие для обеих
           половин, и в колонке шестая кнопка «6 мес» переносилась на две строки.
           На телефоне колонка одна — там ширины нет. */}
-      <div class="f-cols">
-        <div class="f-col f-col--chart">
+      {/* Три числа, за которыми возвращаются каждый день. Отдельной полосой над
+          блоками: они не про расходы и не про копилку, они про «сколько есть
+          сейчас», и внутри любого блока читались бы как его часть. */}
+<Balance onAccount={balance as Kopeck | null} next={arrival} />
 
-      {daily ? (
+      {/* Три блока. Каждый отвечает на свой вопрос и не залезает в чужой:
+          расходы — «куда ушло», копилка — «сколько отложено и успеваем ли»,
+          доходы — «откуда приходит». Границы блоков видимые: без них соседние
+          смыслы читаются как один длинный список. */}
+      <div class="f-cols">
+        <section class="f-block f-block--spend">
+          <h2 class="f-block__title">Расходы</h2>
+
+{daily ? (
         <DayChart
           rows={onAccount}
           from={period === 'day' ? weekStart(edge) : range.from}
@@ -874,11 +806,7 @@ export function App(): JSX.Element {
         />
       )}
 
-        </div>
-
-        <div class="f-col f-col--cats">
-
-      <div class="f-scope">
+<div class="f-scope">
         <h2 class="f-eyebrow">
           {day !== null
             ? `Траты по категориям · ${dayLabel(day)}`
@@ -911,13 +839,7 @@ export function App(): JSX.Element {
         }}
       />
 
-      <Balance onAccount={balance as Kopeck | null} next={arrival} saved={plan.value.saved} />
-
-        </div>
-
-        <div class="f-col f-col--folds">
-
-      {/* Порядок разделов: сначала то, что сообщает, потом то, что настраивает.
+{/* Порядок разделов: сначала то, что сообщает, потом то, что настраивает.
           Разбор непонятного и наличные — первыми: они сильнее всего меняют
           картину, всё остальное её только объясняет. */}
       <Unknown
@@ -948,32 +870,38 @@ export function App(): JSX.Element {
         onUnpair={(id) => setCategory(id, 'Доход')}
       />
 
+        </section>
 
+        <div class="f-side">
+          <section class="f-block f-block--save">
+            <SavingsView rows={onAccount} edge={edge} plan={plan.value} onChange={setPlan} />
+          </section>
 
+          <section class="f-block f-block--income">
+            <h2 class="f-block__title">Доходы</h2>
+
+            {/* Все операции, а не отрезок: за один день приходов нет, и раздел
+                исчезал бы ровно тогда, когда о нём вспоминают (Д-026). */}
+            <IncomeView rows={onAccount} edge={edge} total={allIncome as Kopeck} />
+          </section>
+
+          <section class="f-block f-block--tools">
+            <h2 class="f-block__title">Настройка</h2>
+            <Extras enabled={enabledExtras} pending={pending} onToggle={toggleExtra} />
+            <Fold title="Счётная сводка" meta={summary.value === null ? 'не посчитана' : undefined}>
+              <p class="f-note">
+                Финансер ничего не считает в фоне. Сводка появится, когда вы её попросите.
+              </p>
+              <p class="f-sum__act">
+                <button type="button" class="f-linkish" onClick={() => compute(scope)}>
+                  {summary.value === null ? 'посчитать →' : 'пересчитать'}
+                </button>
+              </p>
+              {summary.value === null ? null : <SummaryView summary={summary.value} />}
+            </Fold>
+          </section>
         </div>
       </div>
-
-      {/* Запись — под картиной. Наверху она стояла первой как «главное
-          действие дня», но открывают приложение всё-таки чтобы посмотреть, а
-          записывают уже после: поле над числами отодвигало вниз то, ради чего
-          пришли. Внизу оно и ближе к списку операций, куда попадает запись. */}
-      <Quick
-        options={options}
-        onAdd={(amount, description, category) =>
-          addManual(edge > today() ? edge : today(), amount as never, description, category)
-        }
-        onCategory={setCategory}
-        onDrop={dropManual}
-      />
-
-      {/* Выход к тому, что нужно раз в месяц, а не каждый день. Отдельным
-          экраном, а не ещё четырьмя заголовками: на телефоне восемь свёрнутых
-          разделов занимали всю первую прокрутку. */}
-      <p class="f-more-link">
-        <button type="button" class="f-linkish f-linkish--quiet" onClick={() => setView('more')}>
-          доход, план, категории, сводка →
-        </button>
-      </p>
 
       <p class="f-all">
         <button
@@ -1009,6 +937,36 @@ export function App(): JSX.Element {
           загрузить выписку →
         </button>
       </p>
+
+      {/* Напоминание о выгрузке — внизу, рядом с самой выгрузкой, а не над
+          сводкой. Наверху оно отодвигало то, ради чего пришли, и повторяло
+          собой действие, которое стоит двумя строками ниже. */}
+      {backupDue(today()) ? (
+        <p class="f-note f-backup">
+          Выписка и правки живут только в этом браузере.{' '}
+          <button
+            type="button"
+            class="f-linkish"
+            onClick={() => {
+              downloadJson(
+                buildExport(rows, info, overrides.value, merchantOverrides.value),
+                'финансер.json',
+              )
+              markSaved(today())
+            }}
+          >
+            сохранить копию →
+          </button>
+        </p>
+      ) : null}
+
+      {/* Две колонки на широком экране. В одну картина занимала две с
+          половиной высоты монитора: чтобы увидеть категории, надо было
+          прокрутить мимо графика, а «картина года» тем и хороша, что видна
+          целиком. Слева то, что отвечает «сколько», справа — «на что».
+
+          На телефоне колонка одна: там ширины нет, и порядок сверху вниз
+          остаётся прежним. */}
 
       {/* Данные старше выбранного отрезка не прячутся молча: если они есть,
           выход к ним стоит здесь же (Д-026). Строка появляется один раз при

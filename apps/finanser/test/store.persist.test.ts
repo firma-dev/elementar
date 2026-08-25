@@ -111,14 +111,40 @@ describe('напоминание сохранить копию', () => {
   it('зовёт сразу, если не сохраняли ни разу', async () => {
     vi.resetModules()
     const store = await import('../src/store.js')
-    store.addManual('2026-08-25', -25000 as never, 'кофе', null)
+    store.addStatement(
+      [
+        {
+          id: 'x',
+          date: '2026-08-25',
+          amount: -25000 as never,
+          description: 'Кофе',
+          mcc: null,
+          bankCategory: null,
+          account: 'карта',
+        },
+      ],
+      { name: 'выписка', rows: 1, accounts: ['карта'] } as never,
+    )
     expect(store.backupDue('2026-08-25')).toBe(true)
   })
 
   it('молчит неделю после сохранения и зовёт на восьмой день', async () => {
     vi.resetModules()
     const store = await import('../src/store.js')
-    store.addManual('2026-08-25', -25000 as never, 'кофе', null)
+    store.addStatement(
+      [
+        {
+          id: 'y',
+          date: '2026-08-25',
+          amount: -25000 as never,
+          description: 'Кофе',
+          mcc: null,
+          bankCategory: null,
+          account: 'карта',
+        },
+      ],
+      { name: 'выписка', rows: 1, accounts: ['карта'] } as never,
+    )
     store.markSaved('2026-08-25')
     expect(store.backupDue('2026-08-26')).toBe(false)
     expect(store.backupDue('2026-08-31')).toBe(false)

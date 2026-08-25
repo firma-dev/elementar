@@ -1,0 +1,246 @@
+import type { JSX } from 'preact'
+import { formatAmount, parseAmount } from '../money.js'
+import type { Kopeck } from '../money.js'
+import type { Plan } from '../plan.js'
+import { deadline, forecast, monthsBetween, pace, progress, savedByMonth, verdictOf } from '../savings.js'
+import type { MonthVerdict, SavedMonth } from '../savings.js'
+import type { Categorized } from '../model.js'
+import { monthLabel } from '../model.js'
+import { Amount } from './Amount.js'
+
+export interface SavingsProps {
+  rows: readonly Categorized[]
+  /** Край данных, `ГГГГ-ММ-ДД`. От него считаются сроки. */
+  edge: string
+  plan: Plan
+  onChange: (next: Plan) => void
+}
+
+/**
+ * Копилка: сколько лежит, к чему идём, успеваем ли и как шли месяцы.
+ *
+ * Здесь только два числа спрашиваются рукой — сколько уже лежит и какая цель.
+ * Остальное считается: сколько откладывается на самом деле, какой темп, когда
+ * наберётся. Спрашивать то, что видно в операциях, значит позволить двум
+ * ответам разойтись.
+ *
+ * Качество выполнения показывается месяцами, а не одной долей. «Выполнено на
+ * 74%» — это среднее, за которым не видно, был ли один пропущенный месяц или
+ * шесть недобранных: лечится это по-разному.
+ */
+export function SavingsView({ rows, edge, plan, onChange }: SavingsProps): JSX.Element {
+  const history = savedByMonth(rows, edge, plan.save)
+  const rate = pace(history)
+  const ahead = forecast(plan, rate, edge)
+  const due = deadline(plan, edge)
+  const share = progress(plan)
+  const set = (field: keyof Plan) => (value: Kopeck) => onChange({ ...plan, [field]: value })
+
+  return (
+    <section class="f-save">
+      <h2 class="f-eyebrow">Копилка</h2>
+
+      <div class="f-save__now">
+        <Amount class="f-save__sum" value={plan.saved} kopecks="never" />
+        {plan.goal > 0 ? (
+          <span class="f-save__of">
+            из <Amount value={plan.goal} kopecks="never" />
+          </span>
+        ) : null}
+      </div>
+
+      {/* Полоса только при заданной цели: шкала без цели показывает долю от
+          неизвестного, то есть врёт формой, ничего не сказав словами. */}
+      {share === null ? null : (
+        <div class="f-save__track" role="img" aria-label={`Пройдено ${Math.round(share * 100)}%`}>
+          <span class="f-save__fill" style={`width:${Math.round(share * 100)}%`} />
+        </div>
+      )}
+
+      <dl class="f-save__facts">
+        <div>
+          <dt class="f-save__k">откладывается</dt>
+          <dd class="f-save__v">
+            {rate === 0 ? (
+              <span class="f-save__none">пока нисколько</span>
+            ) : (
+              <>
+                <Amount value={rate} kopecks="never" /> <span class="f-save__unit">в месяц</span>
+              </>
+            )}
+          </dd>
+        </div>
+
+        {plan.goal <= 0 ? null : (
+          <div>
+            <dt class="f-save__k">осталось</dt>
+            <dd class="f-save__v">
+              <Amount value={ahead.left} kopecks="never" />
+            </dd>
+          </div>
+        )}
+
+        {ahead.month === null ? null : (
+          <div>
+            <dt class="f-save__k">при нынешнем темпе</dt>
+            <dd class="f-save__v f-save__v--word">{monthLabel(ahead.month)}</dd>
+          </div>
+        )}
+      </dl>
+
+      {/* Срок. Не упрёк, а арифметика: сколько надо откладывать, чтобы успеть.
+          Приложение не знает, почему человек отстал, и говорить об этом ему
+          нечего — а число, которое всё исправит, назвать может. */}
+      {due === null ? null : (
+        <p class={due.needed !== null && due.needed > rate ? 'f-save__due f-save__due--late' : 'f-save__due'}>
+          {due.needed === null ? (
+            <>Срок {monthLabel(plan.goalDate)} прошёл, а цель не взята.</>
+          ) : due.needed === 0 ? (
+            <>Цель взята.</>
+          ) : due.needed > rate ? (
+            <>
+              Чтобы успеть к {monthLabel(plan.goalDate)}, надо откладывать{' '}
+              <Amount value={due.needed} kopecks="never" /> в месяц — на{' '}
+              <Amount value={(due.needed - rate) as Kopeck} kopecks="never" /> больше нынешнего.
+            </>
+          ) : (
+            <>
+              К {monthLabel(plan.goalDate)} успеваете: нужно{' '}
+              <Amount value={due.needed} kopecks="never" /> в месяц, откладывается больше.
+            </>
+          )}
+        </p>
+      )}
+
+      {history.length === 0 ? null : <Quality history={history.slice(-6)} />}
+
+      <div class="f-save__fields">
+        <Money label="Уже в копилке" value={plan.saved} onChange={set('saved')} />
+        <Money label="Цель" value={plan.goal} onChange={set('goal')} />
+        <Month
+          label="К месяцу"
+          value={plan.goalDate}
+          onChange={(next) => onChange({ ...plan, goalDate: next })}
+        />
+        <Money label="В копилку за месяц" value={plan.save} onChange={set('save')} />
+      </div>
+    </section>
+  )
+}
+
+/**
+ * Как шли месяцы.
+ *
+ * Столбик на месяц, а не одна доля: пропущенный месяц и недобранный лечатся
+ * по-разному, и в среднем они неразличимы. Пропуск красится отдельно —
+ * это единственное, что стоит заметить с одного взгляда.
+ */
+function Quality({ history }: { history: readonly SavedMonth[] }): JSX.Element {
+  const top = Math.max(...history.map((r) => Math.max(r.saved, r.planned)), 1)
+
+  return (
+    <div class="f-save__quality">
+      <h3 class="f-save__qk">Как шли месяцы</h3>
+      <ul class="f-save__months" role="list">
+        {history.map((row) => {
+          const verdict = verdictOf(row)
+          return (
+            <li key={row.month} class="f-save__month">
+              <span class="f-save__mname">{monthLabel(row.month)}</span>
+              <span class="f-save__mtrack">
+                <span
+                  class={fillClass(verdict)}
+                  style={`width:${Math.round((row.saved / top) * 100)}%`}
+                />
+                {/* Отметка плана поверх полосы: без неё «взято» и «недобрано»
+                    отличаются только цветом, а глазом нужен ориентир. */}
+                {row.planned > 0 ? (
+                  <span
+                    class="f-save__mmark"
+                    style={`left:${Math.min(100, Math.round((row.planned / top) * 100))}%`}
+                  />
+                ) : null}
+              </span>
+              <Amount class="f-save__mnum" value={row.saved} kopecks="never" />
+              <span class={verdictClass(verdict)}>{verdict}</span>
+            </li>
+          )
+        })}
+      </ul>
+    </div>
+  )
+}
+
+/**
+ * Имена классов пишутся целиком, а не собираются подстановкой.
+ *
+ * Собранное из кусков имя не находится грепом, и правило в CSS выглядит
+ * мёртвым — его удаляют при первой же уборке. Проверка «в файле нет правил,
+ * которые никто не рисует» ловит ровно это и на подстановку не смотрит.
+ */
+function fillClass(verdict: MonthVerdict): string {
+  switch (verdict) {
+    case 'взято':
+      return 'f-save__mfill f-save__mfill--ok'
+    case 'недобрано':
+      return 'f-save__mfill f-save__mfill--short'
+    case 'пропущено':
+      return 'f-save__mfill f-save__mfill--miss'
+    default:
+      return 'f-save__mfill f-save__mfill--none'
+  }
+}
+
+function verdictClass(verdict: MonthVerdict): string {
+  return verdict === 'пропущено'
+    ? 'f-save__verdict f-save__verdict--miss'
+    : 'f-save__verdict'
+}
+
+/** Поле для суммы. Хранится в копейках, показывается рублями. */
+function Money({
+  label,
+  value,
+  onChange,
+}: {
+  label: string
+  value: Kopeck
+  onChange: (next: Kopeck) => void
+}): JSX.Element {
+  return (
+    <label class="f-field">
+      <span class="f-field__k">{label}</span>
+      <input
+        type="text"
+        inputMode="decimal"
+        value={value === 0 ? '' : formatAmount(value, { kopecks: 'auto', abs: true })}
+        onChange={(event) => {
+          const raw = (event.currentTarget as HTMLInputElement).value
+          onChange(raw.trim() === '' ? (0 as Kopeck) : (Math.abs(parseAmount(raw) ?? 0) as Kopeck))
+        }}
+      />
+    </label>
+  )
+}
+
+/** Месяц. Родное поле браузера: свой календарь здесь ничего не добавит. */
+function Month({
+  label,
+  value,
+  onChange,
+}: {
+  label: string
+  value: string
+  onChange: (next: string) => void
+}): JSX.Element {
+  return (
+    <label class="f-field">
+      <span class="f-field__k">{label}</span>
+      <input
+        type="month"
+        value={value}
+        onChange={(event) => onChange((event.currentTarget as HTMLInputElement).value)}
+      />
+    </label>
+  )
+}

@@ -8,19 +8,22 @@ export interface BalanceProps {
   onAccount: Kopeck | null
   /** Ближайший ожидаемый приход — только по регулярным источникам. */
   next: { date: string; label: string; amount: Kopeck } | null
-  /** Сколько в копилке. Вводится рукой: накопительный счёт обычно не выгружают. */
-  saved: Kopeck
 }
 
 /**
- * Три числа, за которыми возвращаются каждый день: сколько есть, когда придёт
- * ещё и сколько отложено.
+ * Два числа, за которыми возвращаются каждый день: сколько есть и когда придёт
+ * ещё.
+ *
+ * Копилки здесь нет намеренно. Она стояла третьим числом, а ниже на том же
+ * экране лежит блок «Копилка» с той же суммой — один смысл в двух местах, и
+ * человеку приходится решать, какое из них главное. Сумма осталась там, где у
+ * неё есть контекст: цель, срок и то, как шли месяцы.
  *
  * Числа, которых нет, не подменяются нулями. Ноль на счёте и «банк не сказал,
  * сколько на счёте» — разные новости, а выглядели бы одинаково.
  */
-export function Balance({ onAccount, next, saved }: BalanceProps): JSX.Element | null {
-  if (onAccount === null && next === null && saved === 0) return null
+export function Balance({ onAccount, next }: BalanceProps): JSX.Element | null {
+  if (onAccount === null && next === null) return null
 
   return (
     <dl class="f-bal">
@@ -51,16 +54,6 @@ export function Balance({ onAccount, next, saved }: BalanceProps): JSX.Element |
         </dd>
       </div>
 
-      <div class="f-bal__cell">
-        <dt class="f-bal__k">в копилке</dt>
-        <dd class="f-bal__v">
-          {saved === 0 ? (
-            <span class="f-bal__none">не заполнено</span>
-          ) : (
-            <Amount class="f-bal__num f-bal__num--in" value={saved} kopecks="never" />
-          )}
-        </dd>
-      </div>
     </dl>
   )
 }
