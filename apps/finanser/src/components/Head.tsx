@@ -24,6 +24,16 @@ export interface HeadProps {
    */
   change: { spend: number | null; income: number | null; label: string } | null
   onSetPlan: () => void
+  /**
+   * Какую половину рисовать.
+   *
+   * Раньше шапка рисовала обе плитки рядом, а расходы и доходы жили ниже
+   * отдельными блоками — и главное число оказывалось оторвано от того, что его
+   * объясняет: сумма прихода наверху, источники прихода через полстраницы.
+   * Теперь каждая половина встаёт в свой блок, к своему графику и своему
+   * списку. Разметка общая, чтобы кегли и скелет не разъезжались.
+   */
+  part: 'spend' | 'income'
 }
 
 /**
@@ -74,73 +84,17 @@ export function Head({
   saving,
   change,
   onSetPlan,
+  part,
 }: HeadProps): JSX.Element {
   const over = limit !== null && spent > limit
   const fill = limit === null || limit === 0 ? 0 : Math.min(100, Math.round((spent / limit) * 100))
   const pace = Math.min(100, Math.round((elapsed.done / elapsed.total) * 100))
 
-  return (
-    <div class="f-head2">
-      <div class="f-head2__cell f-head2__cell--main">
-        <span class="f-head2__k">Потрачено {title}</span>
-        <Amount
-          class={over ? 'f-head2__v f-head2__v--over' : 'f-head2__v'}
-          value={spent}
-          kopecks="never"
-        />
-
-        {/* Дорожка занимает место всегда, но рисуется только когда есть с чем
-            сравнивать: всегда пустая шкала читалась бы как «ноль процентов
-            чего-то», то есть сообщала бы неправду. */}
-        <span class={limit === null ? 'f-head2__track f-head2__track--none' : 'f-head2__track'}>
-          {limit === null ? null : (
-            <>
-              <span
-                class={over ? 'f-head2__fill f-head2__fill--over' : 'f-head2__fill'}
-                style={`width:${fill}%`}
-              />
-              {elapsed.total > 1 ? <span class="f-head2__pace" style={`left:${pace}%`} /> : null}
-            </>
-          )}
-        </span>
-
-        <span class="f-head2__sub">
-          {limit !== null ? (
-            <>
-              из <Amount value={limit} kopecks="never" />
-              {' · '}
-              {over ? (
-                <span class="f-head2__over">
-                  сверх плана на <Amount value={(spent - limit) as Kopeck} kopecks="never" />
-                </span>
-              ) : (
-                <span class="f-head2__left">
-                  осталось <Amount value={(limit - spent) as Kopeck} kopecks="never" />
-                </span>
-              )}
-            </>
-          ) : average !== null ? (
-            <>
-              в среднем <Amount value={average.spend} kopecks="never" /> в месяц
-            </>
-          ) : (
-            /* Коротко: длинная фраза занимала третью строку, и шапка от неё
-               росла — то есть возвращался тот самый прыжок. */
-            <>
-              не с чем сравнить —{' '}
-              <button type="button" class="f-linkish" onClick={onSetPlan}>
-                задать план →
-              </button>
-            </>
-          )}
-        </span>
-        <Change percent={change?.spend ?? null} good={false} label={change?.label ?? ''} />
-      </div>
-
+  if (part === 'income') {
+    return (
       <div class="f-head2__cell">
         <span class="f-head2__k">Пришло {title}</span>
         <Amount class="f-head2__v f-head2__v--in" value={income} kopecks="never" />
-        <span class="f-head2__track" />
         <span class="f-head2__sub">
           {saving !== null ? (
             <>
@@ -162,11 +116,68 @@ export function Head({
             <>{formatShare(spent, income)}% поступлений ушло на траты</>
           ) : null}
         </span>
-        {/* Без подписи: она та же самая, что слева, и повторять её незачем —
-            зато в узкой колонке она переносилась на вторую строку, и шапка
-            росла на шесть пикселей при смене отрезка. */}
+        {/* Без подписи: она та же самая, что у расходов, и повторять её
+            незачем — зато в узкой колонке она переносилась на вторую строку. */}
         <Change percent={change?.income ?? null} good label="" />
       </div>
+    )
+  }
+
+  return (
+    <div class="f-head2__cell">
+      <span class="f-head2__k">Потрачено {title}</span>
+      <Amount
+        class={over ? 'f-head2__v f-head2__v--over' : 'f-head2__v'}
+        value={spent}
+        kopecks="never"
+      />
+
+      {/* Дорожка занимает место всегда, но рисуется только когда есть с чем
+            сравнивать: всегда пустая шкала читалась бы как «ноль процентов
+            чего-то», то есть сообщала бы неправду. */}
+      <span class={limit === null ? 'f-head2__track f-head2__track--none' : 'f-head2__track'}>
+        {limit === null ? null : (
+          <>
+            <span
+              class={over ? 'f-head2__fill f-head2__fill--over' : 'f-head2__fill'}
+              style={`width:${fill}%`}
+            />
+            {elapsed.total > 1 ? <span class="f-head2__pace" style={`left:${pace}%`} /> : null}
+          </>
+        )}
+      </span>
+
+      <span class="f-head2__sub">
+        {limit !== null ? (
+          <>
+            из <Amount value={limit} kopecks="never" />
+            {' · '}
+            {over ? (
+              <span class="f-head2__over">
+                сверх плана на <Amount value={(spent - limit) as Kopeck} kopecks="never" />
+              </span>
+            ) : (
+              <span class="f-head2__left">
+                осталось <Amount value={(limit - spent) as Kopeck} kopecks="never" />
+              </span>
+            )}
+          </>
+        ) : average !== null ? (
+          <>
+            в среднем <Amount value={average.spend} kopecks="never" /> в месяц
+          </>
+        ) : (
+          /* Коротко: длинная фраза занимала третью строку, и шапка от неё
+               росла — то есть возвращался тот самый прыжок. */
+          <>
+            не с чем сравнить —{' '}
+            <button type="button" class="f-linkish" onClick={onSetPlan}>
+              задать план →
+            </button>
+          </>
+        )}
+      </span>
+      <Change percent={change?.spend ?? null} good={false} label={change?.label ?? ''} />
     </div>
   )
 }

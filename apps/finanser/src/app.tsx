@@ -88,6 +88,7 @@ import { RulesView } from './components/RulesView.js'
  * файл лежит в чужом каталоге: сосед переносит — у нас молча пропадает шапка.
  */
 import logo from '@elementar/brand/elementar.svg'
+import { IncomeChart } from './components/IncomeChart.js'
 
 /**
  * Один экран — сводка. Всё, что отвечает на вопросы «сколько», «на что» и
@@ -761,43 +762,6 @@ export function App(): JSX.Element {
         ))}
       </div>
 
-      {/* Шапка одна на все шесть отрезков: раньше короткие показывали полосу
-          предела, длинные — две плитки, и переключение сдвигало всё, что ниже,
-          на сто с лишним пикселей — ровно там, где человек нажимает. */}
-      <Head
-        title={day !== null ? dayLabel(day) : month !== null ? monthLabel(month) : spec.title}
-        spent={planes.spend.total}
-        income={planes.income.total}
-        limit={limit}
-        elapsed={pace}
-        average={
-          daily || months.length === 0
-            ? null
-            : {
-                spend: Math.round(planes.spend.total / months.length) as Kopeck,
-                income: Math.round(planes.income.total / months.length) as Kopeck,
-              }
-        }
-        change={change}
-        saving={
-          daily
-            ? {
-                done: setAside as Kopeck,
-                left: toGoal(plan.value, setAside as Kopeck),
-                goal: plan.value.save,
-              }
-            : null
-        }
-        onSetPlan={() => {
-          // Раздел раскрывается перерисовкой, а она случится не сейчас: до неё
-          // блока в разметке ещё нет, и прокручивать не к чему.
-          setPlanOpen(true)
-          requestAnimationFrame(() =>
-            document.querySelector('.f-plan')?.scrollIntoView({ block: 'center' }),
-          )
-        }}
-      />
-
       {/* График тоже один на все отрезки и всегда на месте. На «дне» рисуется
           его неделя с подсветкой: один столбик не с чем сравнивать, а пустое
           место снова сдвигало бы всё, что ниже. */}
@@ -811,7 +775,7 @@ export function App(): JSX.Element {
       {/* Три числа, за которыми возвращаются каждый день. Отдельной полосой над
           блоками: они не про расходы и не про копилку, они про «сколько есть
           сейчас», и внутри любого блока читались бы как его часть. */}
-<Balance
+      <Balance
         onAccount={balance as Kopeck | null}
         next={arrival}
         edge={edge}
@@ -826,92 +790,127 @@ export function App(): JSX.Element {
         <section class="f-block f-block--spend">
           <h2 class="f-block__title">Расходы</h2>
 
-{daily ? (
-        <DayChart
-          rows={onAccount}
-          from={period === 'day' ? weekStart(edge) : range.from}
-          to={period === 'day' ? edge : range.to}
-          limit={limitFor('day', edge, plan.value)}
-          selected={day}
-          onSelect={(next) => {
-            setDay(next)
-            setCategoryFilter(null)
-          }}
-        />
-      ) : (
-        <MonthChart
-          months={months}
-          selected={month}
-          hovered={hovered}
-          onSelect={setMonth}
-          onHover={setHovered}
-        />
-      )}
-
-<div class="f-scope">
-        <h2 class="f-eyebrow">
-          {day !== null
-            ? `Траты по категориям · ${dayLabel(day)}`
-            : month !== null
-              ? `Траты по категориям · ${monthLabel(month)}`
-              : 'Траты по категориям'}
-        </h2>
-        {day === null && month === null ? null : (
-          <button
-            type="button"
-            class="f-linkish"
-            onClick={() => {
-              setMonth(null)
-              setDay(null)
+          {/* Главное число стоит в своём блоке, над своим графиком и своим
+              списком. Раньше обе плитки жили общей шапкой наверху, а расходы и
+              доходы — блоками ниже: сумма была оторвана от того, что её
+              объясняет. */}
+          <Head
+            title={day !== null ? dayLabel(day) : month !== null ? monthLabel(month) : spec.title}
+            spent={planes.spend.total}
+            income={planes.income.total}
+            limit={limit}
+            elapsed={pace}
+            average={
+              daily || months.length === 0
+                ? null
+                : {
+                    spend: Math.round(planes.spend.total / months.length) as Kopeck,
+                    income: Math.round(planes.income.total / months.length) as Kopeck,
+                  }
+            }
+            change={change}
+            saving={
+              daily
+                ? {
+                    done: setAside as Kopeck,
+                    left: toGoal(plan.value, setAside as Kopeck),
+                    goal: plan.value.save,
+                  }
+                : null
+            }
+            onSetPlan={() => {
+              // Раздел раскрывается перерисовкой, а она случится не сейчас: до неё
+              // блока в разметке ещё нет, и прокручивать не к чему.
+              setPlanOpen(true)
+              requestAnimationFrame(() =>
+                document.querySelector('.f-plan')?.scrollIntoView({ block: 'center' }),
+              )
             }}
-          >
-            ← {spec.title}
-          </button>
-        )}
-      </div>
-      <CategoryList
-        rows={cats}
-        total={planes.spend.total}
-        expanded={category}
-        onToggle={setCategoryFilter}
-        transactionsOf={inCategory}
-        onOpenAll={(c) => {
-          setCategoryFilter(c)
-          setView('txs')
-        }}
-      />
+            part="spend"
+          />
 
-{/* Порядок разделов: сначала то, что сообщает, потом то, что настраивает.
+          {daily ? (
+            <DayChart
+              rows={onAccount}
+              from={period === 'day' ? weekStart(edge) : range.from}
+              to={period === 'day' ? edge : range.to}
+              limit={limitFor('day', edge, plan.value)}
+              selected={day}
+              onSelect={(next) => {
+                setDay(next)
+                setCategoryFilter(null)
+              }}
+            />
+          ) : (
+            <MonthChart
+              months={months}
+              selected={month}
+              hovered={hovered}
+              onSelect={setMonth}
+              onHover={setHovered}
+            />
+          )}
+
+          <div class="f-scope">
+            <h2 class="f-eyebrow">
+              {day !== null
+                ? `Траты по категориям · ${dayLabel(day)}`
+                : month !== null
+                  ? `Траты по категориям · ${monthLabel(month)}`
+                  : 'Траты по категориям'}
+            </h2>
+            {day === null && month === null ? null : (
+              <button
+                type="button"
+                class="f-linkish"
+                onClick={() => {
+                  setMonth(null)
+                  setDay(null)
+                }}
+              >
+                ← {spec.title}
+              </button>
+            )}
+          </div>
+          <CategoryList
+            rows={cats}
+            total={planes.spend.total}
+            expanded={category}
+            onToggle={setCategoryFilter}
+            transactionsOf={inCategory}
+            onOpenAll={(c) => {
+              setCategoryFilter(c)
+              setView('txs')
+            }}
+          />
+
+          {/* Порядок разделов: сначала то, что сообщает, потом то, что настраивает.
           Разбор непонятного и наличные — первыми: они сильнее всего меняют
           картину, всё остальное её только объясняет. */}
-      <Unknown
-        rows={scope}
-        totalSpend={planes.spend.total}
-        hasCodes={info?.hasCodes ?? true}
-        named={merchantOverrides.value}
-        options={options}
-        onMerchantCategory={setMerchantCategory}
-      />
+          <Unknown
+            rows={scope}
+            totalSpend={planes.spend.total}
+            hasCodes={info?.hasCodes ?? true}
+            named={merchantOverrides.value}
+            options={options}
+            onMerchantCategory={setMerchantCategory}
+          />
 
-      {/* Наличные — рядом с разбором непонятного: обе про одно, про деньги,
+          {/* Наличные — рядом с разбором непонятного: обе про одно, про деньги,
           о которых выписка не сказала ничего. */}
-      <CashView
-        rows={scope}
-        splits={cashSplits.value}
-        totalSpend={planes.spend.total}
-        options={options}
-        onSplit={setCashSplit}
-      />
+          <CashView
+            rows={scope}
+            splits={cashSplits.value}
+            totalSpend={planes.spend.total}
+            options={options}
+            onSplit={setCashSplit}
+          />
 
-      {/* Что уходит само — рядом с «откуда приходит»: оба про то, что человек
+          {/* Что уходит само — рядом с «откуда приходит»: оба про то, что человек
           не выбирает каждый день, а обнаруживает раз в полгода. */}
-      <Regular rows={onAccount} edge={edge} />
+          <Regular rows={onAccount} edge={edge} />
 
-      <MoneyMoves
-        rows={scope}
-        onUnpair={(id) => setCategory(id, 'Доход')}
-      />
-
+          <MoneyMoves rows={scope} onUnpair={(id) => setCategory(id, 'Доход')} />
         </section>
 
         {/* Доходы — блок наравне с расходами, а не приписка сбоку. Деньги
@@ -919,6 +918,53 @@ export function App(): JSX.Element {
             них означал бы, что одна половина важнее. */}
         <section class="f-block f-block--income">
           <h2 class="f-block__title">Доходы</h2>
+
+          <Head
+            title={day !== null ? dayLabel(day) : month !== null ? monthLabel(month) : spec.title}
+            spent={planes.spend.total}
+            income={planes.income.total}
+            limit={limit}
+            elapsed={pace}
+            average={
+              daily || months.length === 0
+                ? null
+                : {
+                    spend: Math.round(planes.spend.total / months.length) as Kopeck,
+                    income: Math.round(planes.income.total / months.length) as Kopeck,
+                  }
+            }
+            change={change}
+            saving={
+              daily
+                ? {
+                    done: setAside as Kopeck,
+                    left: toGoal(plan.value, setAside as Kopeck),
+                    goal: plan.value.save,
+                  }
+                : null
+            }
+            onSetPlan={() => {
+              // Раздел раскрывается перерисовкой, а она случится не сейчас: до неё
+              // блока в разметке ещё нет, и прокручивать не к чему.
+              setPlanOpen(true)
+              requestAnimationFrame(() =>
+                document.querySelector('.f-plan')?.scrollIntoView({ block: 'center' }),
+              )
+            }}
+            part="income"
+          />
+
+          {/* График прихода — зеркало расходного: тот же скелет, те же вёдра,
+              тот же язык. Без него доходы были единственной половиной картины
+              без формы: сумма и список источников, но не видно, ровно они идут
+              или рывками. */}
+          <IncomeChart
+            rows={onAccount}
+            from={period === 'day' ? weekStart(edge) : range.from}
+            to={period === 'day' ? edge : range.to}
+            months={months}
+            daily={daily}
+          />
 
           {/* Все операции, а не отрезок: за один день приходов нет, и раздел
               исчезал бы ровно тогда, когда о нём вспоминают (Д-026). */}
@@ -986,7 +1032,11 @@ export function App(): JSX.Element {
             случается раз в месяц, а стояла заметнее всего на экране — заметнее
             записи траты, ради которой приложение открывают каждый день. Рядом с
             выгрузкой ей и место: обе операции про файлы. */}
-        <button type="button" class="f-linkish f-linkish--quiet" onClick={() => fileRef.current?.click()}>
+        <button
+          type="button"
+          class="f-linkish f-linkish--quiet"
+          onClick={() => fileRef.current?.click()}
+        >
           загрузить выписку →
         </button>
       </p>

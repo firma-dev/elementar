@@ -495,6 +495,18 @@ input {
 
 /* Красный только у дней сверх дневной нормы. Если красить всё, красное
    перестаёт значить. */
+/* Приход зелёный — тем же цветом, что и число над графиком. */
+.f-chart__bar--in {
+  background: var(--el__success);
+}
+
+/* В графике прихода столбики не нажимаются: за месяцем стоит один-два
+   источника, и они перечислены строкой ниже. Палец-курсор обещал бы разбор,
+   которого нет. */
+.f-chart--in .f-chart__col {
+  cursor: default;
+}
+
 .f-chart__bar--over {
   background: var(--el__accent);
 }
@@ -576,6 +588,7 @@ input {
   align-items: baseline;
 }
 
+.f-inc__left,
 .f-cat__left {
   display: flex;
   gap: 0.5em;
@@ -585,11 +598,13 @@ input {
 
 /* Ранг набран тем же серым, что и остальное служебное: gray-400 давал
    контраст 2,76:1 при норме 4,5:1 — цифру было почти не видно. */
+.f-inc__rank,
 .f-cat__rank {
   font-size: var(--el__fs-xs);
   color: var(--el__text-caption);
 }
 
+.f-inc__name,
 .f-cat__name {
   font-size: var(--el__fs-s);
   min-width: 0;
@@ -598,16 +613,19 @@ input {
   white-space: nowrap;
 }
 
+.f-inc__share,
 .f-cat__share {
   font-size: var(--el__fs-xs);
   color: var(--el__text-caption);
 }
 
+.f-inc__sum,
 .f-cat__sum {
   font-size: var(--el__fs-s);
   white-space: nowrap;
 }
 
+.f-inc__track,
 .f-cat__track {
   /* Дорожка — span внутри кнопки: без display:block высота на строчном
      элементе не действует, и полоса просто не рисуется. */
@@ -617,6 +635,7 @@ input {
   margin-top: 0.2em;
 }
 
+.f-inc__fill,
 .f-cat__fill {
   height: 100%;
 }
@@ -1577,8 +1596,10 @@ input {
   margin-top: var(--f-step-2);
 }
 
+/* Тот же шаг, что у строки категории напротив: 0,45em против 0,35em давало
+   списки разной плотности в двух колонках одного экрана. */
 .f-inc__row {
-  padding: 0.45em 0;
+  padding: 0.35em 0 0.3em;
   border-bottom: var(--el__border-width-s) solid var(--el__border);
 }
 
@@ -1589,18 +1610,6 @@ input {
   align-items: baseline;
 }
 
-.f-inc__name {
-  font-size: var(--el__fs-s);
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.f-inc__sum {
-  font-size: var(--el__fs-s);
-  white-space: nowrap;
-}
 
 .f-inc__meta {
   display: flex;
@@ -1625,6 +1634,12 @@ input {
 .f-inc__typical,
 .f-inc__last {
   white-space: nowrap;
+}
+
+/* Действие всегда у правого края строки — по одной вертикали во всех строках
+   списка. */
+.f-inc__act {
+  margin-inline-start: auto;
 }
 
 /* ───────────────────── План и копилка ───────────────────── */
@@ -1781,27 +1796,23 @@ input {
    Теперь везде две равные колонки и один зазор. Вес «потрачено» против
    «пришло» несут толщина рамки и тень, а не ширина: разной шириной он
    выражался ценой того, что вся страница переставала быть выровненной. */
-.f-head2 {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--f-step-3) var(--f-step-4);
-  margin-bottom: var(--f-step-3);
-  align-items: stretch;
-}
+/* Плитка суммы стоит внутри своего блока — расходной или доходной, — и рамка
+   у неё уже есть: блочная. Своей рамки у плитки больше нет: коробка в коробке
+   на экране, где коробок и так восемь, читается как отдельная сущность, хотя
+   это просто заголовок блока с числом.
 
+   Раньше обе плитки жили одной шапкой наверху, а расходы и доходы — блоками
+   ниже. Главное число оказывалось оторвано от того, что его объясняет: сумма
+   прихода наверху, источники прихода через полстраницы. Разметка у половин
+   осталась общая, чтобы кегли и скелет не разъезжались. */
 .f-head2__cell {
-  border: var(--el__border-width-s) solid var(--el__text);
-  padding: 0.6em 0.75em 0.7em;
   display: flex;
   flex-direction: column;
   gap: 0.25em;
   min-width: 0;
+  margin-bottom: var(--f-step-2);
 }
 
-.f-head2__cell--main {
-  border-width: var(--el__border-width-m);
-  box-shadow: var(--el__shadow-m);
-}
 /* Место под две строки: «Потрачено за три месяца» в узкой колонке
    переносится, «Потрачено за год» — нет, и шапка от этого росла на шесть
    пикселей при смене отрезка. Четырнадцать пикселей воздуха один раз дешевле,
@@ -1814,14 +1825,14 @@ input {
   color: var(--el__text-caption);
 }
 
+/* Один кегль на оба числа. Приход был на ступень мельче траты — так было
+   задумано, пока плитки стояли рядом и вес показывал, что важнее. Теперь они
+   в разных блоках, сравнивать их взглядом уже нельзя, и мельче означает
+   просто «другой шрифт в соседнем блоке». */
 .f-head2__v {
   font-size: var(--el__fs-2xl);
   line-height: 1.05;
   white-space: nowrap;
-}
-
-.f-head2__cell:not(.f-head2__cell--main) .f-head2__v {
-  font-size: var(--el__fs-lg);
 }
 
 .f-head2__v--over {
@@ -1841,7 +1852,6 @@ input {
   background: var(--el__surface);
 }
 
-.f-head2__cell:not(.f-head2__cell--main) .f-head2__track,
 .f-head2__track--none {
   background: none;
 }
