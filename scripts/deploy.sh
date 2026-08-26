@@ -2,9 +2,10 @@
 #
 # Выкладка на elementaros.ru.
 #
-#   scripts/deploy.sh          — собрать и выложить всё
+#   scripts/deploy.sh          — собрать и выложить всё (по SSH)
 #   scripts/deploy.sh os       — только посадочную, в корень
 #   scripts/deploy.sh finanser — только финансер, в /финансер/
+#   scripts/deploy.sh ftp      — всё по FTP, пока нет SSH-ключа
 #
 # Что куда:
 #   apps/elementaros/dist → /www/elementaros.ru/
@@ -52,6 +53,64 @@ upload() {
     "rm -rf '$to.старое' && { [ -d '$to' ] && mv '$to' '$to.старое' || true; } && mv '$to.новое' '$to' && rm -rf '$to.старое'"
   echo "  готово"
 }
+
+# ─────────────────────────── Выкладка по FTP ───────────────────────────
+#
+# Запасной путь, пока на хостинге не прописан SSH-ключ.
+#
+# Пароль скрипт не спрашивает и не получает: curl берёт его из ~/.netrc —
+# файла, который читает только он и владелец. Пароль не попадает ни в командную
+# строку, ни в список процессов, ни в историю оболочки.
+#
+# Один раз создайте ~/.netrc с правами 600:
+#
+#   machine server68.hosting.reg.ru
+#   login u3602414
+#   password ВАШ_ПАРОЛЬ_ОТ_ХОСТИНГА
+#
+#   chmod 600 ~/.netrc
+#
+# Запуск: scripts/deploy.sh ftp
+#
+# Почему это хуже SSH: файлы льются по одному и старые не удаляются, поэтому
+# ассеты прошлых сборок остаются лежать. Вреда нет — имена с хешами, — но мусор
+# копится. Как только ключ появится, вернитесь к обычному режиму.
+upload_ftp() {
+  local from="$1" to="$2" name="$3"
+  echo "→ $name (FTP)"
+  if [ ! -f "$HOME/.netrc" ]; then
+    echo "Нет ~/.netrc — curl нечем представиться." >&2
+    echo "См. комментарий в начале функции upload_ftp." >&2
+    exit 1
+  fi
+  local count=0
+  while IFS= read -r file; do
+    local rel="${file#"$from"/}"
+    curl -sS -n --ftp-create-dirs -T "$file" \
+      "ftp://server68.hosting.reg.ru/$to/$rel" || {
+      echo "  не удалось залить $rel" >&2
+      exit 1
+    }
+    count=$((count + 1))
+  done < <(find "$from" -type f)
+  echo "  залито файлов: $count"
+}
+
+if [ "$WHAT" = "ftp" ]; then
+  pnpm --filter @elementar/elementaros build
+  pnpm --filter @elementar/finanser build
+  # Путь от корня FTP, а не от корня файловой системы: FTP пускает в домашний
+  # каталог, и /var/www/u3602414 для него уже «выше некуда».
+  upload_ftp apps/elementaros/dist "www/elementaros.ru" "посадочная → elementaros.ru"
+  upload_ftp apps/finanser/dist "www/elementaros.ru/финансер" "финансер → /финансер/"
+  echo
+  echo "Проверка:"
+  for url in "https://elementaros.ru/" "https://elementaros.ru/финансер/"; do
+    printf '  %-40s ' "$url"
+    curl -s -o /dev/null -m 20 -w '%{http_code}\n' "$url" || echo "нет ответа"
+  done
+  exit 0
+fi
 
 check_access
 
