@@ -182,9 +182,9 @@ describe('разбор непонятного', () => {
     act(() => {
       root.querySelector<HTMLButtonElement>('.f-pick__button')?.click()
     })
-    // Не двадцать семь: девять основных и шесть «не трат». Выключенные
+    // Не двадцать семь: десять основных и шесть «не трат». Выключенные
     // дополнительные сюда не попадают — их включают отдельным разделом.
-    expect(root.querySelectorAll('.f-pick__option')).toHaveLength(15)
+    expect(root.querySelectorAll('.f-pick__option')).toHaveLength(16)
   })
 
   it('предлагает категорию по уже названному похожему получателю', () => {

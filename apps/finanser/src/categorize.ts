@@ -95,6 +95,23 @@ const BANK_MAP: Readonly<Record<string, Category>> = {
   ЗАРПЛАТА: 'Доход',
 }
 
+/**
+ * MCC, вписанный в само описание.
+ *
+ * Часть банков не выгружает колонку с кодом, но терминал уже вписал его в имя:
+ * `YANDEX*5814*EDA`, `YANDEX*4121*GO`. Четыре цифры между звёздочками — это и
+ * есть код платёжной сети, и он говорит про операцию больше, чем имя: 5814 —
+ * фастфуд, 4121 — такси, 5411 — продукты.
+ *
+ * Звёздочки обязательны, и потому берётся сырое описание, а не
+ * нормализованное: `VV_9688_1` — номер точки, а не код, и разделитель здесь
+ * единственное, чем одно отличается от другого.
+ */
+export function mccFromDescription(description: string): string | null {
+  const found = /\*(\d{4})\*/.exec(description)
+  return found === null ? null : (found[1] ?? null)
+}
+
 /** Категория по столбцу выписки. null — банк ничего не сказал или сказал непонятное. */
 export function byBank(bankCategory: string | null): Category | null {
   if (bankCategory === null) return null
@@ -133,12 +150,20 @@ export function categorize(
 
   // Словарь смотрит на остаток описания, а не на всё целиком: служебное начало
   // («оплата в», «оплата услуг mbank») именем получателя не является.
-  const rule = byRules(operation.rest)
+  //
+  // Второй заход — по очищенному имени получателя, тому же, что идёт в ключ.
+  // Терминал пишет `YANDEX*5814*EDA`, и в остатке описания это «YANDEX 5814
+  // EDA»: слово словаря «YANDEX EDA» через число не перескакивает. Очистка
+  // числа выбрасывает, и совпадение находится. Порядок именно такой, а не
+  // наоборот: очистка снимает и слова вроде «CARD» или названия городов, а
+  // среди слов словаря такие есть — потерять на этом верное совпадение хуже,
+  // чем не найти лишнее.
+  const rule = byRules(operation.rest) ?? byRules(merchantKey(tx.description))
   if (rule !== null && (rule !== INCOME || tx.amount > 0)) {
     return { ...tx, category: rule, source: 'rule' }
   }
 
-  const mcc = byMcc(tx.mcc)
+  const mcc = byMcc(tx.mcc ?? mccFromDescription(tx.description))
   if (mcc !== null) return { ...tx, category: mcc, source: 'mcc' }
 
   const bank = byBank(tx.bankCategory)

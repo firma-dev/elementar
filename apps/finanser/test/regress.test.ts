@@ -309,3 +309,97 @@ describe('колонки во множественном числе', () => {
     expect(result.transactions[0]?.description).toBe('Кофе')
   })
 })
+
+describe('описание карточной операции разбирается до имени магазина', () => {
+  /**
+   * «Оплата покупки по карте. CARD **3523 16AUG RUB 1319.00 Suxofruct Moskva».
+   *
+   * Оборот «Оплата покупки» не ловился — слой видов знал только «ПОКУПКА», — и
+   * описание целиком, вместе с номером карты, датой и суммой, уходило и в
+   * словарь, и в ключ получателя. На настоящей выписке из-за даты внутри ключа
+   * один «Дринкит» рассыпался на семь получателей, а «Прочее» весило 77%.
+   */
+  const purchase = (tail: string): string => `Оплата покупки по карте. CARD **3523 ${tail}`
+
+  it('дата и валюта не попадают в имя получателя', async () => {
+    const { merchantKey } = await import('../src/merchant.js')
+    expect(merchantKey(purchase('16AUG RUB 1319.00 Suxofruct Moskva'))).toBe('SUXOFRUCT')
+  })
+
+  it('один магазин в разные дни — один получатель', async () => {
+    const { merchantKey } = await import('../src/merchant.js')
+    const first = merchantKey(purchase('05AUG RUB 225.00 DRINKITMOSKVA 33-1 MOSCOW'))
+    const second = merchantKey(purchase('30JUL RUB 245.00 DRINKITMOSKVA 33-1 MOSCOW'))
+    expect(first).toBe(second)
+  })
+
+  it('код платёжной сети из имени терминала решает категорию', async () => {
+    const { categorize } = await import('../src/categorize.js')
+    // Банк не выгрузил колонку MCC, но терминал вписал код в имя. Имя словарю
+    // неизвестно, а 5411 — это продуктовый: категорию даёт код.
+    const row = categorize(
+      tx('2026-08-01', -465318, purchase('01AUG RUB 4653.18 SITISTOR*5411*2 MOSCOW')),
+      {},
+    )
+    expect(row.category).toBe('Продукты')
+    expect(row.source).toBe('mcc')
+  })
+
+  it('словарь узнаёт имя, к которому терминал приписал код', async () => {
+    const { categorize } = await import('../src/categorize.js')
+    // «YANDEX*4121*GO» в остатке описания — это «YANDEX 4121 GO», и слово
+    // словаря «YANDEX GO» через число не перескакивает. Совпадение находится
+    // вторым заходом, по очищенному имени.
+    const row = categorize(
+      tx('2026-07-15', -67000, purchase('15JUL RUB 670.00 YANDEX*4121*GO MOSCOW')),
+      {},
+    )
+    expect(row.category).toBe('Такси')
+    expect(row.source).toBe('rule')
+  })
+
+  it('номер точки кодом не считается', async () => {
+    const { mccFromDescription } = await import('../src/categorize.js')
+    // Звёздочки обязательны: «VV_9688_1» — номер точки, а не код сети.
+    expect(mccFromDescription('CARD **3523 10JUL RUB 163.00 VV_9688_1 MOSCOW')).toBeNull()
+    expect(mccFromDescription('CARD **3523 02AUG RUB 40.00 YANDEX*5411*LAVKA')).toBe('5411')
+  })
+})
+
+describe('перевод человеку — не «Прочее» и не переезд денег', () => {
+  const toPerson =
+    'Перевод на номер 0079990000000. Получатель: Иван Иванович И. Осуществлен через СБП.'
+  const fromPerson =
+    'Перевод с номера 0079990000000. Отправитель: Иван Иванович И. Осуществлен через СБП.'
+
+  it('уходит в свою категорию и остаётся тратой', async () => {
+    const { categorize } = await import('../src/categorize.js')
+    const row = categorize(tx('2026-08-07', -500000, toPerson), {})
+    expect(row.category).toBe('Переводы людям')
+    // План по знаку: деньги, отданные человеку, никуда не «переехали» —
+    // их больше нет. У «Переводов» план `move`, и там они выпали бы из трат.
+    const { planeOfTx } = await import('../src/plane.js')
+    expect(planeOfTx(row.category, row.amount)).toBe('spend')
+  })
+
+  it('ключ получателя — имя человека, а не номер телефона', async () => {
+    const { merchantKey } = await import('../src/merchant.js')
+    expect(merchantKey(toPerson)).toBe(merchantKey(fromPerson))
+    expect(merchantKey(toPerson)).not.toMatch(/\d/)
+  })
+
+  it('«внешний перевод по номеру телефона» остаётся переездом между своими', async () => {
+    const { categorize } = await import('../src/categorize.js')
+    // Этим оборотом банк называет и перевод себе же. Перехватив его правилом
+    // про людей, я сломал поиск пар: исходящий переставал быть «Переводом»,
+    // пара не находилась, и входящая сумма считалась доходом.
+    const row = categorize(tx('2026-03-10', -5000000, 'Внешний перевод по номеру телефона'), {})
+    expect(row.category).toBe('Переводы')
+  })
+
+  it('«перевод собственных средств» — переезд, а не трата', async () => {
+    const { categorize } = await import('../src/categorize.js')
+    const row = categorize(tx('2026-07-10', -1682400, 'Перевод собственных средств'), {})
+    expect(row.category).toBe('Переводы')
+  })
+})

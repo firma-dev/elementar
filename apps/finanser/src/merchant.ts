@@ -132,7 +132,28 @@ const NOISE = new Set([
   'KS',
   'SCHET',
   'DOGOVOR',
+  // Хвост карточной операции: «CARD **3523 16AUG RUB 1319.00 Suxofruct».
+  // Валюта и «через СБП» стоят в каждой второй строке выписки и именем
+  // получателя не являются ни в одном банке.
+  'RUB',
+  'RUR',
+  'USD',
+  'EUR',
+  'SBP',
+  'OSUSHCHESTVLEN',
+  'CHEREZ',
+  'POKUPKI',
+  'KARTE',
+  'POLUCHATEL',
+  'OTPRAVITEL',
 ])
+
+/**
+ * Дата внутри описания: «16AUG», «01JUL». Терминал ставит её в хвост карточной
+ * операции, и без этой строки она попадала в ключ получателя — один «Дринкит»
+ * рассыпался на семь получателей, по одному на каждый день покупки.
+ */
+const DATE_TOKEN = /^\d{1,2}[A-Z]{3}$/
 
 /**
  * Ключ получателя: то, по чему одинаковые операции считаются одним и тем же
@@ -170,6 +191,7 @@ function cleanWords(description: string, translit: boolean): string {
     if (FORMS.has(word) || PLACES.has(word) || NOISE.has(word)) return
     // Чистые числа и коды вида «5411», «1234» — это номер точки, а не имя.
     if (/^\d+$/.test(word)) return
+    if (DATE_TOKEN.test(word)) return
     if (dropLeftovers([word]).length === 0) return
     kept.push(plain[i] ?? word)
     keptFolded.push(word)
