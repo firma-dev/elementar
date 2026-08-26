@@ -249,3 +249,63 @@ describe('пара переводов видна и расцепляется', (
     expect(row?.source).toBe('manual')
   })
 })
+
+describe('колонки во множественном числе', () => {
+  /**
+   * Настоящая выгрузка из банка не читалась вовсе: «Таблица прочитана, но
+   * колонок с датой и суммой в ней не нашлось». При этом обе колонки в файле
+   * были — просто названы «Поступления» и «Расходы», а список синонимов знал
+   * только «Поступление» и «Расход». Сравнение шло точным совпадением, и одна
+   * буква в окончании стоила человеку всей выписки.
+   *
+   * Строки здесь выдуманы, но шапка, разделитель, формат даты со временем,
+   * пробел в тысячах и запятая в копейках — из того самого файла.
+   */
+  const HEADER =
+    'Дата операции;Выполнено банком;Номер документа;Поступления;Расходы;Валюта;' +
+    'Детали операции (назначение платежа);Номер карты'
+
+  const FILE = [
+    HEADER,
+    '"17.08.2026 00:00";"17.08.2026";"454965";"5 000,00";"";"RUR";" Перевод по СБП";""',
+    '"16.08.2026 19:37";"18.08.2026";"951645";"";"1 319,00";"RUB";" Оплата покупки. LAVKA";"**3523"',
+    '"10.08.2026 00:00";"10.08.2026";"303159";"125 590,52";"";"RUR";" Зарплата от ООО РОГА";""',
+  ].join('\n')
+
+  it('«Поступления» и «Расходы» опознаются как приход и расход', async () => {
+    const { parseStatementText } = await import('../src/statement.js')
+    const result = parseStatementText(FILE, 'выписка.csv')
+
+    expect(result.error).toBeNull()
+    expect(result.transactions).toHaveLength(3)
+    expect(result.skipped).toBe(0)
+
+    // Знак несёт колонка, а не число: в файле расход записан положительным.
+    const spend = result.transactions.filter((t) => t.amount < 0)
+    expect(spend).toHaveLength(1)
+    expect(spend[0]?.amount).toBe(-131900)
+
+    const income = result.transactions.filter((t) => t.amount > 0)
+    expect(income.map((t) => t.amount).sort((a, b) => a - b)).toEqual([500000, 12559052])
+  })
+
+  it('«Детали операции (назначение платежа)» — это описание', async () => {
+    const { parseStatementText } = await import('../src/statement.js')
+    const result = parseStatementText(FILE, 'выписка.csv')
+    expect(result.transactions.some((t) => t.description.includes('Зарплата от ООО РОГА'))).toBe(
+      true,
+    )
+  })
+
+  it('форма слова не путает колонки между собой', async () => {
+    const { parseStatementText } = await import('../src/statement.js')
+    // «Суммы» вместо «Сумма», «Даты» вместо «Дата» — та же беда, другой банк.
+    const result = parseStatementText(
+      ['Даты;Суммы;Описания', '"05.05.2026";"-1 200,50";"Кофе"'].join('\n'),
+      'другой.csv',
+    )
+    expect(result.error).toBeNull()
+    expect(result.transactions[0]?.amount).toBe(-120050)
+    expect(result.transactions[0]?.description).toBe('Кофе')
+  })
+})
