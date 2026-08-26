@@ -104,6 +104,8 @@ if [ "$WHAT" = "ftp" ]; then
   pnpm --filter @elementar/finanser build
   # Путь от корня FTP, а не от корня файловой системы: FTP пускает в домашний
   # каталог /var/www/u3602414, и для него сайт лежит в data/www/elementaros.ru.
+  # FTP ничего не удаляет, поэтому подкаталог «финансер» здесь и так в
+  # безопасности — но заливается только содержимое посадочной.
   upload_ftp apps/elementaros/dist "data/www/elementaros.ru" "посадочная → elementaros.ru"
   upload_ftp apps/finanser/dist "data/www/elementaros.ru/финансер" "финансер → /финансер/"
   echo
@@ -117,9 +119,22 @@ fi
 
 check_access
 
+# Посадочная кладётся в корень НЕ подменой каталога, а синхронизацией на месте.
+#
+# Внутри корня лежит подкаталог «финансер» — отдельное приложение. Подмена
+# каталога целиком снесла бы его: новая посадочная о нём не знает, а старый
+# каталог после переименования удаляется. Финансер восстановился бы следующим
+# шагом, но между шагами его бы не было, а запуск `deploy.sh os` в одиночку
+# убил бы его насовсем.
+#
+# Поэтому здесь rsync --delete с исключением: лишние файлы посадочной убираются,
+# чужой подкаталог не трогается.
 if [ "$WHAT" = "всё" ] || [ "$WHAT" = "os" ]; then
   pnpm --filter @elementar/elementaros build
-  upload apps/elementaros/dist "$ROOT" "посадочная → elementaros.ru"
+  echo "→ посадочная → elementaros.ru"
+  rsync -az --delete --exclude='финансер/' -e "ssh -i $KEY -o BatchMode=yes" \
+    apps/elementaros/dist/ "$HOST:$ROOT/"
+  echo "  готово"
 fi
 
 if [ "$WHAT" = "всё" ] || [ "$WHAT" = "finanser" ]; then
