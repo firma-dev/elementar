@@ -35,9 +35,14 @@ export function MonthChart({
    * палитра при смене темы не переворачивается, и `gray-700` оставался одним и
    * тем же серым и на белой бумаге, и на чёрной. Тот же токен стоит базовым у
    * `.f-chart__bar`, поэтому дневной и месячный графики выглядят одинаково.
+   *
+   * Выбранный — жёлтым, как всё выбранное в корпусе: период, счёт, категория,
+   * подпись дня. Цвет задаётся здесь строкой и перебивает класс
+   * `.f-chart__bar--on`, поэтому менять его надо в обоих местах — иначе
+   * дневной график станет жёлтым, а месячный останется прежним.
    */
   const barColor = (active: boolean, hover: boolean): string =>
-    active ? 'var(--el__text)' : hover ? 'var(--el__data-negative)' : 'var(--el__data-tertiary)'
+    active ? 'var(--el__mark)' : hover ? 'var(--el__data-negative)' : 'var(--el__data-tertiary)'
 
   return (
     <section class="f-chart" onMouseLeave={() => onHover(null)}>

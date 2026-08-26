@@ -51,7 +51,10 @@ export function Fold({
         onClick={() => setOpen(!open)}
       >
         <span class="f-fold__sign" aria-hidden="true">
-          {open ? '−' : '+'}
+          {/* Всегда «+». Открытое состояние показывает поворот на 45°, заданный
+              в CSS: подменять символ И поворачивать его — значит показать
+              косую черту вместо минуса. Один механизм, не два. */}
+          +
         </span>
         <span class="f-eyebrow f-fold__title">{title}</span>
         {meta === undefined ? null : <span class="f-fold__meta">{meta}</span>}

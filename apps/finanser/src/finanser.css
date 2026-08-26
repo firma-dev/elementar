@@ -151,6 +151,8 @@ input {
 /* Плашка обновления (§13.6). Жёлтая, как маркер: это не ошибка и не тревога,
    а предложение — версия уже скачана и ждёт нажатия. */
 .f-update {
+  /* Плашка обновления: предложение с действием, не фон. */
+  box-shadow: var(--el__shadow-s);
   display: flex;
   align-items: baseline;
   justify-content: space-between;
@@ -211,10 +213,30 @@ input {
 }
 
 /* Служебная метка над блоком: капс с трекингом. */
-.f-eyebrow {
+/* Метка раздела — одна на весь корпус: кегль, разрядка и регистр общие.
+   Их было три с разными настройками, и глаз ловил разнобой раньше, чем читал
+   слова.
+
+   Цвет и отступ в общую роль НЕ входят. Метка стоит в трёх разных положениях:
+   заголовком блока, шапкой свёрнутого раздела и подписью внутри. Приглушить
+   все разом — значит сравнять заголовок с его же вторичной припиской, а
+   отступ снизу перекашивает шапку свёрнутого раздела: она флекс-строка, и
+   девять пикселей уводят подчёркивание от текста. */
+.f-eyebrow,
+.f-block__title,
+.f-save__qk {
   font-size: var(--el__fs-xs);
-  letter-spacing: var(--el__ls-caps);
+  letter-spacing: var(--el__ls-caps-s);
   text-transform: uppercase;
+  font-weight: inherit;
+}
+
+/* Заголовок блока и подпись внутри копилки — приглушённые и с отбивкой:
+   они стоят над содержимым, а не в строке с ним. */
+.f-block__title,
+.f-save__qk {
+  color: var(--el__text-caption);
+  margin: 0 0 var(--f-step-2);
 }
 
 .f-eyebrow--quiet {
@@ -462,6 +484,8 @@ input {
 .f-chart__bar {
   width: 100%;
   min-height: 2px;
+  transform-origin: bottom center;
+  animation: f-rise var(--el__duration-base) cubic-bezier(0.2, 0.8, 0.2, 1) both;
   /* Обычный столбик. Без этой строки дневной график был пуст: цвет давали
      только модификаторы «выбран» и «сверх нормы», а нормы нет, пока не задан
      план. Человек открывал «месяц» и видел пустую рамку с осью — при том что
@@ -475,8 +499,15 @@ input {
   background: var(--el__accent);
 }
 
+/* Выбрано — всегда жёлтым.
+   «Выбрано» показывалось четырьмя способами: жёлтым у периода и выбора
+   категории, вывороткой у столбика, подписи дня, счёта и дополнительной
+   категории. Одно состояние, четыре языка — глаз каждый раз учится заново.
+   Выворотка вдобавок самая тяжёлая вещь на экране: выбранное становилось
+   громче чисел, ради которых экран открыт.
+   Текст на жёлтом тёмный в обеих темах — `--el__mark` не переворачивается. */
 .f-chart__bar--on {
-  background: var(--el__text);
+  background: var(--el__mark);
 }
 
 .f-chart__labels {
@@ -504,8 +535,8 @@ input {
 }
 
 .f-chart__tick--on {
-  color: var(--el__background);
-  background: var(--el__text);
+  color: var(--el__color-gray-950);
+  background: var(--el__mark);
 }
 
 /* ───────────────────────── Категории ───────────────────────── */
@@ -1012,13 +1043,31 @@ input {
   text-underline-offset: 2px;
 }
 
+/* Ховер ссылки не красится в зелёный.
+   Зелёный в корпусе занят одним смыслом — деньги пришли: приход в шапке, на
+   счёте, в выписке, взятая цель. Использовать его же как общий ховер значит
+   обнулить это значение. Хуже того: `.f-linkish:hover` специфичнее модификатора
+   `--danger`, и «забыть всё» под курсором окрашивалось в цвет «успех».
+   Наведение показывается тем же, чем везде в корпусе, — подложкой. */
 .f-linkish:hover {
-  color: var(--el__success);
+  background: var(--el__surface);
+}
+
+/* Необратимое остаётся красным и под курсором. */
+.f-linkish--danger:hover {
+  background: var(--el__surface);
+  color: var(--el__accent);
 }
 
 @media (prefers-reduced-motion: reduce) {
   * {
     transition: none !important;
+    /* Анимации гасятся отдельно: `transition: none` их не касается, и полосы
+       продолжали расти полсекунды у человека, который просил не двигать
+       ничем. Не `animation: none` — оно отменило бы и конечное состояние,
+       и полосы остались бы нулевой ширины. */
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
   }
 }
 
@@ -1031,6 +1080,9 @@ input {
 }
 
 .f-card {
+  /* Карточка сводки: «плотная сетка карточек» — эталонное свойство корпуса,
+     а карточки единственные из блоков стояли плоскими. */
+  box-shadow: var(--el__shadow-s);
   border: var(--el__border-width-s) solid var(--el__text);
   padding: 0.6em 0.75em 0.7em;
   margin-bottom: 0.7em;
@@ -1151,6 +1203,7 @@ input {
    раскрытии, а именно из такой мелочи собирается ощущение шаткости. */
 .f-fold__sign {
   display: inline-block;
+  transition: rotate var(--el__duration-fast) linear;
   width: 1ch;
   flex-shrink: 0;
   color: var(--el__text-caption);
@@ -1245,7 +1298,7 @@ input {
   overflow-y: auto;
   background: var(--el__background);
   border: var(--el__border-width-s) solid var(--el__text);
-  box-shadow: var(--el__shadow-s);
+  box-shadow: var(--el__shadow-l);
 }
 
 .f-pick__option {
@@ -1351,6 +1404,13 @@ input {
 .f-go {
   display: inline-block;
   border: var(--el__border-width-s) solid var(--el__text);
+  /* Тень нужна не для красоты: `:active` её снимает и сдвигает кнопку на её
+     место — без тени кнопка просто проваливалась в дыру. И по иерархии: это
+     первичное действие, а тень была у вторичной «показать ещё». */
+  box-shadow: var(--el__shadow-m);
+  transition:
+    box-shadow var(--el__duration-fast) linear,
+    translate var(--el__duration-fast) linear;
   background: var(--el__background);
   color: var(--el__text);
   font: inherit;
@@ -1407,8 +1467,8 @@ input {
 }
 
 .f-acc--on {
-  background: var(--el__text);
-  color: var(--el__background);
+  background: var(--el__mark);
+  color: var(--el__color-gray-950);
 }
 
 .f-acc__dot {
@@ -1452,6 +1512,8 @@ input {
 }
 
 .f-accs__form {
+  /* Форма всплывает по нажатию, значит лежит над списком. */
+  box-shadow: var(--el__shadow-s);
   margin-top: var(--f-step-1);
   border: var(--el__border-width-s) solid var(--el__text);
   padding: 0.6em 0.7em;
@@ -1599,13 +1661,17 @@ input {
 /* Числа, которых нет, не подменяются нулями: ноль на счёте и «банк не сказал»
    — разные новости, а выглядели бы одинаково. */
 
+/* Три числа, за которыми возвращаются каждый день. Раньше висели между блоками
+   на одной верхней линейке — читались как подпись к тому, что выше, а они
+   самостоятельны. Теперь такой же блок, как остальные: рамка и жёсткая тень. */
 .f-bal {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(9em, 1fr));
   gap: var(--el__gap-m);
-  margin-top: var(--f-step-4);
-  padding-top: var(--f-step-2);
-  border-top: var(--el__border-width-s) solid var(--el__text);
+  margin-top: var(--f-step-3);
+  padding: var(--f-step-2);
+  border: var(--el__border-width-s) solid var(--el__border);
+  box-shadow: var(--el__shadow-s);
 }
 
 .f-bal__cell {
@@ -1875,8 +1941,8 @@ input {
 }
 
 .f-extra--on {
-  background: var(--el__text);
-  color: var(--el__background);
+  background: var(--el__mark);
+  color: var(--el__color-gray-950);
 }
 
 .f-extras__meta {
@@ -2004,6 +2070,9 @@ input {
    Рамка вместо заливки — по той же причине, что у перетаскивания файла:
    заливка перекрасила бы пол-экрана ради одной фразы. */
 .f-alarm {
+  /* Отказ хранилища — самое громкое сообщение приложения, а по весу было
+     легче графика. */
+  box-shadow: var(--el__shadow-m);
   border: var(--el__border-width-m) solid var(--el__accent);
   padding: var(--f-step-2);
   margin-bottom: var(--f-step-3);
@@ -2061,14 +2130,20 @@ input {
 .f-block {
   min-width: 0;
   border: var(--el__border-width-s) solid var(--el__border);
-  padding: var(--f-step-3);
+  /* step-2, а не step-3: на третьем шаге поле внутри блока становится шире
+     зазора между блоками, и блок с одной свёрнутой строкой выглядит пустой
+     коробкой. Канон требует максимально компактной вёрстки. */
+  padding: var(--f-step-2);
+  box-shadow: var(--el__shadow-s);
 }
 
-/* Расходы и доходы — рамка толще: это ответы на главный вопрос, остальное их
-   объясняет и настраивает. */
+/* Расходы и доходы — рамка толще и тень крупнее: это ответы на главный вопрос,
+   остальное их объясняет и настраивает. Разница в тени делает иерархию видимой
+   с одного взгляда, не заставляя читать заголовки. */
 .f-block--spend,
 .f-block--income {
   border: var(--el__border-width-m) solid var(--el__text);
+  box-shadow: var(--el__shadow-m);
 }
 
 /* Внутри блока вложенные рамки и тени снимаются.
@@ -2085,15 +2160,6 @@ input {
 .f-block .f-fold__head {
   border-bottom-width: var(--el__border-width-s);
   border-bottom-color: var(--el__border);
-}
-
-.f-block__title {
-  margin: 0 0 var(--f-step-2);
-  font-size: var(--el__fs-xs);
-  letter-spacing: var(--el__ls-caps-s);
-  text-transform: uppercase;
-  color: var(--el__text-caption);
-  font-weight: inherit;
 }
 
 /* ──────────────────────────── Копилка ──────────────────────────── */
@@ -2191,13 +2257,6 @@ input {
   margin-bottom: var(--f-step-2);
   padding-top: var(--f-step-2);
   border-top: var(--el__border-width-s) solid var(--el__border);
-}
-
-.f-save__qk {
-  margin: 0 0 var(--f-step-2);
-  font-size: var(--el__fs-xs);
-  color: var(--el__text-caption);
-  font-weight: inherit;
 }
 
 .f-save__months {
@@ -2329,4 +2388,88 @@ input {
   color: var(--el__text);
   letter-spacing: 0;
   padding: 0.1em 0;
+}
+
+/* ─────────────────────────── Движение ─────────────────────────── */
+
+/* Микроанимации, и только они.
+   Движение здесь отвечает на одно: «нажалось ли». Оно подтверждает действие
+   человека и никогда не начинается само — ничего не выезжает, не пульсирует и
+   не привлекает внимание к тому, чего человек не просил. Деньги не место для
+   развлечения.
+   
+   Длительности из токенов: `fast` (0,1 с) на отклик под пальцем, `base` (0,5 с)
+   — только там, где движение объясняет связь между «было» и «стало».
+   
+   Блок `prefers-reduced-motion: reduce` выше гасит всё это через
+   `transition: none !important`, поэтому отдельных проверок здесь нет. */
+
+/* Отклик на наведение и нажатие. Цвет меняется не мгновенно — мгновенная
+   смена читается как перерисовка, плавная как ответ. */
+.f-cat,
+.f-fold__head,
+.f-period,
+.f-inc__row,
+.f-moves__row {
+  transition:
+    background-color var(--el__duration-fast) linear,
+    color var(--el__duration-fast) linear;
+}
+
+/* Кнопки вдавливаются под пальцем: тень уходит, элемент садится на её место.
+   Это то же движение, что у настоящей кнопки, и оно объясняет, что нажатие
+   засчитано, — на телефоне, где нет наведения, другого сигнала нет.
+   Сам переход объявлен в правиле `.f-go` выше, здесь только конечное
+   состояние: повторное объявление селектора прячет мёртвое правило. */
+.f-go:active {
+  box-shadow: none;
+  translate: var(--el__shadow-offset-m) var(--el__shadow-offset-m);
+}
+
+/* Полосы категорий и месяцев растут от нуля при появлении. Рост показывает,
+   что число посчитано сейчас и из данных, а не нарисовано заранее. Один раз,
+   при первой отрисовке: повторять на каждой перерисовке значило бы дёргать
+   картину при каждом переключении отрезка. */
+@keyframes f-grow {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+.f-cat__fill,
+.f-save__fill,
+.f-save__mfill {
+  transform-origin: left center;
+  animation: f-grow var(--el__duration-base) cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/* Столбики графика растут снизу — по той же причине и в ту же сторону, в
+   какую растёт сама величина. Правила `.f-chart__bar` и `.f-fold__sign`
+   объявлены выше по файлу, движение вписано в них же. */
+@keyframes f-rise {
+  from {
+    transform: scaleY(0);
+  }
+}
+
+/* Раскрытие раздела: знак поворачивается, а не подменяется другим символом —
+   поворот показывает, что это то же место, только открытое. */
+.f-fold__head[aria-expanded='true'] .f-fold__sign {
+  rotate: 45deg;
+}
+
+/* ─────────────────────────── Фокус ─────────────────────────── */
+
+/* Обводки фокуса в корпусе не было ни у одного элемента.
+   Половина органов управления — `.f-cat`, `.f-fold__head`, `.f-chart__col`,
+   `.f-cash__line`, `.f-pick__option` — объявлены с `border: none`, то есть
+   собственной геометрии у них нет. С клавиатуры по такому экрану не пройти:
+   непонятно, где стоишь.
+
+   `:focus-visible`, а не `:focus`: обводка нужна тому, кто идёт клавишами, и
+   не нужна тому, кто только что нажал мышью. Смещение наружу — чтобы кольцо
+   не съедало саму строку. */
+:focus-visible {
+  outline: var(--el__border-width-m) solid var(--el__focus);
+  outline-offset: 2px;
 }
