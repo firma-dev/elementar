@@ -21,7 +21,10 @@ set -euo pipefail
 
 HOST="u3602414@server68.hosting.reg.ru"
 KEY="$HOME/.ssh/elementar_regru"
-ROOT="/www/elementaros.ru"
+# Абсолютный путь, подсмотренный в файловом менеджере панели, а не угаданный:
+# /var/www/u3602414/data/www/elementaros.ru. В README стояло «/www/elementaros.ru» —
+# это путь, каким его показывает панель, а не каким его видит система.
+ROOT="/var/www/u3602414/data/www/elementaros.ru"
 WHAT="${1:-всё}"
 
 cd "$(dirname "$0")/.."
@@ -100,9 +103,9 @@ if [ "$WHAT" = "ftp" ]; then
   pnpm --filter @elementar/elementaros build
   pnpm --filter @elementar/finanser build
   # Путь от корня FTP, а не от корня файловой системы: FTP пускает в домашний
-  # каталог, и /var/www/u3602414 для него уже «выше некуда».
-  upload_ftp apps/elementaros/dist "www/elementaros.ru" "посадочная → elementaros.ru"
-  upload_ftp apps/finanser/dist "www/elementaros.ru/финансер" "финансер → /финансер/"
+  # каталог /var/www/u3602414, и для него сайт лежит в data/www/elementaros.ru.
+  upload_ftp apps/elementaros/dist "data/www/elementaros.ru" "посадочная → elementaros.ru"
+  upload_ftp apps/finanser/dist "data/www/elementaros.ru/финансер" "финансер → /финансер/"
   echo
   echo "Проверка:"
   for url in "https://elementaros.ru/" "https://elementaros.ru/финансер/"; do
