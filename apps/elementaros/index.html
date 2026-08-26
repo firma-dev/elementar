@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>элементар ос</title>
+    <meta
+      name="description"
+      content="Операционная среда, спроектированная после ИИ, а не до него. Внутренний концепт-документ."
+    />
+    <meta name="theme-color" content="#FCFBF9" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#131417" media="(prefers-color-scheme: dark)" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="referrer" content="no-referrer" />
+    <!-- Материал внутренний: из выдачи поисковиков убран. -->
+    <meta name="robots" content="noindex, nofollow" />
+    <link rel="icon" href="/elementar.svg" type="image/svg+xml" />
+    <!--
+      Шрифты в дизайн-системе объявлены с `font-display: optional` — без
+      предзагрузки первый визит прошёл бы системным гротеском. На лендинге
+      набор и есть высказывание, поэтому три несущих файла подтягиваются
+      заранее: текстовый Basis 400 и 700, OCR для меток и чисел. Латинские
+      сабсеты и Basis 500 качаются по ходу — они держат меньше знаков.
+    -->
+    <link
+      rel="preload"
+      href="/fonts/basis-400.cyrillic.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="/fonts/basis-700.cyrillic.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="/fonts/ocr-400.cyrillic.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

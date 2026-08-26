@@ -1,0 +1,405 @@
+/* Лендинг «элементар ос». Один экран — один тезис, лента листается сверху вниз.
+
+   Цвета, отступы, тени, радиусы и длительности берутся только из токенов
+   дизайн-системы (`@elementar/ui`). Своей палитры у файла нет.
+
+   Единственное, что лендинг заводит сам, — крупные кегли: типографическая
+   шкала системы заканчивается на 2.25rem (`--e-size-3xl`), а обложке и тезисам
+   нужен размер плаката. Все такие значения собраны ниже в одном месте, все
+   выведены из токенов через clamp и живут под своим префиксом `--os-`, чтобы
+   их нельзя было спутать с системными. */
+
+.os {
+  /* Столбец текста и столбец окон — разной ширины: проза читается узкой,
+     сетка из трёх окон узкой не бывает. */
+  --os-measure: 44rem;
+  --os-wide: 68rem;
+
+  --os-size-hero: clamp(2.75rem, 12vw, 5.5rem);
+  --os-size-thesis: clamp(var(--e-size-2xl), 7.4vw, 3.5rem);
+  --os-size-lead: clamp(var(--e-size-md), 2.2vw, var(--e-size-lg));
+
+  /* Поля экрана: на телефоне узкие, на большом мониторе шире. */
+  --os-pad-inline: clamp(var(--e-space-7), 5vw, var(--e-space-12));
+  --os-pad-block: clamp(var(--e-space-12), 10vh, var(--e-space-14));
+}
+
+/* Прилипание мягкое (proximity), а не жёсткое: экраны с окнами выше вьюпорта,
+   и mandatory на них отбирает у человека возможность остановиться посередине. */
+html {
+  scroll-snap-type: y proximity;
+  scroll-behavior: smooth;
+}
+
+/* ───────────────────────────── Экран ───────────────────────────── */
+
+.os-screen {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--e-space-9);
+  min-height: 100svh;
+  padding: calc(var(--e-safe-top) + var(--os-pad-block)) var(--os-pad-inline)
+    calc(var(--e-safe-bottom) + var(--os-pad-block));
+  scroll-snap-align: start;
+}
+
+.os-screen + .os-screen {
+  border-top: 1px solid var(--e-line);
+}
+
+/* Место под рейку: она висит поверх ленты у правого края, и без резерва
+   правое окно уезжает под неё. Добавляется ровно там, где рейка появляется. */
+@media (min-width: 1024px) {
+  .os-screen {
+    padding-inline-end: calc(var(--os-pad-inline) + var(--e-space-12));
+  }
+}
+
+.os-screen__inner {
+  width: 100%;
+  max-width: var(--os-measure);
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-space-8);
+}
+
+.os-screen--wide .os-screen__inner {
+  max-width: var(--os-wide);
+}
+
+/* Акцентный экран: заливка синим из семантики, текст — парный к ней.
+   Оттенки внутри не подмешиваются цветом, а гасятся прозрачностью: так экран
+   остаётся верным и в тёмной теме, где акцент светлый, а текст на нём тёмный. */
+.os-screen--accent {
+  background: var(--e-accent);
+  color: var(--e-accent-fg);
+  --os-line: var(--e-accent-fg);
+}
+
+.os-screen--accent .os-label,
+.os-screen--accent .os-lead {
+  color: inherit;
+  opacity: 0.82;
+}
+
+/* ───────────────────────────── Метка ───────────────────────────── */
+
+/* Служебная строка «01 · ТЕЗИС»: OCR, капс, трекинг, хвост-линейка до края
+   столбца — как заголовок раздела в техническом документе. */
+.os-label {
+  display: flex;
+  align-items: center;
+  gap: var(--e-space-5);
+  font-family: var(--e-font-num);
+  font-size: var(--e-size-2xs);
+  line-height: 1.2;
+  letter-spacing: var(--e-tracking-caps);
+  text-transform: uppercase;
+  color: var(--e-fg-3);
+}
+
+.os-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.4;
+}
+
+/* ───────────────────────── Тезис и подводка ────────────────────── */
+
+.os-thesis {
+  font-size: var(--os-size-thesis);
+  line-height: var(--e-leading-tight);
+  letter-spacing: var(--e-tracking-tight);
+  font-weight: var(--e-weight-medium);
+  text-wrap: balance;
+}
+
+.os-lead {
+  max-width: 34rem;
+  font-size: var(--os-size-lead);
+  line-height: var(--e-leading-relaxed);
+  color: var(--e-fg-2);
+  text-wrap: pretty;
+}
+
+/* Акцентное слово внутри тезиса. */
+.os-hl {
+  color: var(--e-accent);
+}
+
+/* Выделение на акцентном экране: цветом там не выделишь — фон уже цвет,
+   поэтому слово выворачивается плашкой.
+
+   `box-decoration-break: clone` — на случай переноса: без него плашка на двух
+   строках получает поле только слева от первой половины и справа от второй, и
+   «Любая модель» выглядит как одна разорванная плашка вместо двух целых. */
+.os-mark {
+  background: var(--e-accent-fg);
+  color: var(--e-accent);
+  padding-inline: var(--e-space-3);
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+.os-dim {
+  color: var(--e-fg-3);
+}
+
+/* ───────────────────────────── Обложка ─────────────────────────── */
+
+.os-cover {
+  gap: var(--e-space-10);
+}
+
+/* Знак вставлен разметкой внутрь span: ширину задаёт обёртка, svg тянется по
+   ней. Пропорция знака широкая — 563 × 370, — поэтому и ширина крупнее, чем у
+   квадратного логотипа. */
+.os-logo {
+  display: block;
+  width: clamp(6.5rem, 22vw, 11rem);
+  color: var(--e-fg);
+}
+
+.os-logo svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.os-title {
+  font-size: var(--os-size-hero);
+  line-height: 0.98;
+  letter-spacing: var(--e-tracking-tight);
+  font-weight: var(--e-weight-semi);
+}
+
+.os-subtitle {
+  max-width: 32rem;
+  font-size: clamp(var(--e-size-lg), 3vw, var(--e-size-xl));
+  line-height: var(--e-leading-snug);
+  color: var(--e-fg-2);
+  text-wrap: pretty;
+}
+
+/* Подпись внизу обложки и финала: тот же OCR-капс, что и метки. */
+.os-footnote {
+  font-family: var(--e-font-num);
+  font-size: var(--e-size-2xs);
+  line-height: 1.4;
+  letter-spacing: var(--e-tracking-caps);
+  text-transform: uppercase;
+  color: var(--e-fg-3);
+}
+
+.os-screen__foot {
+  position: absolute;
+  inset-inline: var(--os-pad-inline);
+  bottom: calc(var(--e-safe-bottom) + var(--e-space-8));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--e-space-6);
+}
+
+/* Стрелка «листай дальше». Движение мелкое и медленное; при
+   prefers-reduced-motion длительности в токенах схлопываются до 1 мс и
+   стрелка просто стоит на месте. */
+.os-hint {
+  font-family: var(--e-font-num);
+  font-size: var(--e-size-sm);
+  color: var(--e-fg-3);
+  animation: os-nudge 2.4s var(--e-ease-inout) infinite;
+}
+
+@keyframes os-nudge {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(var(--e-space-2));
+  }
+}
+
+/* ───────────────────────────── Окно ────────────────────────────── */
+
+/* Опорный приём айдентики: содержимое живёт в прямоугольном окне с титлбаром.
+   Радиуса нет, тень жёсткая — как окно старой системы. */
+.os-window {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border: 1px solid var(--os-line, var(--e-fg));
+  border-radius: 0;
+  background: var(--e-surface);
+  color: var(--e-fg);
+  box-shadow: var(--e-shadow-3);
+}
+
+.os-window__bar {
+  display: flex;
+  align-items: center;
+  gap: var(--e-space-5);
+  padding: var(--e-space-3) var(--e-space-5);
+  background: var(--os-bar, var(--e-solid));
+  color: var(--os-bar-fg, var(--e-solid-fg));
+  font-family: var(--e-font-num);
+  font-size: var(--e-size-2xs);
+  line-height: 1.4;
+  letter-spacing: var(--e-tracking-caps);
+  text-transform: uppercase;
+}
+
+.os-window__title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Три квадрата вместо кнопок: знак окна, а не работающий орган управления. */
+.os-window__knobs {
+  display: flex;
+  gap: var(--e-space-2);
+  margin-inline-start: auto;
+  flex: none;
+}
+
+.os-window__knob {
+  width: var(--e-space-4);
+  height: var(--e-space-4);
+  border: 1px solid currentColor;
+}
+
+.os-window__body {
+  padding: var(--e-space-7);
+  font-size: var(--e-size-md);
+  line-height: var(--e-leading-relaxed);
+  color: var(--e-fg-2);
+}
+
+.os-window--accent {
+  --os-bar: var(--e-accent);
+  --os-bar-fg: var(--e-fg-on-solid);
+  border-color: var(--e-accent);
+  background: var(--e-accent-tint);
+}
+
+.os-window--danger {
+  --os-bar: var(--e-danger);
+  --os-bar-fg: var(--e-fg-on-solid);
+  border-color: var(--e-danger);
+  background: var(--e-danger-tint);
+}
+
+.os-windows {
+  display: grid;
+  gap: var(--e-space-8);
+}
+
+@media (min-width: 768px) {
+  .os-windows--3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* ────────────────────────── Крупное число ──────────────────────── */
+
+/* ───────────────────────── Шаг наружу ─────────────────────────── */
+
+/* Единственное действие на всей ленте, и потому самая тяжёлая вещь на ней:
+   плотная плашка с жёсткой тенью. Ссылка, а не кнопка, — поэтому подчёркивание
+   снимается руками, а размер набирается полями: лента читается с телефона, и
+   мишень должна быть пальцевой. */
+.os-cta {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--e-space-12);
+  padding: var(--e-space-5) var(--e-space-8);
+  background: var(--e-fg);
+  color: var(--e-bg);
+  font-family: var(--e-font-num);
+  font-size: var(--e-size-sm);
+  letter-spacing: var(--e-tracking-caps);
+  text-transform: uppercase;
+  text-decoration: none;
+  border: 1px solid var(--e-fg);
+  box-shadow: var(--e-shadow-3);
+  transition:
+    translate var(--e-dur-fast) var(--e-ease-standard),
+    box-shadow var(--e-dur-fast) var(--e-ease-standard);
+}
+
+/* Наведение приподнимает плашку, нажатие сажает её на тень: движение ровно то,
+   что делает палец, и обратимое. Сдвиг берётся из шкалы отступов, а не пишется
+   пикселями: своих размеров у лендинга нет, кроме плакатных кеглей. */
+.os-cta:hover {
+  box-shadow: var(--e-shadow-4);
+  translate: calc(var(--e-space-1) * -1) calc(var(--e-space-1) * -1);
+}
+
+.os-cta:active {
+  box-shadow: var(--e-shadow-1);
+  translate: var(--e-space-1) var(--e-space-1);
+}
+
+/* ──────────────────────── Рейка навигации ──────────────────────── */
+
+/* Столбик номеров справа: маленькое окно поверх ленты. Дублирует прокрутку,
+   поэтому на телефоне не показывается — там достаточно пальца. */
+.os-rail {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .os-rail {
+    position: fixed;
+    inset-inline-end: var(--e-space-8);
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: var(--e-z-sticky);
+    display: flex;
+    flex-direction: column;
+    gap: var(--e-space-1);
+    padding: var(--e-space-3);
+    background: var(--e-bg);
+    border: 1px solid var(--e-line);
+    box-shadow: var(--e-shadow-2);
+  }
+}
+
+.os-rail__item {
+  appearance: none;
+  border: 0;
+  background: none;
+  padding: var(--e-space-2) var(--e-space-3);
+  font-family: var(--e-font-num);
+  font-size: var(--e-size-2xs);
+  letter-spacing: var(--e-tracking-wide);
+  color: var(--e-fg-3);
+  cursor: pointer;
+  transition: color var(--e-dur-fast) var(--e-ease-standard);
+}
+
+.os-rail__item[aria-current='true'] {
+  color: var(--e-fg);
+  background: var(--e-surface-active);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .os-rail__item:hover {
+    color: var(--e-fg);
+  }
+}
+
+/* Заголовок раздела: тот же тезис, но на ступень тише — он не высказывание,
+   а подпись к списку окон под ним. */
+.os-thesis--sm {
+  font-size: clamp(var(--e-size-xl), 5vw, var(--e-size-3xl));
+}
