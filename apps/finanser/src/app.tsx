@@ -80,6 +80,7 @@ import { Unknown } from './components/Unknown.js'
 import { TxList } from './components/TxList.js'
 import { SummaryView } from './components/SummaryView.js'
 import { RulesView } from './components/RulesView.js'
+import logo from './logo.svg'
 
 /**
  * Один экран — сводка. Всё, что отвечает на вопросы «сколько», «на что» и
@@ -443,8 +444,18 @@ export function App(): JSX.Element {
         </div>
       ) : null}
       <header class="f-head">
-        <div class="f-head__name">финансер</div>
-        <div class="f-head__note">корпус Элементара · v0</div>
+        {/* Знак Элементара и имя корпуса — одной группой слева: это одна
+            подпись, «чей и какой», а не две разные надписи.
+
+            Знак кладётся маской, а не картинкой: в файле цвет зашит чёрным, и
+            картинкой он остался бы чёрным на чёрном в тёмной теме. Маска берёт
+            из файла только форму, а красит его `currentColor` — тем же цветом,
+            что и текст рядом. */}
+        <div class="f-head__mark">
+          <span class="f-head__logo" style={`--f-logo:url(${logo})`} aria-hidden="true" />
+          <span class="f-head__name">финансер</span>
+        </div>
+        <div class="f-head__note">v0</div>
       </header>
       {/* Отказ хранилища. Плашка висит и не закрывается: закрыть её значило бы
           снова замолчать, а положение не изменится само — оно изменится, когда

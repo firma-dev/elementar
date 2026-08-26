@@ -172,6 +172,31 @@ input {
   border-bottom: var(--el__border-width-m) solid var(--el__text);
 }
 
+/* Знак и имя — одной группой: это одна подпись, а не две надписи. */
+.f-head__mark {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  min-width: 0;
+}
+
+/* Знак берётся маской, а не картинкой.
+   В файле цвет зашит чёрным; картинкой он остался бы чёрным на чёрном в тёмной
+   теме. Маска берёт из файла только форму и красит его `currentColor` — тем же
+   цветом, что и имя рядом, в любой теме и при повышенной контрастности.
+
+   Пропорции знака 563×370, высота задана в em: знак растёт вместе с текстом,
+   а не живёт от него отдельно. */
+.f-head__logo {
+  display: block;
+  flex: none;
+  block-size: 1.15em;
+  inline-size: calc(1.15em * 563 / 370);
+  background: currentColor;
+  mask: var(--f-logo) no-repeat center / contain;
+  -webkit-mask: var(--f-logo) no-repeat center / contain;
+}
+
 .f-head__name {
   font-size: var(--el__fs-base);
   letter-spacing: var(--el__ls-caps-s);
