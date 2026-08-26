@@ -80,7 +80,15 @@ import { Unknown } from './components/Unknown.js'
 import { TxList } from './components/TxList.js'
 import { SummaryView } from './components/SummaryView.js'
 import { RulesView } from './components/RulesView.js'
-import logo from './logo.svg'
+/**
+ * Знак берётся из корня репозитория, а не из своей копии.
+ *
+ * Канон §6: логотип — отдельный SVG, лежит рядом с каноном. Копия в корпусе
+ * была второй такой же картинкой, а две копии одного файла расходятся на первой
+ * же правке — поправят одну. Путь через границу приложения здесь оправдан:
+ * знак принадлежит не финансеру, а Элементару.
+ */
+import logo from '../../../elementar.svg'
 
 /**
  * Один экран — сводка. Всё, что отвечает на вопросы «сколько», «на что» и
