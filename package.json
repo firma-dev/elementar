@@ -16,7 +16,9 @@
     "format": "prettier --write .",
     "check": "pnpm typecheck && pnpm test",
     "dev:finanser": "pnpm --filter @elementar/finanser dev",
-    "build:finanser": "pnpm --filter @elementar/finanser build"
+    "build:finanser": "pnpm --filter @elementar/finanser build",
+    "dev:os": "pnpm --filter @elementar/elementaros dev",
+    "build:os": "pnpm --filter @elementar/elementaros build"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

@@ -22,6 +22,17 @@
         "preview"
       ],
       "port": 5174
+    },
+    {
+      "name": "элементар-ос",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--filter",
+        "@elementar/elementaros",
+        "run",
+        "dev"
+      ],
+      "port": 5177
     }
   ]
 }

@@ -17,17 +17,45 @@
 #
 # Ключ прописывается один раз в панели Рег.ру: SSH → Ключи → добавить
 # содержимое ~/.ssh/elementar_regru.pub
+#
+# Куда и под кем ходить, скрипт не знает: репозиторий открытый, а логин на
+# сервере вместе с адресом — половина пары «логин-пароль» и готовая мишень для
+# перебора. Значения лежат рядом, в `deploy.env`, который не коммитится.
 set -euo pipefail
 
-HOST="u3602414@server68.hosting.reg.ru"
-KEY="$HOME/.ssh/elementar_regru"
-# Абсолютный путь, подсмотренный в файловом менеджере панели, а не угаданный:
-# /var/www/u3602414/data/www/elementaros.ru. В README стояло «/www/elementaros.ru» —
-# это путь, каким его показывает панель, а не каким его видит система.
-ROOT="/var/www/u3602414/data/www/elementaros.ru"
-WHAT="${1:-всё}"
-
 cd "$(dirname "$0")/.."
+
+ENV_FILE="${ELEMENTAR_DEPLOY_ENV:-deploy.env}"
+if [ -f "$ENV_FILE" ]; then
+  # shellcheck disable=SC1090
+  . "./$ENV_FILE"
+fi
+
+: "${DEPLOY_HOST:=}"
+: "${DEPLOY_ROOT:=}"
+: "${DEPLOY_FTP_HOST:=${DEPLOY_HOST#*@}}"
+KEY="${DEPLOY_KEY:-$HOME/.ssh/elementar_regru}"
+
+if [ -z "$DEPLOY_HOST" ] || [ -z "$DEPLOY_ROOT" ]; then
+  cat >&2 <<'СПРАВКА'
+Не задано, куда выкладывать. Создайте рядом со скриптом файл deploy.env:
+
+  DEPLOY_HOST=пользователь@сервер.хостинга
+  DEPLOY_ROOT=/абсолютный/путь/к/каталогу/сайта
+
+Файл не коммитится: логин на сервере вместе с адресом — половина пары
+«логин-пароль», и в открытом репозитории ему не место. Пароля здесь нет и
+быть не должно: SSH ходит по ключу, FTP берёт пароль из ~/.netrc.
+СПРАВКА
+  exit 1
+fi
+
+HOST="$DEPLOY_HOST"
+# Абсолютный путь берётся из файлового менеджера панели, а не угадывается: в
+# README когда-то стояло «/www/elementaros.ru» — это путь, каким его показывает
+# панель, а не каким его видит система.
+ROOT="$DEPLOY_ROOT"
+WHAT="${1:-всё}"
 
 check_access() {
   if ! ssh -i "$KEY" -o BatchMode=yes -o ConnectTimeout=10 "$HOST" true 2>/dev/null; then
@@ -67,8 +95,8 @@ upload() {
 #
 # Один раз создайте ~/.netrc с правами 600:
 #
-#   machine server68.hosting.reg.ru
-#   login u3602414
+#   machine сервер.хостинга
+#   login пользователь
 #   password ВАШ_ПАРОЛЬ_ОТ_ХОСТИНГА
 #
 #   chmod 600 ~/.netrc
@@ -90,7 +118,7 @@ upload_ftp() {
   while IFS= read -r file; do
     local rel="${file#"$from"/}"
     curl -sS -n --ftp-create-dirs -T "$file" \
-      "ftp://server68.hosting.reg.ru/$to/$rel" || {
+      "ftp://$DEPLOY_FTP_HOST/$to/$rel" || {
       echo "  не удалось залить $rel" >&2
       exit 1
     }
@@ -103,11 +131,13 @@ if [ "$WHAT" = "ftp" ]; then
   pnpm --filter @elementar/elementaros build
   pnpm --filter @elementar/finanser build
   # Путь от корня FTP, а не от корня файловой системы: FTP пускает в домашний
-  # каталог /var/www/u3602414, и для него сайт лежит в data/www/elementaros.ru.
+  # каталог пользователя, и относительно него сайт лежит глубже. Хвост берётся
+  # из DEPLOY_ROOT — это тот же путь, только без домашнего каталога впереди.
+  ftp_root="${DEPLOY_FTP_ROOT:-${DEPLOY_ROOT#/var/www/*/}}"
   # FTP ничего не удаляет, поэтому подкаталог «финансер» здесь и так в
   # безопасности — но заливается только содержимое посадочной.
-  upload_ftp apps/elementaros/dist "data/www/elementaros.ru" "посадочная → elementaros.ru"
-  upload_ftp apps/finanser/dist "data/www/elementaros.ru/финансер" "финансер → /финансер/"
+  upload_ftp apps/elementaros/dist "$ftp_root" "посадочная → elementaros.ru"
+  upload_ftp apps/finanser/dist "$ftp_root/финансер" "финансер → /финансер/"
   echo
   echo "Проверка:"
   for url in "https://elementaros.ru/" "https://elementaros.ru/финансер/"; do

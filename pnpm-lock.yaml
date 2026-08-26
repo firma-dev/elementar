@@ -46,8 +46,27 @@ importers:
         specifier: ^4.123.0
         version: 4.125.0(@cloudflare/workers-types@5.20260823.1)
 
+  apps/elementaros:
+    dependencies:
+      '@elementar/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
+      preact:
+        specifier: ^10.29.0
+        version: 10.29.8
+    devDependencies:
+      '@elementar/devkit':
+        specifier: workspace:*
+        version: link:../../packages/devkit
+      vite:
+        specifier: ^8.2.1
+        version: 8.2.2(@types/node@22.20.1)(esbuild@0.28.1)
+
   apps/finanser:
     dependencies:
+      '@elementar/brand':
+        specifier: workspace:*
+        version: link:../../packages/brand
       '@preact/signals':
         specifier: ^2.11.0
         version: 2.11.1(preact@10.29.8)
@@ -92,6 +111,8 @@ importers:
       vite:
         specifier: ^8.2.1
         version: 8.2.2(@types/node@22.20.1)(esbuild@0.28.1)
+
+  packages/brand: {}
 
   packages/core:
     dependencies:

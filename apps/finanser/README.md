@@ -86,7 +86,7 @@ Permissions-Policy: geolocation=(), camera=(), microphone=(), interest-cohort=()
 | Что     | Значение                                                                                      |
 | ------- | --------------------------------------------------------------------------------------------- |
 | Адрес   | `http://elementaros.ru/финансер/`                                                             |
-| Хостинг | Reg.Host-0, аккаунт `u3602414`, `server68.hosting.reg.ru` (37.140.192.225)                    |
+| Хостинг | Reg.Host-0. Аккаунт и адрес сервера — в `deploy.env`, он не коммитится             |
 | Каталог | `/www/elementaros.ru/финансер/`                                                               |
 | DNS     | `ns1.hosting.reg.ru`, `ns2.hosting.reg.ru` (переключены 24.08.2026, распространение до суток) |
 
