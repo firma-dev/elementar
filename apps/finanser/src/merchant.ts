@@ -11,8 +11,20 @@ import type { Categorized, Category } from './model.js'
 import { fold, normalize } from './text.js'
 import { dropLeftovers, operationOf } from './operation.js'
 
+/**
+ * Служебные слова сравниваются в сложенной форме — той же, в какой приходит
+ * описание. Списки ниже писались латиницей, и «Осуществлен через СБП»
+ * пришлось переводить руками; в переводе я и ошибся — «щ» здесь `SCH`, а я
+ * написал `SHCH`, — и слово «Осуществлен» стало именем получателя с суммой в
+ * двадцать три тысячи. Теперь перевод делает `fold`, тот же самый, через
+ * который проходит описание: разойтись они больше не могут.
+ */
+function folded(words: readonly string[]): Set<string> {
+  return new Set(words.map((word) => fold(word).trim()))
+}
+
 /** Организационные формы. Выбрасываются целым словом, а не подстрокой. */
-const FORMS = new Set([
+const FORMS = folded([
   'ООО',
   'ОАО',
   'ЗАО',
@@ -40,7 +52,7 @@ const FORMS = new Set([
 ])
 
 /** Города и страны, которые терминал дописывает к имени. */
-const PLACES = new Set([
+const PLACES = folded([
   'MOSCOW',
   'MOSKVA',
   'MOSKOW',
@@ -93,7 +105,7 @@ const PLACES = new Set([
  * «PLATIPOMIRU» и «PLATIPOMIRU BIK INN KPP», — и в разборе непонятного он
  * занимает две строки вместо одной.
  */
-const NOISE = new Set([
+const NOISE = folded([
   'SBP',
   'СБП',
   'TERMINAL',
@@ -140,12 +152,15 @@ const NOISE = new Set([
   'USD',
   'EUR',
   'SBP',
-  'OSUSHCHESTVLEN',
-  'CHEREZ',
-  'POKUPKI',
-  'KARTE',
-  'POLUCHATEL',
-  'OTPRAVITEL',
+  'СБП',
+  'ОСУЩЕСТВЛЕН',
+  'ЧЕРЕЗ',
+  'ПОКУПКИ',
+  'КАРТЕ',
+  'ПОЛУЧАТЕЛЬ',
+  'ОТПРАВИТЕЛЬ',
+  'НОМЕРУ',
+  'ТЕЛЕФОНА',
 ])
 
 /**
@@ -173,7 +188,7 @@ export function merchantKey(description: string): string {
  * идут парами: перевод в латиницу побуквенный, поэтому число слов в обеих
  * формах одинаково, и пара не разъезжается.
  */
-function cleanWords(description: string, translit: boolean): string {
+function cleanWords(description: string, translit: boolean, fallback?: string): string {
   const rest = operationOf(description).rest
   // Берём остаток после служебного начала: «Оплата в YANDEXGO» — это YANDEXGO,
   // а не «В YANDEXGO». Предлог, оставшийся от «оплата в», не имя получателя.
@@ -198,10 +213,46 @@ function cleanWords(description: string, translit: boolean): string {
   })
 
   const key = (translit ? keptFolded : kept).join(' ').trim()
-  // Если после чистки не осталось ничего — значит имя и было техническим:
-  // возвращаем исходное описание целиком, чтобы не склеить всё подряд.
   if (key !== '') return key
+  // Чистить было нечего. Для ключа это значит «возьми описание целиком»: разные
+  // безымянные операции иначе склеятся в одного получателя. Для подписи —
+  // наоборот, описание не годится, и вызывающий передаёт сюда пустую строку,
+  // чтобы узнать об этом и подставить вид операции.
+  if (fallback !== undefined) return fallback
   return (translit ? fold(description) : normalize(description)).trim()
+}
+
+/**
+ * Подпись, когда чистить было нечего.
+ *
+ * Бывают описания без имени вовсе: « 10118.00 RUB . Осуществлен через СБП.» —
+ * сумма, валюта и способ, больше ничего. Ключ в таком случае берётся из всего
+ * описания целиком, иначе разные безымянные операции склеились бы в одного
+ * получателя. А вот подписью описание быть не может: в списке источников
+ * стояло «10118 00 Rub Осуществлен Через Сбп», и это не имя, а мусор в поле,
+ * где ждут имя.
+ *
+ * Вид операции знает `operation.ts`, и здесь берётся именно он: сказать
+ * «Перевод» честнее, чем «Без описания», когда про операцию известно, что это
+ * перевод.
+ */
+function kindLabel(description: string): string {
+  switch (operationOf(description).kind) {
+    case 'transfer':
+      return 'Перевод'
+    case 'cash':
+      return 'Наличные'
+    case 'reward':
+      return 'Кэшбэк'
+    case 'topup':
+      return 'Пополнение'
+    case 'saving':
+      return 'В копилку'
+    case 'fee':
+      return 'Комиссия'
+    default:
+      return 'Без описания'
+  }
 }
 
 /**
@@ -215,6 +266,7 @@ function cleanWords(description: string, translit: boolean): string {
  * тем же способом, но без перевода в латиницу.
  */
 export function merchantLabel(description: string): string {
+  if (cleanWords(description, true, '') === '') return kindLabel(description)
   const source = CYRILLIC.test(description)
     ? cleanWords(description, false)
     : merchantKey(description)

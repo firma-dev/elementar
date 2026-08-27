@@ -1655,6 +1655,14 @@ input {
   color: var(--el__text-caption);
 }
 
+/* Точка между кусками приписки. Зазора мало: в строке подряд идут число и
+   дата, и без разделителя «обычно 11 804 28 июля» читается как одно число. */
+.f-inc__meta > * + *:not(.f-inc__act)::before {
+  content: '·';
+  margin-inline-end: 0.5em;
+  opacity: 0.6;
+}
+
 .f-inc__kind {
   text-transform: uppercase;
   letter-spacing: var(--el__ls-caps-s);

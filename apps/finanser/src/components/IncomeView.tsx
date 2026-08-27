@@ -112,7 +112,11 @@ export function IncomeView({ rows, edge, total, onExclude }: IncomeViewProps): J
                   обычно <Amount value={source.typical} kopecks="never" />
                 </span>
               ) : null}
-              <span class="f-inc__last">{dayLabel(source.lastDate)}</span>
+              {/* «Последний» вернулось: без него дата вставала вплотную к
+                  сумме, и «обычно 11 804 28 июля» читалось как одно число с
+                  хвостом. Разделять точками мало — тут рядом стоят две вещи
+                  одного рода, число и число. */}
+              <span class="f-inc__last">последний {dayLabel(source.lastDate)}</span>
               {/* Убрать — тихой ссылкой у правого края. Прижата к краю, а не
                   дописана следом за датой: длина подписи источника разная, и
                   ссылка вставала то тут, то там — глаз искал её заново в
