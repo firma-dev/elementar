@@ -1723,7 +1723,7 @@ input {
   /* Зазор между строками — шаг внутри блока, а не между блоками: ячейки тут
      соседи по одной мысли, а не два разных раздела. */
   gap: var(--f-step-2) var(--f-step-4);
-  margin-top: var(--f-step-2);
+  margin-top: var(--f-step-1);
   padding: var(--f-step-2);
   border: var(--el__border-width-s) solid var(--el__border);
   box-shadow: var(--el__shadow-s);
@@ -2153,17 +2153,21 @@ input {
    одного вопроса, и разная рамка означала бы, что одна половина важнее.
 
    На телефоне колонка одна, порядок в разметке сохраняется. */
+/* Зазор между блоками — минимальный, шаг строки. Меньше нельзя: тень у блока
+   жёсткая и уходит на три пикселя вправо-вниз, и на нулевом зазоре она легла
+   бы на рамку соседа. Блоки и так разделены рамкой — воздух между ними
+   работает только на то, чтобы тени не столкнулись. */
 .f-cols {
   display: grid;
-  gap: var(--f-step-2);
-  margin-top: var(--f-step-2);
+  gap: var(--f-step-1);
+  margin-top: var(--f-step-1);
 }
 
 @media (min-width: 1000px) {
   .f-cols {
     grid-template-columns: 1fr 1fr;
     align-items: start;
-    gap: var(--f-step-3) var(--f-step-4);
+    gap: var(--f-step-1);
   }
 
   /* Левая колонка — своя стопка, а не два элемента общей сетки. Строки у
@@ -2179,7 +2183,7 @@ input {
     grid-row: 1 / span 3;
     display: grid;
     align-content: start;
-    gap: var(--f-step-3);
+    gap: var(--f-step-1);
     min-width: 0;
   }
 

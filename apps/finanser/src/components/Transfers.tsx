@@ -30,6 +30,12 @@ interface Person {
   common: Category | null
 }
 
+/** «пт, 21 августа, 22:48» — то, по чему перевод вспоминается. */
+function when(tx: Categorized): string {
+  const day = `${weekdayLabel(tx.date)}, ${dayLabel(tx.date)}`
+  return tx.time === null ? day : `${day}, ${tx.time}`
+}
+
 /** Сколько человек показываем сразу. Дальше — по требованию. */
 const PAGE = 8
 
@@ -139,6 +145,9 @@ export function Transfers({
       <ul class="f-unknown__list" role="list">
         {shown.map((person) => {
           const opened = open === person.key
+          // Переводы приходят в порядке выписки — с самого свежего.
+          const last = person.rows[0]
+          if (last === undefined) return null
           return (
             <li key={person.key} class="f-unknown__row">
               <div class="f-unknown__line">
@@ -157,8 +166,12 @@ export function Transfers({
               </div>
 
               <span class="f-unknown__pick">
+                {/* Когда был последний — прямо в строке, не под раскрытием.
+                    Смысл времени в том, чтобы вспомнить перевод, а вспоминать
+                    приходится до нажатия, а не после: строка, в которой стоят
+                    только имя и сумма, не подсказывает, нажимать ли вообще. */}
                 <span class="f-unknown__count">
-                  {person.rows.length} пер.
+                  {person.rows.length} пер. · {when(last)}
                   {person.common === null
                     ? ` · ${person.rows.filter((tx) => tx.category === PEOPLE).length} без имени`
                     : ''}
