@@ -186,6 +186,7 @@ export function App(): JSX.Element {
       key: name,
       balance: result.balance,
       accounts: result.accounts,
+      accountLabels: result.accountLabels,
     })
     setView('year')
     setMonth(null)
@@ -463,8 +464,24 @@ export function App(): JSX.Element {
         <div class="f-head__mark">
           <span class="f-head__logo" style={`--f-logo:url(${logo})`} aria-hidden="true" />
           <span class="f-head__name">финансер</span>
+          <span class="f-head__note">v0</span>
         </div>
-        <div class="f-head__note">v0</div>
+        {/* Обновить выписку — в правом углу шапки, если данные уже есть.
+            Загрузка стояла в подвале рядом с выгрузкой, потому что случается
+            раз в месяц. Но раз в месяц она случается обязательно, и искать её
+            внизу страницы каждый раз — это и есть та работа, которой быть не
+            должно. Пустому экрану кнопка не нужна: там загрузка и так главное
+            действие посередине. */}
+        {hasData.value ? (
+          <button
+            type="button"
+            class="f-head__load"
+            onClick={() => fileRef.current?.click()}
+            title="Добавить свежую выписку: операции склеятся, правки останутся"
+          >
+            {busy ? 'Читаю…' : 'обновить выписку →'}
+          </button>
+        ) : null}
       </header>
       {/* Отказ хранилища. Плашка висит и не закрывается: закрыть её значило бы
           снова замолчать, а положение не изменится само — оно изменится, когда
@@ -561,13 +578,34 @@ export function App(): JSX.Element {
    * «Обновить» стоит здесь же — это самое частое действие в ежедневном
    * сценарии, и класть его дальше одного касания было бы дорого (Д-026).
    */
+  /**
+   * Чьи это данные: банк, если человек его назвал, иначе имя счёта.
+   *
+   * Банк не выводится из выписки: в файле его нет, а угадывать по набору
+   * колонок значит подписать чужие деньги наугад. Зато назвать его человек
+   * может один раз — в «переименовать» у счёта, — и дальше это имя стоит
+   * везде, где раньше стояло имя файла.
+   */
+  const whoseData = ((): string => {
+    const banks = [...new Set(accounts.value.map((a) => a.bank.trim()).filter((b) => b !== ''))]
+    if (banks.length === 1) return banks[0] ?? ''
+    if (banks.length > 1) return `${banks.length} банка`
+    const names = accounts.value.map((a) => a.name)
+    if (names.length === 1) return names[0] ?? ''
+    return info?.name ?? ''
+  })()
+
   const freshness = (
     <p class="f-fresh">
       <span class={behind > 2 ? 'f-fresh__k f-fresh__k--old' : 'f-fresh__k'}>
         Данные по {dayLabel(edge)}
         {behind === 0 ? '' : `, это ${behind} ${dayWord(behind)} назад`}
       </span>{' '}
-      {loaded.length <= 1 ? (info?.name ?? '') : `${loaded.length} выписки`}
+      {/* Имя банка, а не имя файла: «account_statement_25.06.26-18.08.26» не
+          отвечает ни на один вопрос. Банк называет человек — сам он ниоткуда
+          не берётся, и выдумывать его за человека нельзя. Пока не назван,
+          стоит имя счёта: «Карта ·3523». */}
+      {loaded.length <= 1 ? whoseData : `${loaded.length} выписки`}
     </p>
   )
 

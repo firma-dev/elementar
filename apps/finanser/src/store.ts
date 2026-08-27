@@ -51,6 +51,8 @@ export interface SourceInfo {
   balance?: Kopeck | null
   /** Ключи счетов, встреченные в файле. */
   accounts?: string[]
+  /** Как счёт назывался в выписке: ключ → «**3523». */
+  accountLabels?: Record<string, string>
 }
 
 /**
@@ -295,27 +297,65 @@ export function backupDue(day: string): boolean {
 }
 
 /**
- * Завести счета, которых ещё нет.
+ * Имя по умолчанию для нового счёта.
  *
- * Имя по умолчанию — имя файла без расширения: человек его узнаёт, а
- * восьмизначный ключ — нет. Уже заведённый счёт не трогается: у него может
- * быть имя, данное рукой.
+ * Порядок: номер карты из самой выписки, потом имя файла, потом «Счёт N».
+ *
+ * Имя файла было первым и оказалось худшим из трёх. Банки называют выгрузку
+ * «account_statement_25.06.26-18.08.26» — в переключателе счетов стояло именно
+ * это, и оно не отвечало ни на один вопрос: ни чей счёт, ни какой банк.
+ * «Карта ·3523» отвечает на оба сразу, потому что последние цифры человек
+ * знает наизусть.
+ *
+ * Имя файла остаётся запасным, но только человеческое: «Выписка Сбербанк» —
+ * да, «export-2026-08-27» — нет. Отличаем по признакам машинного имени:
+ * латиница со служебными словами, даты, длинные цепочки цифр.
+ */
+const MACHINE_NAME = /statement|export|report|extract|operations|history|vypiska|\d{2}[._-]\d{2}/i
+
+export function accountNameFor(info: SourceInfo, key: string, index: number): string {
+  const label = info.accountLabels?.[key]?.trim() ?? ''
+  if (label !== '') {
+    // «**3523» → «Карта ·3523»: звёздочки терминала заменяются точкой, потому
+    // что это подпись, а не маска.
+    const digits = /(\d{4})\s*$/.exec(label)
+    return digits === null ? label : `Карта ·${digits[1]}`
+  }
+  const file = info.name.replace(/\.[a-z0-9]+$/i, '').trim()
+  if (file !== '' && !MACHINE_NAME.test(file)) return file
+  return `Счёт ${index}`
+}
+
+/**
+ * Завести счета, которых ещё нет, и поправить машинные имена у заведённых.
+ *
+ * Имя, данное рукой, не трогается никогда. Но «account_statement_25.06.26» —
+ * не имя, данное рукой: это плохое умолчание, которое приложение выбрало само.
+ * Как только в новой выписке находится номер карты, оно заменяется на «Карта
+ * ·3523»; человек ничего для этого не делает и ничего не теряет.
  */
 function registerAccounts(list: readonly Tx[], info: SourceInfo): void {
   const known = new Set(accounts.value.map((a) => a.key))
   const fresh: Account[] = []
-  const fallback = info.name.replace(/\.[a-z0-9]+$/i, '')
   for (const tx of list) {
     if (known.has(tx.account) || fresh.some((a) => a.key === tx.account)) continue
     fresh.push({
       key: tx.account,
-      name: fallback === '' ? `Счёт ${known.size + fresh.length + 1}` : fallback,
+      name: accountNameFor(info, tx.account, known.size + fresh.length + 1),
       bank: '',
       tone: (known.size + fresh.length) % 6,
     })
   }
-  if (fresh.length === 0) return
-  const next = [...accounts.value, ...fresh]
+
+  const upgraded = accounts.value.map((account, index) => {
+    if (!MACHINE_NAME.test(account.name)) return account
+    const better = accountNameFor(info, account.key, index + 1)
+    return better === account.name ? account : { ...account, name: better }
+  })
+  const changed = upgraded.some((a, i) => a.name !== accounts.value[i]?.name)
+  if (fresh.length === 0 && !changed) return
+
+  const next = [...upgraded, ...fresh]
   accounts.value = next
   writeJson(KEY_ACCOUNTS, next)
 }

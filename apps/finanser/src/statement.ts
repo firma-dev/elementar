@@ -277,6 +277,12 @@ export interface ParseResult {
   /** Ключи счетов, встреченные в файле: обычно один, но бывает и несколько. */
   accounts: string[]
   /**
+   * Как счёт назывался в самой выписке: «**3523». Ключ — хеш, и по нему уже
+   * не сказать ничего; а имя нужно, чтобы счёт в переключателе назывался
+   * узнаваемо, а не именем файла.
+   */
+  accountLabels: Record<string, string>
+  /**
    * Были ли в файле колонки MCC и «Категория».
    *
    * Банки отдают выписку в двух видах. Короткая — пять
@@ -328,6 +334,7 @@ const EMPTY_RESULT: ParseResult = {
   error: null,
   balance: null,
   accounts: [],
+  accountLabels: {},
   hasCodes: false,
 }
 
@@ -346,6 +353,7 @@ export function parseStatement(bytes: Uint8Array, fallbackAccount = ''): ParseRe
       error: wrongFormat,
       balance: null,
       accounts: [],
+      accountLabels: {},
       hasCodes: false,
     }
   }
@@ -375,6 +383,7 @@ export function parseRows(rows: readonly (readonly string[])[], fallbackAccount 
     error: null,
     balance: null,
     accounts: [],
+    accountLabels: {},
     hasCodes: false,
   }
   if (header === undefined) return { ...empty, error: 'Файл пуст.' }
@@ -410,6 +419,10 @@ export function parseRows(rows: readonly (readonly string[])[], fallbackAccount 
   // и числа строк, — поэтому проставляется вторым проходом.
   const seen = new Map<string, number>()
   const accounts = new Set<string>()
+  // Ключ счёта — хеш, и по нему уже не сказать, что было в выписке. А сказать
+  // надо: «Карта ·3523» человек узнаёт, восьмизначный хеш — нет, и имя файла
+  // «account_statement_25.06.26-18.08.26» тоже нет.
+  const accountLabels: Record<string, string> = {}
   let skipped = 0
   let converted = 0
   let foreign = 0
@@ -471,6 +484,9 @@ export function parseRows(rows: readonly (readonly string[])[], fallbackAccount 
     const rawAccount = at(row, columns.account).trim()
     const account = accountKey(rawAccount === '' ? fallbackAccount : rawAccount)
     accounts.add(account)
+    if (rawAccount !== '' && accountLabels[account] === undefined) {
+      accountLabels[account] = rawAccount
+    }
 
     const key = `${account}|${date}|${amount}|${description}`
     const duplicate = seen.get(key) ?? 0
@@ -517,6 +533,7 @@ export function parseRows(rows: readonly (readonly string[])[], fallbackAccount 
     error: null,
     balance,
     accounts: [...accounts],
+    accountLabels,
     hasCodes: columns.mcc !== undefined || columns.category !== undefined,
   }
 }

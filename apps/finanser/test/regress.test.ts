@@ -500,3 +500,32 @@ describe('подпись получателя не бывает мусором',
     ).toBe('Экспресс')
   })
 })
+
+describe('имя счёта', () => {
+  const инфо = {
+    name: 'account_statement_25.06.26-18.08.26.csv',
+    rows: 10,
+    skipped: 0,
+    converted: 0,
+    foreign: 0,
+    loadedAt: '2026-08-27',
+    hasCodes: false,
+    key: 'k',
+    accountLabels: { a1: '**3523' },
+  }
+
+  it('берётся из номера карты, а не из имени файла', async () => {
+    const { accountNameFor } = await import('../src/store.js')
+    // «account_statement_25.06.26-18.08.26» не отвечает ни на один вопрос:
+    // ни чей счёт, ни какой банк. Последние цифры карты человек знает.
+    expect(accountNameFor(инфо, 'a1', 1)).toBe('Карта ·3523')
+  })
+
+  it('человеческое имя файла остаётся, машинное — нет', async () => {
+    const { accountNameFor } = await import('../src/store.js')
+    expect(accountNameFor({ ...инфо, accountLabels: {} }, 'a2', 2)).toBe('Счёт 2')
+    expect(
+      accountNameFor({ ...инфо, name: 'Выписка Сбербанк.csv', accountLabels: {} }, 'a2', 2),
+    ).toBe('Выписка Сбербанк')
+  })
+})

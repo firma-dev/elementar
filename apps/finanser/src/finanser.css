@@ -221,6 +221,30 @@ input {
   text-transform: uppercase;
 }
 
+/* Обновить выписку — тихая кнопка у правого края шапки. Тихая намеренно:
+   это действие раз в месяц, и громким оно спорило бы с числами, ради которых
+   экран открывают каждый день. */
+.f-head__load {
+  border: var(--el__border-width-s) solid var(--el__border);
+  background: none;
+  color: var(--el__text-caption);
+  font: inherit;
+  font-size: var(--el__fs-xs);
+  letter-spacing: var(--el__ls-caps-s);
+  text-transform: uppercase;
+  padding: var(--f-v-2) 0.7em;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    color var(--el__duration-fast) var(--el__easing-base),
+    border-color var(--el__duration-fast) var(--el__easing-base);
+}
+
+.f-head__load:hover {
+  color: var(--el__text);
+  border-color: var(--el__text);
+}
+
 .f-head__note {
   font-size: var(--el__fs-xs);
   letter-spacing: var(--el__ls-caps-s);
