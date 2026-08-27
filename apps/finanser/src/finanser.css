@@ -1561,6 +1561,19 @@ input {
   white-space: nowrap;
 }
 
+/* Правка счёта — плашка того же рода, что и счета рядом, но тише: рамка
+   границей, а не текстом, и подпись серая. Это действие над списком, а не ещё
+   один счёт в нём. */
+.f-acc--edit {
+  border-color: var(--el__border);
+  color: var(--el__text-caption);
+}
+
+.f-acc--edit:hover {
+  border-color: var(--el__text);
+  color: var(--el__text);
+}
+
 .f-acc--on {
   background: var(--el__mark);
   color: var(--el__color-gray-950);

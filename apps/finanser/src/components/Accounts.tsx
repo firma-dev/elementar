@@ -119,10 +119,11 @@ export function Accounts({
         {only === undefined ? null : (
           <button
             type="button"
-            class="f-linkish f-linkish--quiet"
+            class={editing === only.key ? 'f-acc f-acc--edit f-acc--on' : 'f-acc f-acc--edit'}
+            aria-expanded={editing === only.key}
             onClick={() => setEditing(editing === only.key ? null : only.key)}
           >
-            {editing === only.key ? 'не переименовывать' : 'переименовать'}
+            {editing === only.key ? 'отмена' : 'переименовать'}
           </button>
         )}
       </div>
@@ -138,14 +139,19 @@ export function Accounts({
         </div>
       )}
 
+      {/* Плашка, а не подчёркнутая ссылка: в этой строке всё остальное —
+          плашки, и ссылка среди них выглядела вставленной из другого места.
+          К тому же по ней попадают пальцем, а по подчёркнутому слову в четыре
+          миллиметра высотой — нет. */}
       {active === null ? null : (
         <p class="f-accs__act">
           <button
             type="button"
-            class="f-linkish f-linkish--quiet"
+            class={editing === active ? 'f-acc f-acc--edit f-acc--on' : 'f-acc f-acc--edit'}
+            aria-expanded={editing === active}
             onClick={() => setEditing(editing === active ? null : active)}
           >
-            {editing === active ? 'не переименовывать' : 'переименовать'}
+            {editing === active ? 'отмена' : 'переименовать'}
           </button>
         </p>
       )}
