@@ -115,7 +115,17 @@ export function Accounts({
             все счета
           </button>
         ) : null}
-        {named < 2 || only !== undefined ? list.map(chip) : null}
+        {/* Единственный счёт — не кнопка. Нажатие на неё ничего не меняет:
+            выбирать не из чего, а жёлтая заливка «выбрано» кричит о состоянии,
+            которого нет. Остаётся подпись в той же рамке. */}
+        {only !== undefined ? (
+          <span class={`f-acc f-acc--label ${TONE[only.tone % TONE.length] ?? TONE[0]}`}>
+            <span class="f-acc__dot" aria-hidden="true" />
+            {only.bank === '' ? only.name : `${only.bank} ${short(only.name)}`}
+          </span>
+        ) : named < 2 ? (
+          list.map(chip)
+        ) : null}
         {only === undefined ? null : (
           <button
             type="button"
@@ -143,7 +153,9 @@ export function Accounts({
           плашки, и ссылка среди них выглядела вставленной из другого места.
           К тому же по ней попадают пальцем, а по подчёркнутому слову в четыре
           миллиметра высотой — нет. */}
-      {active === null ? null : (
+      {/* При единственном счёте правка стоит в самой строке — второй такой же
+          кнопкой ниже она и оказалась на экране дважды. */}
+      {active === null || only !== undefined ? null : (
         <p class="f-accs__act">
           <button
             type="button"
