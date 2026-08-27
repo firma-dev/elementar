@@ -754,6 +754,36 @@ input {
   flex-wrap: wrap;
 }
 
+/* Имя получателя — кнопка: за ней раскрывается список его переводов. Ведёт
+   себя как строка, а не как кнопка: та же кегль и цвет, что у соседей, и знак
+   раскрытия слева — иначе в плотном списке появляется вторая громкая вещь. */
+.f-tr__name {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4em;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: var(--el__fs-s);
+  text-align: start;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.f-tr__name:hover {
+  color: var(--el__link);
+}
+
+.f-tr__sign {
+  color: var(--el__text-caption);
+  flex-shrink: 0;
+}
+
 .f-unknown__count {
   font-size: var(--el__fs-xs);
   color: var(--el__text-caption);

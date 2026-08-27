@@ -89,6 +89,7 @@ import { RulesView } from './components/RulesView.js'
  */
 import logo from '@elementar/brand/elementar.svg'
 import { IncomeChart } from './components/IncomeChart.js'
+import { Transfers } from './components/Transfers.js'
 
 /**
  * Один экран — сводка. Всё, что отвечает на вопросы «сколько», «на что» и
@@ -885,8 +886,18 @@ export function App(): JSX.Element {
           />
 
           {/* Порядок разделов: сначала то, что сообщает, потом то, что настраивает.
-          Разбор непонятного и наличные — первыми: они сильнее всего меняют
-          картину, всё остальное её только объясняет. */}
+          Кому вы переводите — первым: на выписке без кодов переводы людям
+          оказались самой крупной статьёй расходов, а разбирается она не как
+          категория, а по людям. Дальше разбор непонятного и наличные: они
+          тоже меняют картину, а не объясняют её. */}
+          <Transfers
+            rows={scope}
+            totalSpend={planes.spend.total}
+            options={options}
+            onMerchantCategory={setMerchantCategory}
+            onCategory={setCategory}
+          />
+
           <Unknown
             rows={scope}
             totalSpend={planes.spend.total}

@@ -4,6 +4,7 @@ import { act } from 'preact/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { CategoryList } from '../src/components/CategoryList.js'
 import { Unknown } from '../src/components/Unknown.js'
+import { Transfers } from '../src/components/Transfers.js'
 import { Pick } from '../src/components/Pick.js'
 import { pickable } from '../src/model.js'
 import { categorizeAll } from '../src/categorize.js'
@@ -241,5 +242,101 @@ describe('выбор', () => {
     key('End')
     key('Enter')
     expect(picked).toHaveBeenCalledWith('Транспорт')
+  })
+})
+
+describe('кому вы переводите', () => {
+  const sent = (day: string, amount: number, who: string): Tx =>
+    tx(day, amount, `Перевод на номер 0079990000001. Получатель: ${who} Осуществлен через СБП.`)
+
+  const people: Categorized[] = categorizeAll(
+    [
+      sent('2026-01-03', -6500000, 'Марина Игоревна К.'),
+      sent('2026-02-03', -6500000, 'Марина Игоревна К.'),
+      sent('2026-02-08', -900000, 'Анна Сергеевна В.'),
+      tx('2026-02-09', -500000, 'PYATEROCHKA 1'),
+    ],
+    {},
+    {},
+  )
+
+  it('переводы собраны по людям, а покупка сюда не попала', () => {
+    act(() => {
+      render(
+        <Transfers
+          rows={people}
+          totalSpend={14400000}
+          options={pickable(new Set())}
+          onMerchantCategory={() => {}}
+          onCategory={() => {}}
+        />,
+        root,
+      )
+    })
+    const names = [...root.querySelectorAll('.f-tr__name')].map((n) => n.textContent ?? '')
+    expect(names).toHaveLength(2)
+    // Двое, самый крупный сверху; «Пятёрочка» — не перевод и в разделе её нет.
+    expect(names[0]).toContain('Марина')
+    expect(names.join(' ')).not.toContain('PYATEROCHKA')
+  })
+
+  it('категория ставится человеку — одним выбором на все его переводы', () => {
+    const named = vi.fn()
+    act(() => {
+      render(
+        <Transfers
+          rows={people}
+          totalSpend={14400000}
+          options={pickable(new Set())}
+          onMerchantCategory={named}
+          onCategory={() => {}}
+        />,
+        root,
+      )
+    })
+    act(() => {
+      root.querySelector<HTMLButtonElement>('.f-pick__button')?.click()
+    })
+    const option = [...root.querySelectorAll<HTMLElement>('.f-pick__option')].find(
+      (node) => node.textContent?.trim() === 'Жильё и ЖКХ',
+    )
+    act(() => {
+      option?.click()
+    })
+    expect(named).toHaveBeenCalledTimes(1)
+    expect(named.mock.calls[0]?.[1]).toBe('Жильё и ЖКХ')
+  })
+
+  it('строка раскрывается, и у каждого перевода свой выбор', () => {
+    const one = vi.fn()
+    act(() => {
+      render(
+        <Transfers
+          rows={people}
+          totalSpend={14400000}
+          options={pickable(new Set())}
+          onMerchantCategory={() => {}}
+          onCategory={one}
+        />,
+        root,
+      )
+    })
+    act(() => {
+      root.querySelector<HTMLButtonElement>('.f-tr__name')?.click()
+    })
+    // У Марины два перевода — значит две строки внутри.
+    expect(root.querySelectorAll('.f-peek__row')).toHaveLength(2)
+
+    act(() => {
+      root.querySelector<HTMLButtonElement>('.f-peek__row .f-pick__button')?.click()
+    })
+    const option = [...root.querySelectorAll<HTMLElement>('.f-pick__option')].find(
+      (node) => node.textContent?.trim() === 'Здоровье',
+    )
+    act(() => {
+      option?.click()
+    })
+    expect(one).toHaveBeenCalledTimes(1)
+    expect(one.mock.calls[0]?.[1]).toBe('Здоровье')
   })
 })
