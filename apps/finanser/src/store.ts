@@ -53,6 +53,8 @@ export interface SourceInfo {
   accounts?: string[]
   /** Как счёт назывался в выписке: ключ → «**3523». */
   accountLabels?: Record<string, string>
+  /** Чей это банк, по подписи выгрузки. Догадка, не факт. */
+  bank?: { name: string; why: string } | null
 }
 
 /**
@@ -342,17 +344,28 @@ function registerAccounts(list: readonly Tx[], info: SourceInfo): void {
     fresh.push({
       key: tx.account,
       name: accountNameFor(info, tx.account, known.size + fresh.length + 1),
-      bank: '',
+      // Догадка о банке ставится сразу: спрашивать «чей это банк», когда
+      // ответ уже известен из подписи выгрузки, значит перекладывать на
+      // человека работу, которую сделала машина. Ошиблись — он переименует;
+      // рядом с именем стоит, откуда оно взялось.
+      bank: info.bank?.name ?? '',
       tone: (known.size + fresh.length) % 6,
     })
   }
 
   const upgraded = accounts.value.map((account, index) => {
-    if (!MACHINE_NAME.test(account.name)) return account
+    const bank = account.bank === '' ? (info.bank?.name ?? '') : account.bank
+    if (!MACHINE_NAME.test(account.name)) {
+      return bank === account.bank ? account : { ...account, bank }
+    }
     const better = accountNameFor(info, account.key, index + 1)
-    return better === account.name ? account : { ...account, name: better }
+    return better === account.name && bank === account.bank
+      ? account
+      : { ...account, name: better, bank }
   })
-  const changed = upgraded.some((a, i) => a.name !== accounts.value[i]?.name)
+  const changed = upgraded.some(
+    (a, i) => a.name !== accounts.value[i]?.name || a.bank !== accounts.value[i]?.bank,
+  )
   if (fresh.length === 0 && !changed) return
 
   const next = [...upgraded, ...fresh]

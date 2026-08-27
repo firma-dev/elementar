@@ -13,6 +13,7 @@
  */
 import { parseCsv, decodeBytes, sniffNotCsv } from './csv.js'
 import { looksLikeXlsx, readXlsx } from './xlsx.js'
+import { guessBank } from './bank.js'
 import { parseAmount } from './money.js'
 import type { Kopeck } from './money.js'
 import type { Tx } from './model.js'
@@ -283,6 +284,11 @@ export interface ParseResult {
    */
   accountLabels: Record<string, string>
   /**
+   * Чей это банк, по подписи выгрузки. Всегда догадка: имени банка в файле
+   * нет, и наружу это идёт предложением, а не фактом.
+   */
+  bank: { name: string; why: string } | null
+  /**
    * Были ли в файле колонки MCC и «Категория».
    *
    * Банки отдают выписку в двух видах. Короткая — пять
@@ -335,6 +341,7 @@ const EMPTY_RESULT: ParseResult = {
   balance: null,
   accounts: [],
   accountLabels: {},
+  bank: null,
   hasCodes: false,
 }
 
@@ -354,6 +361,7 @@ export function parseStatement(bytes: Uint8Array, fallbackAccount = ''): ParseRe
       balance: null,
       accounts: [],
       accountLabels: {},
+      bank: null,
       hasCodes: false,
     }
   }
@@ -384,6 +392,7 @@ export function parseRows(rows: readonly (readonly string[])[], fallbackAccount 
     balance: null,
     accounts: [],
     accountLabels: {},
+    bank: null,
     hasCodes: false,
   }
   if (header === undefined) return { ...empty, error: 'Файл пуст.' }
@@ -505,6 +514,33 @@ export function parseRows(rows: readonly (readonly string[])[], fallbackAccount 
     })
   }
 
+  // Одна карта на файл — значит счёт один.
+  //
+  // Банк не проставляет номер карты у операций по СБП: в колонке пусто, и такие
+  // строки уезжали на отдельный счёт с именем файла. На настоящей выписке из-за
+  // этого появился призрачный «Счёт 1» рядом с «Карта ·3523» — при том что
+  // деньги те же самые и карта та же самая.
+  //
+  // Если во всём файле встретилась ровно одна карта, безымянные строки — её.
+  // Если карт несколько, догадываться не о чем: они остаются при своём файле.
+  const cards = new Set(Object.values(accountLabels))
+  if (cards.size === 1) {
+    const single = Object.keys(accountLabels)[0]
+    const fileKey = accountKey(fallbackAccount)
+    if (single !== undefined && single !== fileKey && accounts.has(fileKey)) {
+      for (let i = 0; i < transactions.length; i += 1) {
+        const tx = transactions[i]
+        if (tx === undefined || tx.account !== fileKey) continue
+        transactions[i] = {
+          ...tx,
+          account: single,
+          id: txId(tx.date, tx.amount, tx.description, 0, single),
+        }
+      }
+      accounts.delete(fileKey)
+    }
+  }
+
   transactions.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
 
   // Остаток берётся из самой поздней строки, где он вообще был: это и есть
@@ -534,6 +570,10 @@ export function parseRows(rows: readonly (readonly string[])[], fallbackAccount 
     balance,
     accounts: [...accounts],
     accountLabels,
+    bank: guessBank(
+      header,
+      transactions.map((tx) => tx.description),
+    ),
     hasCodes: columns.mcc !== undefined || columns.category !== undefined,
   }
 }

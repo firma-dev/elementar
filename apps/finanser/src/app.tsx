@@ -187,6 +187,7 @@ export function App(): JSX.Element {
       balance: result.balance,
       accounts: result.accounts,
       accountLabels: result.accountLabels,
+      bank: result.bank,
     })
     setView('year')
     setMonth(null)

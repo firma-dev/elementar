@@ -43,6 +43,17 @@ export interface AccountsProps {
  */
 const TONE = ['f-acc--t0', 'f-acc--t1', 'f-acc--t2', 'f-acc--t3', 'f-acc--t4', 'f-acc--t5'] as const
 
+/**
+ * Хвост имени счёта рядом с названием банка: «Карта ·3523» → «·3523».
+ *
+ * Слово «карта» рядом с именем банка не сообщает ничего: у банка карта и есть
+ * то, чем платят. А четыре цифры сообщают, какая именно.
+ */
+function short(name: string): string {
+  const digits = /·\s*(\d{4})\s*$/.exec(name)
+  return digits === null ? name : `·${digits[1]}`
+}
+
 export function Accounts({
   list,
   active,
@@ -52,7 +63,17 @@ export function Accounts({
   onDrop,
 }: AccountsProps): JSX.Element | null {
   const [editing, setEditing] = useState<string | null>(null)
-  if (list.length < 2) return null
+  if (list.length === 0) return null
+
+  /**
+   * Один счёт — переключать нечего, но назвать его есть чем.
+   *
+   * Переключатель из одной кнопки раньше не показывался вовсе, и вместе с ним
+   * пропадала единственная дверь к имени: банк, угаданный по подписи выгрузки,
+   * поправить было негде. Поэтому при одном счёте остаётся строка — имя и
+   * «переименовать», без выбора «все счета», которого не из чего делать.
+   */
+  const only = list.length === 1 ? list[0] : undefined
 
   const current = list.find((a) => a.key === editing) ?? null
   const groups = groupByBank(list)
@@ -70,26 +91,40 @@ export function Accounts({
         .filter(Boolean)
         .join(' ')}
       aria-pressed={active === account.key}
-      title={`${account.bank === '' ? '' : `${account.bank} · `}${counts[account.key] ?? 0} операций`}
+      title={`${account.name}${account.bank === '' ? '' : ` · ${account.bank}`} · ${counts[account.key] ?? 0} операций`}
       onClick={() => onSelect(account.key)}
     >
       <span class="f-acc__dot" aria-hidden="true" />
-      {account.name}
+      {/* Банк и счёт вместе: «Райффайзен ·3523». По отдельности ни то ни
+          другое не отвечает на вопрос «чьи это деньги» — «Карта ·3523» не
+          говорит, чья карта, а один банк не говорит, какая из его карт. */}
+      {account.bank === '' ? account.name : `${account.bank} ${short(account.name)}`}
     </button>
   )
 
   return (
     <div class="f-accs">
       <div class="f-accs__row" role="group" aria-label="Счета">
-        <button
-          type="button"
-          class={active === null ? 'f-acc f-acc--on' : 'f-acc'}
-          aria-pressed={active === null}
-          onClick={() => onSelect(null)}
-        >
-          все счета
-        </button>
-        {named < 2 ? list.map(chip) : null}
+        {only === undefined ? (
+          <button
+            type="button"
+            class={active === null ? 'f-acc f-acc--on' : 'f-acc'}
+            aria-pressed={active === null}
+            onClick={() => onSelect(null)}
+          >
+            все счета
+          </button>
+        ) : null}
+        {named < 2 || only !== undefined ? list.map(chip) : null}
+        {only === undefined ? null : (
+          <button
+            type="button"
+            class="f-linkish f-linkish--quiet"
+            onClick={() => setEditing(editing === only.key ? null : only.key)}
+          >
+            {editing === only.key ? 'не переименовывать' : 'переименовать'}
+          </button>
+        )}
       </div>
 
       {named < 2 ? null : (
