@@ -107,6 +107,22 @@ input {
 
    Ступени выведены из спейсеров дизайн-системы, своих чисел здесь нет. */
 :root {
+  /* Вертикальный ритм внутри блока — в em, то есть от кегля той строки, где
+     стоит. Строка списка набрана мельче заголовка, и поля у неё должны быть
+     мельче тоже: одинаковые в пикселях выглядят разными.
+
+     Шкала из четырёх шагов появилась после ревизии: вертикальных значений в
+     файле было тринадцать разных — 0,1em, 0,15em, 0,2em, 0,25em, 0,3em,
+     0,35em… — и каждое ставилось на глаз. Отсюда и ощущение, что отступы
+     прыгают: они и правда прыгали, просто на два-три пикселя за раз.
+
+     Шаги между блоками остаются в rem (`--f-step-*` ниже): их размер не должен
+     зависеть от того, каким кеглем набран соседний текст. */
+  --f-v-1: 0.15em; /* строка и её подпись, дорожка под строкой */
+  --f-v-2: 0.25em; /* поля строки списка */
+  --f-v-3: 0.5em; /* между кусками внутри блока */
+  --f-v-4: 0.9em; /* между разделами внутри блока */
+
   --f-step-1: calc(var(--el__spacer-s) * 0.5); /* строка и её подпись   */
   --f-step-2: var(--el__spacer-s); /* внутри блока          */
   --f-step-3: var(--el__spacer-m); /* между блоками         */
@@ -160,7 +176,7 @@ input {
   flex-wrap: wrap;
   background: var(--el__mark);
   border: var(--el__border-width-s) solid var(--el__text);
-  padding: 0.5em 0.7em;
+  padding: var(--f-v-3) 0.7em;
   margin-top: var(--f-step-2);
   font-size: var(--el__fs-xs);
 }
@@ -255,13 +271,14 @@ input {
 /* ──────────────────────── Пустой экран ──────────────────────── */
 
 .f-empty {
-  padding-top: 1.4em;
+  /* Шаг блока, а не строки: это отбивка целого экрана от шапки. */
+  padding-top: var(--f-step-3);
 }
 
 .f-empty__title {
   font-size: var(--el__fs-xl);
   line-height: 1.3;
-  margin-bottom: 0.6em;
+  margin-bottom: var(--f-v-3);
   font-weight: 700;
   text-wrap: pretty;
 }
@@ -288,7 +305,7 @@ input {
 .f-empty__lead {
   font-size: var(--el__fs-s);
   line-height: 1.6;
-  margin-bottom: 1.4em;
+  margin-bottom: var(--f-step-3);
   color: var(--el__text-caption);
   text-wrap: pretty;
 }
@@ -300,7 +317,7 @@ input {
   background: var(--el__text);
   color: var(--el__background);
   text-align: center;
-  padding: 0.9em 0.6em;
+  padding: var(--f-v-4) 0.6em;
   font-size: var(--el__fs-base);
   border: var(--el__border-width-s) solid var(--el__text);
   box-shadow: var(--el__shadow-m);
@@ -328,7 +345,7 @@ input {
   margin-top: var(--f-step-2);
   border: var(--el__border-width-s) solid var(--el__error);
   color: var(--el__error);
-  padding: 0.6em 0.8em;
+  padding: var(--f-v-3) 0.8em;
   font-size: var(--el__fs-xs);
   line-height: 1.6;
 }
@@ -337,17 +354,17 @@ input {
   margin-top: var(--f-step-3);
   background: var(--el__surface);
   border: var(--el__border-width-s) solid var(--el__text);
-  padding: 0.9em 0.9em 0.4em;
+  padding: var(--f-v-4) 0.9em var(--f-v-3);
 }
 
 .f-howto__title {
-  margin-bottom: 0.9em;
+  margin-bottom: var(--f-v-4);
 }
 
 .f-howto li {
   display: flex;
   gap: 0.7em;
-  margin-bottom: 0.7em;
+  margin-bottom: var(--f-v-3);
   align-items: baseline;
   font-size: var(--el__fs-xs);
   line-height: 1.6;
@@ -389,7 +406,7 @@ input {
   font-size: var(--el__fs-xs);
   letter-spacing: var(--el__ls-caps-s);
   text-transform: uppercase;
-  padding: 0.45em 0.3em;
+  padding: var(--f-v-3) 0.3em;
   cursor: pointer;
 }
 
@@ -427,7 +444,7 @@ input {
 .f-chart {
   border: var(--el__border-width-s) solid var(--el__text);
   box-shadow: var(--el__shadow-m);
-  padding: 0.5em 0.55em 0.45em;
+  padding: var(--f-v-3) 0.55em var(--f-v-3);
   margin-bottom: var(--f-step-2);
 }
 
@@ -461,7 +478,7 @@ input {
   display: flex;
   align-items: flex-end;
   gap: 2px;
-  margin-top: 0.5em;
+  margin-top: var(--f-v-3);
   border-bottom: var(--el__border-width-m) solid var(--el__text);
 }
 
@@ -536,7 +553,7 @@ input {
   font-size: var(--el__fs-xs);
   text-align: center;
   white-space: nowrap;
-  padding-top: 0.2em;
+  padding-top: var(--f-v-2);
   /* Не обрезать. В месяце тридцать один столбик, на телефоне это девять
      пикселей на каждый, а подписано каждое пятое число — соседи пустые.
      `overflow: hidden` резал «10» пополам, и под графиком стояло «1(», «1!»,
@@ -559,7 +576,7 @@ input {
 .f-secline {
   margin-top: var(--f-step-4);
   border-bottom: var(--el__border-width-s) solid var(--el__text);
-  padding-bottom: 0.4em;
+  padding-bottom: var(--f-v-3);
 }
 /* Первый заголовок на экране не отбивается сверху: разделительная ступень
    отделяет разделы друг от друга, а над первым разделять нечего — там
@@ -637,7 +654,7 @@ input {
   display: block;
   height: 0.25em;
   background: var(--el__surface);
-  margin-top: 0.15em;
+  margin-top: var(--f-v-1);
 }
 
 .f-inc__fill,
@@ -664,7 +681,7 @@ input {
   grid-template-columns: 6.8em minmax(0, 1fr) auto;
   gap: 0.6em;
   align-items: baseline;
-  padding: 0.25em 0.6em;
+  padding: var(--f-v-2) 0.6em;
   font-size: var(--el__fs-xs);
 }
 
@@ -697,7 +714,7 @@ input {
   align-items: baseline;
   gap: 0.6em;
   border-bottom: var(--el__border-width-s) solid var(--el__text);
-  padding-bottom: 0.4em;
+  padding-bottom: var(--f-v-3);
   margin-top: var(--f-step-2);
 }
 
@@ -718,11 +735,11 @@ input {
 }
 
 .f-unknown__list {
-  margin-top: 0.8em;
+  margin-top: var(--f-v-4);
 }
 
 .f-unknown__row {
-  padding: 0.45em 0;
+  padding: var(--f-v-3) 0;
   border-bottom: var(--el__border-width-s) solid var(--el__border);
 }
 
@@ -750,7 +767,7 @@ input {
   display: flex;
   gap: 0.6em;
   align-items: center;
-  margin-top: 0.35em;
+  margin-top: var(--f-v-2);
   flex-wrap: wrap;
 }
 
@@ -799,7 +816,7 @@ input {
   color: var(--el__color-gray-950);
   font: inherit;
   font-size: var(--el__fs-xs);
-  padding: 0.15em 0.4em;
+  padding: var(--f-v-1) 0.4em;
   cursor: pointer;
   white-space: nowrap;
 }
@@ -810,7 +827,7 @@ input {
   display: flex;
   gap: 1.4em;
   align-items: baseline;
-  margin-top: 0.6em;
+  margin-top: var(--f-v-3);
   flex-wrap: wrap;
 }
 
@@ -830,7 +847,7 @@ input {
 }
 
 .f-moves__rows {
-  margin-top: 0.8em;
+  margin-top: var(--f-v-4);
 }
 
 .f-moves__row {
@@ -838,7 +855,7 @@ input {
   justify-content: space-between;
   gap: 0.6em;
   align-items: baseline;
-  padding: 0.4em 0;
+  padding: var(--f-v-3) 0;
   border-bottom: var(--el__border-width-s) solid var(--el__border);
   font-size: var(--el__fs-xs);
 }
@@ -877,7 +894,7 @@ input {
   justify-content: space-between;
   align-items: center;
   gap: 0.6em;
-  margin-bottom: 0.9em;
+  margin-bottom: var(--f-v-4);
 }
 
 .f-txhead__filters {
@@ -889,7 +906,7 @@ input {
 
 .f-chip {
   border: var(--el__border-width-s) solid var(--el__text);
-  padding: 0.2em 0.5em;
+  padding: var(--f-v-2) 0.5em;
   font-size: var(--el__fs-xs);
   background: var(--el__mark);
   white-space: nowrap;
@@ -901,7 +918,7 @@ input {
   border: var(--el__border-width-s) solid var(--el__text);
   background: var(--el__background);
   color: var(--el__text);
-  padding: 0.2em 0.5em;
+  padding: var(--f-v-2) 0.5em;
   font-size: var(--el__fs-xs);
   cursor: pointer;
   white-space: nowrap;
@@ -914,7 +931,7 @@ input {
 /* Поиск: две тысячи операций иначе не пролистать. */
 .f-search {
   display: block;
-  margin-bottom: 0.7em;
+  margin-bottom: var(--f-v-3);
 }
 
 .f-search input {
@@ -924,7 +941,7 @@ input {
   color: var(--el__text);
   font-family: inherit;
   font-size: var(--el__fs-s);
-  padding: 0.35em 0.5em;
+  padding: var(--f-v-2) 0.5em;
 }
 
 .f-search input::placeholder {
@@ -934,7 +951,7 @@ input {
 .f-txcount {
   font-size: var(--el__fs-xs);
   color: var(--el__text-caption);
-  margin-bottom: 0.7em;
+  margin-bottom: var(--f-v-3);
 }
 
 .f-tx {
@@ -943,7 +960,7 @@ input {
   gap: 0.7em;
   align-items: baseline;
   border-bottom: var(--el__border-width-s) solid var(--el__border);
-  padding: 0.5em 0;
+  padding: var(--f-v-3) 0;
 }
 
 .f-tx__day {
@@ -970,7 +987,7 @@ input {
   display: inline-flex;
   align-items: center;
   gap: 0.35em;
-  margin-top: 0.2em;
+  margin-top: var(--f-v-2);
 }
 
 /* Метка источника категории: цвет говорит, кто её поставил. Красная — человек,
@@ -1017,8 +1034,8 @@ input {
 .f-more {
   display: block;
   width: 100%;
-  margin-top: 1em;
-  padding: 0.7em;
+  margin-top: var(--f-v-4);
+  padding: var(--f-v-3) 0.7em;
   border: var(--el__border-width-s) solid var(--el__text);
   background: var(--el__background);
   color: var(--el__text);
@@ -1045,7 +1062,7 @@ input {
   display: flex;
   align-items: baseline;
   gap: 0.6em;
-  padding: 0.4em 0;
+  padding: var(--f-v-3) 0;
   border-bottom: var(--el__border-width-s) solid var(--el__border);
   font-size: var(--el__fs-s);
 }
@@ -1073,7 +1090,7 @@ input {
 
 .f-foot {
   margin-top: var(--f-step-4);
-  padding-top: 0.7em;
+  padding-top: var(--f-v-3);
   border-top: var(--el__border-width-s) solid var(--el__border);
   font-size: var(--el__fs-xs);
   color: var(--el__text-caption);
@@ -1138,8 +1155,8 @@ input {
      а карточки единственные из блоков стояли плоскими. */
   box-shadow: var(--el__shadow-s);
   border: var(--el__border-width-s) solid var(--el__text);
-  padding: 0.6em 0.75em 0.7em;
-  margin-bottom: 0.7em;
+  padding: var(--f-v-3) 0.75em var(--f-v-3);
+  margin-bottom: var(--f-v-3);
 }
 
 .f-card[data-tone='warn'] {
@@ -1154,7 +1171,7 @@ input {
   font-size: var(--el__fs-s);
   font-weight: 700;
   line-height: 1.35;
-  margin-bottom: 0.3em;
+  margin-bottom: var(--f-v-2);
   text-wrap: pretty;
 }
 
@@ -1171,8 +1188,8 @@ input {
 
 .f-subs__title {
   border-bottom: var(--el__border-width-s) solid var(--el__text);
-  padding-bottom: 0.4em;
-  margin-bottom: 0.5em;
+  padding-bottom: var(--f-v-3);
+  margin-bottom: var(--f-v-3);
 }
 
 .f-sub {
@@ -1183,7 +1200,7 @@ input {
     'meta sum year';
   align-items: baseline;
   gap: 0.1em 0.8em;
-  padding: 0.45em 0;
+  padding: var(--f-v-3) 0;
   border-bottom: var(--el__border-width-s) solid var(--el__border);
 }
 
@@ -1248,7 +1265,7 @@ input {
   background: none;
   color: inherit;
   text-align: left;
-  padding: 0.25em 0;
+  padding: var(--f-v-2) 0;
   border-bottom: var(--el__border-width-s) solid var(--el__text);
   cursor: pointer;
 }
@@ -1308,7 +1325,7 @@ input {
   background: var(--el__background);
   color: var(--el__text);
   font-size: var(--el__fs-xs);
-  padding: 0.2em 0.35em;
+  padding: var(--f-v-2) 0.35em;
   cursor: pointer;
   text-align: left;
 }
@@ -1363,7 +1380,7 @@ input {
   color: var(--el__text);
   font-size: var(--el__fs-xs);
   text-align: left;
-  padding: 0.3em 0.5em;
+  padding: var(--f-v-2) 0.5em;
   cursor: pointer;
   white-space: nowrap;
 }
@@ -1392,11 +1409,11 @@ input {
 
   .f-pick__button {
     min-height: 2.4em;
-    padding: 0.35em 0.5em;
+    padding: var(--f-v-2) 0.5em;
   }
 
   .f-pick--quiet .f-pick__button {
-    padding: 0.35em 0;
+    padding: var(--f-v-2) 0;
   }
 
   .f-pick__option {
@@ -1468,7 +1485,7 @@ input {
   background: var(--el__background);
   color: var(--el__text);
   font: inherit;
-  padding: 0.3em 0.6em;
+  padding: var(--f-v-2) 0.6em;
   cursor: pointer;
 }
 
@@ -1515,7 +1532,7 @@ input {
   background: var(--el__background);
   color: var(--el__text);
   font-size: var(--el__fs-xs);
-  padding: 0.25em 0.5em;
+  padding: var(--f-v-2) 0.5em;
   cursor: pointer;
   white-space: nowrap;
 }
@@ -1570,7 +1587,7 @@ input {
   box-shadow: var(--el__shadow-s);
   margin-top: var(--f-step-1);
   border: var(--el__border-width-s) solid var(--el__text);
-  padding: 0.6em 0.7em;
+  padding: var(--f-v-3) 0.7em;
 }
 
 .f-accs__buttons {
@@ -1587,7 +1604,7 @@ input {
   align-items: baseline;
   justify-content: space-between;
   gap: var(--el__gap-s);
-  padding: 0.3em 0;
+  padding: var(--f-v-2) 0;
   border-bottom: var(--el__border-width-s) solid var(--el__border);
 }
 
@@ -1605,12 +1622,12 @@ input {
   font-family: inherit;
   font-size: var(--el__fs-s);
   text-align: end;
-  padding: 0.1em 0.2em;
+  padding: var(--f-v-1) 0.2em;
 }
 
 .f-go--small {
   font-size: var(--el__fs-xs);
-  padding: 0.25em 0.5em;
+  padding: var(--f-v-2) 0.5em;
   white-space: nowrap;
 }
 
@@ -1650,7 +1667,7 @@ input {
   display: flex;
   gap: 0.7em;
   flex-wrap: wrap;
-  margin-top: 0.1em;
+  margin-top: var(--f-v-1);
   font-size: var(--el__fs-xs);
   color: var(--el__text-caption);
 }
@@ -1994,7 +2011,7 @@ input {
   display: flex;
   align-items: baseline;
   gap: var(--el__gap-s);
-  padding: 0.3em 0;
+  padding: var(--f-v-2) 0;
   border-bottom: var(--el__border-width-s) solid var(--el__border);
   flex-wrap: wrap;
 }
@@ -2004,7 +2021,7 @@ input {
   background: var(--el__background);
   color: var(--el__text);
   font-size: var(--el__fs-xs);
-  padding: 0.2em 0.5em;
+  padding: var(--f-v-2) 0.5em;
   cursor: pointer;
   white-space: nowrap;
   text-transform: uppercase;
@@ -2045,7 +2062,7 @@ input {
   background: none;
   color: inherit;
   text-align: left;
-  padding: 0.45em 0;
+  padding: var(--f-v-3) 0;
   cursor: pointer;
   font-size: var(--el__fs-xs);
 }
@@ -2078,7 +2095,7 @@ input {
   align-items: center;
   gap: var(--el__gap-s);
   flex-wrap: wrap;
-  padding: 0.25em 0;
+  padding: var(--f-v-2) 0;
 }
 
 .f-cash__amount {
@@ -2090,7 +2107,7 @@ input {
   font-family: inherit;
   font-size: var(--el__fs-s);
   text-align: end;
-  padding: 0.1em 0.2em;
+  padding: var(--f-v-1) 0.2em;
 }
 
 /* Изменение к прошлому такому же отрезку. Число само по себе не говорит
@@ -2497,7 +2514,7 @@ input {
 .f-save__fields .f-field {
   display: grid;
   gap: 0.2em;
-  padding: 0.4em 0;
+  padding: var(--f-v-3) 0;
   border-bottom: var(--el__border-width-s) solid var(--el__border);
   min-width: 0;
 }
@@ -2539,7 +2556,7 @@ input {
   font: inherit;
   color: var(--el__text);
   letter-spacing: 0;
-  padding: 0.1em 0;
+  padding: var(--f-v-1) 0;
 }
 
 /* ─────────────────────────── Движение ─────────────────────────── */
