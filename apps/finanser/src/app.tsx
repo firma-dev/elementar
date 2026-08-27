@@ -89,7 +89,7 @@ import { RulesView } from './components/RulesView.js'
  */
 import logo from '@elementar/brand/elementar.svg'
 import { IncomeChart } from './components/IncomeChart.js'
-import { Transfers } from './components/Transfers.js'
+import { Transfers, sentToPeople } from './components/Transfers.js'
 
 /**
  * Один экран — сводка. Всё, что отвечает на вопросы «сколько», «на что» и
@@ -920,16 +920,23 @@ export function App(): JSX.Element {
           {/* Переводы людям — свой блок под расходами, а не строка среди
               категорий и не свёрнутый раздел внутри них. На выписке без кодов
               это самая крупная статья трат, и разбирается она не как категория,
-              а по людям: кому и когда. */}
-          <section class="f-block f-block--transfers">
-            <Transfers
-              rows={scope}
-              totalSpend={planes.spend.total}
-              options={options}
-              onMerchantCategory={setMerchantCategory}
-              onCategory={setCategory}
-            />
-          </section>
+              а по людям: кому и когда.
+
+              Блока нет вовсе, когда переводов нет: рамка с тенью и пустотой
+              внутри — это обещание содержимого, которого не будет. Пустой он
+              и висел, пока условие жило внутри компонента: `null` убирает
+              содержимое, но не коробку. */}
+          {sentToPeople(scope).length === 0 ? null : (
+            <section class="f-block f-block--transfers">
+              <Transfers
+                rows={scope}
+                totalSpend={planes.spend.total}
+                options={options}
+                onMerchantCategory={setMerchantCategory}
+                onCategory={setCategory}
+              />
+            </section>
+          )}
         </div>
 
         {/* Доходы — блок наравне с расходами, а не приписка сбоку. Деньги

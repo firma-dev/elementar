@@ -4,7 +4,7 @@ import { act } from 'preact/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { CategoryList } from '../src/components/CategoryList.js'
 import { Unknown } from '../src/components/Unknown.js'
-import { Transfers } from '../src/components/Transfers.js'
+import { Transfers, sentToPeople } from '../src/components/Transfers.js'
 import { Pick } from '../src/components/Pick.js'
 import { pickable } from '../src/model.js'
 import { categorizeAll } from '../src/categorize.js'
@@ -339,5 +339,27 @@ describe('кому вы переводите', () => {
     })
     expect(one).toHaveBeenCalledTimes(1)
     expect(one.mock.calls[0]?.[1]).toBe('Здоровье')
+  })
+})
+
+describe('пустого блока переводов не бывает', () => {
+  it('без переводов компонент не рисует ничего', () => {
+    const only: Categorized[] = categorizeAll([tx('2026-02-09', -500000, 'PYATEROCHKA 1')], {}, {})
+    act(() => {
+      render(
+        <Transfers
+          rows={only}
+          totalSpend={500000}
+          options={pickable(new Set())}
+          onMerchantCategory={() => {}}
+          onCategory={() => {}}
+        />,
+        root,
+      )
+    })
+    // Рамку с тенью ставит страница, а не компонент, — поэтому она спрашивает
+    // отдельно, есть ли что показывать.
+    expect(root.textContent).toBe('')
+    expect(sentToPeople(only)).toHaveLength(0)
   })
 })
