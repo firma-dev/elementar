@@ -9,6 +9,7 @@ const tx = (date: string, amount: number, description: string, account = 'a'): T
   date,
   amount,
   description,
+  time: null,
   mcc: null,
   bankCategory: null,
   account,

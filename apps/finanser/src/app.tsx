@@ -788,141 +788,149 @@ export function App(): JSX.Element {
           доходы — «откуда приходит». Границы блоков видимые: без них соседние
           смыслы читаются как один длинный список. */}
       <div class="f-cols">
-        <section class="f-block f-block--spend">
-          <h2 class="f-block__title">Расходы</h2>
+        <div class="f-cols__left">
+          <section class="f-block f-block--spend">
+            <h2 class="f-block__title">Расходы</h2>
 
-          {/* Главное число стоит в своём блоке, над своим графиком и своим
+            {/* Главное число стоит в своём блоке, над своим графиком и своим
               списком. Раньше обе плитки жили общей шапкой наверху, а расходы и
               доходы — блоками ниже: сумма была оторвана от того, что её
               объясняет. */}
-          <Head
-            title={day !== null ? dayLabel(day) : month !== null ? monthLabel(month) : spec.title}
-            spent={planes.spend.total}
-            income={planes.income.total}
-            limit={limit}
-            elapsed={pace}
-            average={
-              daily || months.length === 0
-                ? null
-                : {
-                    spend: Math.round(planes.spend.total / months.length) as Kopeck,
-                    income: Math.round(planes.income.total / months.length) as Kopeck,
-                  }
-            }
-            change={change}
-            saving={
-              daily
-                ? {
-                    done: setAside as Kopeck,
-                    left: toGoal(plan.value, setAside as Kopeck),
-                    goal: plan.value.save,
-                  }
-                : null
-            }
-            onSetPlan={() => {
-              // Раздел раскрывается перерисовкой, а она случится не сейчас: до неё
-              // блока в разметке ещё нет, и прокручивать не к чему.
-              setPlanOpen(true)
-              requestAnimationFrame(() =>
-                document.querySelector('.f-plan')?.scrollIntoView({ block: 'center' }),
-              )
-            }}
-            part="spend"
-          />
+            <Head
+              title={day !== null ? dayLabel(day) : month !== null ? monthLabel(month) : spec.title}
+              spent={planes.spend.total}
+              income={planes.income.total}
+              limit={limit}
+              elapsed={pace}
+              average={
+                daily || months.length === 0
+                  ? null
+                  : {
+                      spend: Math.round(planes.spend.total / months.length) as Kopeck,
+                      income: Math.round(planes.income.total / months.length) as Kopeck,
+                    }
+              }
+              change={change}
+              saving={
+                daily
+                  ? {
+                      done: setAside as Kopeck,
+                      left: toGoal(plan.value, setAside as Kopeck),
+                      goal: plan.value.save,
+                    }
+                  : null
+              }
+              onSetPlan={() => {
+                // Раздел раскрывается перерисовкой, а она случится не сейчас: до неё
+                // блока в разметке ещё нет, и прокручивать не к чему.
+                setPlanOpen(true)
+                requestAnimationFrame(() =>
+                  document.querySelector('.f-plan')?.scrollIntoView({ block: 'center' }),
+                )
+              }}
+              part="spend"
+            />
 
-          {daily ? (
-            <DayChart
-              rows={onAccount}
-              from={period === 'day' ? weekStart(edge) : range.from}
-              to={period === 'day' ? edge : range.to}
-              limit={limitFor('day', edge, plan.value)}
-              selected={day}
-              onSelect={(next) => {
-                setDay(next)
-                setCategoryFilter(null)
+            {daily ? (
+              <DayChart
+                rows={onAccount}
+                from={period === 'day' ? weekStart(edge) : range.from}
+                to={period === 'day' ? edge : range.to}
+                limit={limitFor('day', edge, plan.value)}
+                selected={day}
+                onSelect={(next) => {
+                  setDay(next)
+                  setCategoryFilter(null)
+                }}
+              />
+            ) : (
+              <MonthChart
+                months={months}
+                selected={month}
+                hovered={hovered}
+                onSelect={setMonth}
+                onHover={setHovered}
+              />
+            )}
+
+            <div class="f-scope">
+              <h2 class="f-eyebrow">
+                {day !== null
+                  ? `Траты по категориям · ${dayLabel(day)}`
+                  : month !== null
+                    ? `Траты по категориям · ${monthLabel(month)}`
+                    : 'Траты по категориям'}
+              </h2>
+              {day === null && month === null ? null : (
+                <button
+                  type="button"
+                  class="f-linkish"
+                  onClick={() => {
+                    setMonth(null)
+                    setDay(null)
+                  }}
+                >
+                  ← {spec.title}
+                </button>
+              )}
+            </div>
+            <CategoryList
+              rows={cats}
+              total={planes.spend.total}
+              expanded={category}
+              onToggle={setCategoryFilter}
+              transactionsOf={inCategory}
+              onOpenAll={(c) => {
+                setCategoryFilter(c)
+                setView('txs')
               }}
             />
-          ) : (
-            <MonthChart
-              months={months}
-              selected={month}
-              hovered={hovered}
-              onSelect={setMonth}
-              onHover={setHovered}
+
+            {/* Порядок разделов: сначала то, что сообщает, потом то, что
+          настраивает. Разбор непонятного и наличные — первыми: они сильнее
+          всего меняют картину, всё остальное её только объясняет. Переводы
+          людям стояли здесь же, пока были свёрнутым разделом; теперь у них
+          свой блок под расходами. */}
+            <Unknown
+              rows={scope}
+              totalSpend={planes.spend.total}
+              hasCodes={info?.hasCodes ?? true}
+              named={merchantOverrides.value}
+              options={options}
+              onMerchantCategory={setMerchantCategory}
             />
-          )}
 
-          <div class="f-scope">
-            <h2 class="f-eyebrow">
-              {day !== null
-                ? `Траты по категориям · ${dayLabel(day)}`
-                : month !== null
-                  ? `Траты по категориям · ${monthLabel(month)}`
-                  : 'Траты по категориям'}
-            </h2>
-            {day === null && month === null ? null : (
-              <button
-                type="button"
-                class="f-linkish"
-                onClick={() => {
-                  setMonth(null)
-                  setDay(null)
-                }}
-              >
-                ← {spec.title}
-              </button>
-            )}
-          </div>
-          <CategoryList
-            rows={cats}
-            total={planes.spend.total}
-            expanded={category}
-            onToggle={setCategoryFilter}
-            transactionsOf={inCategory}
-            onOpenAll={(c) => {
-              setCategoryFilter(c)
-              setView('txs')
-            }}
-          />
-
-          {/* Порядок разделов: сначала то, что сообщает, потом то, что настраивает.
-          Кому вы переводите — первым: на выписке без кодов переводы людям
-          оказались самой крупной статьёй расходов, а разбирается она не как
-          категория, а по людям. Дальше разбор непонятного и наличные: они
-          тоже меняют картину, а не объясняют её. */}
-          <Transfers
-            rows={scope}
-            totalSpend={planes.spend.total}
-            options={options}
-            onMerchantCategory={setMerchantCategory}
-            onCategory={setCategory}
-          />
-
-          <Unknown
-            rows={scope}
-            totalSpend={planes.spend.total}
-            hasCodes={info?.hasCodes ?? true}
-            named={merchantOverrides.value}
-            options={options}
-            onMerchantCategory={setMerchantCategory}
-          />
-
-          {/* Наличные — рядом с разбором непонятного: обе про одно, про деньги,
+            {/* Наличные — рядом с разбором непонятного: обе про одно, про деньги,
           о которых выписка не сказала ничего. */}
-          <CashView
-            rows={scope}
-            splits={cashSplits.value}
-            totalSpend={planes.spend.total}
-            options={options}
-            onSplit={setCashSplit}
-          />
+            <CashView
+              rows={scope}
+              splits={cashSplits.value}
+              totalSpend={planes.spend.total}
+              options={options}
+              onSplit={setCashSplit}
+            />
 
-          {/* Что уходит само — рядом с «откуда приходит»: оба про то, что человек
+            {/* Что уходит само — рядом с «откуда приходит»: оба про то, что человек
           не выбирает каждый день, а обнаруживает раз в полгода. */}
-          <Regular rows={onAccount} edge={edge} />
+            <Regular rows={onAccount} edge={edge} />
 
-          <MoneyMoves rows={scope} onUnpair={(id) => setCategory(id, 'Доход')} />
-        </section>
+            <MoneyMoves rows={scope} onUnpair={(id) => setCategory(id, 'Доход')} />
+          </section>
+
+          {/* Переводы людям — свой блок под расходами, а не строка среди
+              категорий и не свёрнутый раздел внутри них. На выписке без кодов
+              это самая крупная статья трат, и разбирается она не как категория,
+              а по людям: кому и когда. */}
+          <section class="f-block f-block--transfers">
+            <Transfers
+              rows={scope}
+              totalSpend={planes.spend.total}
+              options={options}
+              onMerchantCategory={setMerchantCategory}
+              onCategory={setCategory}
+            />
+          </section>
+        </div>
 
         {/* Доходы — блок наравне с расходами, а не приписка сбоку. Деньги
             приходят и уходят: это две половины одного вопроса, и разный вес у

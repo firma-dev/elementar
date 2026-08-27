@@ -30,6 +30,8 @@ export interface ExportShape {
   transactions: Array<{
     id: string
     date: string
+    /** Время операции, `ЧЧ:ММ`. Выгрузки прошлых версий его не знали. */
+    time: string | null
     amount: number
     description: string
     mcc: string | null
@@ -64,6 +66,7 @@ export function buildExport(
     transactions: list.map((tx) => ({
       id: tx.id,
       date: tx.date,
+      time: tx.time ?? null,
       amount: tx.amount,
       description: tx.description,
       mcc: tx.mcc,
@@ -148,6 +151,9 @@ export function readExport(text: string): ImportResult {
     transactions.push({
       id: t['id'],
       date: t['date'],
+      // Выгрузки прошлых версий времени не знали — это не повод отбрасывать
+      // операцию, как и со счётом двумя полями ниже.
+      time: typeof t['time'] === 'string' && t['time'] !== '' ? t['time'] : null,
       // Суммы всегда в копейках и целые: дробь здесь означала бы, что файл
       // правили руками, и её лучше отсечь, чем тащить во все расчёты.
       amount: Math.round(t['amount']),

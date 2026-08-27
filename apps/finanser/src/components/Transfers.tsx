@@ -1,12 +1,11 @@
 import { useState } from 'preact/hooks'
 import type { JSX } from 'preact'
-import { PEOPLE, dayLabel, isCategory } from '../model.js'
+import { PEOPLE, dayLabel, isCategory, weekdayLabel } from '../model.js'
 import type { Categorized, Category } from '../model.js'
 import { merchantKey, merchantLabel } from '../merchant.js'
 import { formatShare } from '../money.js'
 import { operationOf } from '../operation.js'
 import { Amount } from './Amount.js'
-import { Fold } from './Fold.js'
 import { Pick } from './Pick.js'
 
 export interface TransfersProps {
@@ -37,7 +36,7 @@ const PAGE = 8
 /**
  * Кому вы переводите.
  *
- * Отдельным разделом под категориями, а не строкой среди них, потому что это
+ * Отдельным блоком под расходами, а не строкой среди категорий, потому что это
  * не категория. За аренду, за пиво и жене на продукты банк называет одним
  * словом «перевод»: в описании только номер телефона и имя, и что это была за
  * трата, знает лишь человек. На настоящей выписке такой строкой оказались три
@@ -100,11 +99,20 @@ export function Transfers({
   const left = sent.filter((tx) => tx.category === PEOPLE).reduce((s, tx) => s - tx.amount, 0)
 
   return (
-    <Fold
-      title="Кому вы переводите"
-      meta={`${formatShare(sum, totalSpend)}% трат`}
-      startOpen={left > 0}
-    >
+    <>
+      <h2 class="f-block__title">
+        Кому вы переводите
+        <span class="f-tr__share">
+          {formatShare(sum, totalSpend)}% трат
+          {left === 0 ? null : (
+            <>
+              {' · '}
+              <Amount value={left} kopecks="never" /> без имени
+            </>
+          )}
+        </span>
+      </h2>
+
       <p class="f-note">
         Банк называет одним словом «перевод» и аренду, и пиво, и деньги жене на продукты — в
         описании только имя получателя. Категория, поставленная человеку, ложится на все его
@@ -154,7 +162,14 @@ export function Transfers({
                 <div class="f-peek">
                   {person.rows.map((tx) => (
                     <div key={tx.id} class="f-peek__row">
-                      <span class="f-peek__day">{dayLabel(tx.date)}</span>
+                      {/* День недели и время — то, по чему перевод вспоминается.
+                          Сумма и имя получателя об одном переводе из двадцати
+                          не говорят ничего, а «пт, 22:48» говорит. Время есть
+                          не всегда: зачисления банк проводит без него. */}
+                      <span class="f-peek__day">
+                        {weekdayLabel(tx.date)}, {dayLabel(tx.date)}
+                        {tx.time === null ? null : <span class="f-tr__time">{tx.time}</span>}
+                      </span>
                       <Amount class="f-peek__sum" value={tx.amount} abs kopecks="never" />
                       <Pick
                         value={tx.category === PEOPLE ? '' : tx.category}
@@ -180,6 +195,6 @@ export function Transfers({
           Ещё · осталось {tail.length} на {Math.round(tailSum / 100)}
         </button>
       ) : null}
-    </Fold>
+    </>
   )
 }

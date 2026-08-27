@@ -31,6 +31,7 @@ const tx = (date: string, amount: number, description: string): Tx => ({
   date,
   amount,
   description,
+  time: null,
   mcc: null,
   bankCategory: null,
   account: 'default',

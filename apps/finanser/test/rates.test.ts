@@ -9,6 +9,7 @@ const tx = (amount: number, description: string, currency: string | null = null)
   date: '2026-08-10',
   amount,
   description,
+  time: null,
   mcc: null,
   bankCategory: null,
   currency,

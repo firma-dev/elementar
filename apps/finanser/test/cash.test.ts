@@ -9,6 +9,7 @@ const tx = (description: string, amount: number, date = '2026-08-10'): Tx => ({
   date,
   amount,
   description,
+  time: null,
   mcc: null,
   bankCategory: null,
   account: 'default',

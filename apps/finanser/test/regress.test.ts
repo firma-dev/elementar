@@ -15,6 +15,7 @@ const tx = (date: string, amount: number, description: string, account = 'a'): T
   date,
   amount,
   description,
+  time: null,
   mcc: null,
   bankCategory: null,
   account,
@@ -401,5 +402,70 @@ describe('перевод человеку — не «Прочее» и не пе
     const { categorize } = await import('../src/categorize.js')
     const row = categorize(tx('2026-07-10', -1682400, 'Перевод собственных средств'), {})
     expect(row.category).toBe('Переводы')
+  })
+})
+
+describe('время операции', () => {
+  it('берётся из ячейки с датой и переживает выгрузку', async () => {
+    const { parseStatementText } = await import('../src/statement.js')
+    const { buildExport, readExport } = await import('../src/export.js')
+    const { categorizeAll } = await import('../src/categorize.js')
+
+    const file = [
+      'Дата операции;Поступления;Расходы;Валюта;Детали операции',
+      '"16.08.2026 22:48";"";"110,00";"RUB";" Оплата покупки. BAR"',
+      '"17.08.2026 00:00";"5 000,00";"";"RUR";" Перевод по СБП"',
+    ].join('\n')
+
+    const parsed = parseStatementText(file, 'выписка.csv')
+    const late = parsed.transactions.find((t) => t.amount < 0)
+    const zero = parsed.transactions.find((t) => t.amount > 0)
+    expect(late?.time).toBe('22:48')
+    // Полночь ровно — это не время операции, а его отсутствие: так банк
+    // проводит зачисления. Показать «00:00» значило бы соврать про ночь.
+    expect(zero?.time).toBeNull()
+
+    const back = readExport(
+      JSON.stringify(buildExport(categorizeAll(parsed.transactions, {}, {}), null)),
+    )
+    expect(back.transactions.find((t) => t.amount < 0)?.time).toBe('22:48')
+  })
+
+  it('выгрузка без времени читается, а не отбрасывается', async () => {
+    const { readExport } = await import('../src/export.js')
+    // Так выглядели файлы до того, как появилось поле: терять из-за него
+    // разметку года было бы хуже, чем потерять время.
+    const old = {
+      format: 'elementar.finanser',
+      version: 1,
+      units: 'kopeck',
+      source: null,
+      overrides: {},
+      merchantOverrides: {},
+      transactions: [
+        {
+          id: 'a1',
+          date: '2026-08-16',
+          amount: -11000,
+          description: 'BAR',
+          mcc: null,
+          bankCategory: null,
+          account: 'карта',
+          currency: null,
+        },
+      ],
+    }
+    const back = readExport(JSON.stringify(old))
+    expect(back.error).toBeNull()
+    expect(back.transactions).toHaveLength(1)
+    expect(back.transactions[0]?.time).toBeNull()
+  })
+
+  it('день недели считается без сдвига пояса', async () => {
+    const { weekdayLabel } = await import('../src/model.js')
+    // 16 августа 2026 — воскресенье. Через `new Date('2026-08-16')` это
+    // полночь UTC, и западнее Гринвича день уезжал бы на субботу.
+    expect(weekdayLabel('2026-08-16')).toBe('вс')
+    expect(weekdayLabel('2026-08-21')).toBe('пт')
   })
 })

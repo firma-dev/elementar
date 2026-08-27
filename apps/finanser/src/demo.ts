@@ -107,9 +107,12 @@ export function demoCsv(endsAt = new Date().toISOString().slice(0, 10)): string 
   const push = (date: Date, kopecks: number, description: string, hour = 12): void => {
     if (date > end) return
     const hh = String(hour).padStart(2, '0')
+    // Минуты не фиксированные: время операции — то, по чему человек вспоминает
+    // перевод, и одинаковые «:12» во всей выписке выдают генератор.
+    const mm = String(between(0, 60)).padStart(2, '0')
     entries.push({
       key: `${date.toISOString().slice(0, 10)} ${hh}`,
-      stamp: `${dd(date)} ${hh}:12`,
+      stamp: `${dd(date)} ${hh}:${mm}`,
       kopecks,
       description,
     })

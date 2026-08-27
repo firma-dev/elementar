@@ -227,6 +227,24 @@ export function parseDate(raw: string): string | null {
   return `${year}-${month}-${day}`
 }
 
+/**
+ * Время из ячейки с датой: «17.08.2026 22:48» → «22:48».
+ *
+ * Секунды отбрасываются: в них нет ничего, что помогло бы вспомнить операцию,
+ * а строка от них длиннее. Полночь ровно — тоже время, но чаще всего это не
+ * время операции, а его отсутствие: так банк проводит зачисления и переводы,
+ * у которых времени нет вовсе. Показывать «00:00» значило бы утверждать, что
+ * человек платил ночью.
+ */
+export function parseTime(raw: string): string | null {
+  const found = /\b([01]?\d|2[0-3]):([0-5]\d)/.exec(raw.trim())
+  if (found === null) return null
+  const hh = (found[1] ?? '').padStart(2, '0')
+  const mm = found[2] ?? ''
+  if (hh === '00' && mm === '00') return null
+  return `${hh}:${mm}`
+}
+
 function isRouble(currency: string): boolean {
   const c = currency.trim().toUpperCase()
   return c === '' || c === 'RUB' || c === 'RUR' || c === 'РУБ' || c === '643' || c === '₽'
@@ -462,6 +480,7 @@ export function parseRows(rows: readonly (readonly string[])[], fallbackAccount 
       id: txId(date, amount, description, duplicate, account),
       account,
       date,
+      time: parseTime(at(row, columns.date)),
       amount,
       description: description === '' ? 'Без описания' : description,
       mcc: mccRaw === '' || mccRaw === '0' ? null : mccRaw,
