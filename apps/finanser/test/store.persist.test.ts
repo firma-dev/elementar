@@ -155,3 +155,55 @@ describe('напоминание сохранить копию', () => {
     expect(store.backupDue('2026-09-01')).toBe(true)
   })
 })
+
+describe('повторная загрузка того же файла после смены разбора', () => {
+  it('не задваивает операции и убирает исчезнувший счёт', async () => {
+    const { addStatement, transactions, accounts, forgetEverything } =
+      await import('../src/store.js')
+    forgetEverything()
+
+    const tx = (id: string, account: string, description: string) => ({
+      id,
+      date: '2026-08-16',
+      time: '22:48',
+      amount: -24000 as never,
+      description,
+      mcc: null,
+      bankCategory: null,
+      account,
+      currency: null,
+    })
+
+    // Как было: строка по СБП жила на счёте, заведённом из имени файла.
+    addStatement([tx('старый', 'файл', 'Оплата по СБП'), tx('карта-1', 'карта', 'Покупка')], {
+      name: 'выписка.csv',
+      rows: 2,
+      skipped: 0,
+      converted: 0,
+      foreign: 0,
+      loadedAt: '2026-08-20',
+      hasCodes: false,
+      key: 'k1',
+      accounts: ['файл', 'карта'],
+    })
+    expect(accounts.value.map((a) => a.key).sort()).toEqual(['карта', 'файл'])
+
+    // Как стало: тот же файл, та же строка — но она на карте, и потому с
+    // другим идентификатором.
+    addStatement([tx('новый', 'карта', 'Оплата по СБП'), tx('карта-1', 'карта', 'Покупка')], {
+      name: 'выписка.csv',
+      rows: 2,
+      skipped: 0,
+      converted: 0,
+      foreign: 0,
+      loadedAt: '2026-08-27',
+      hasCodes: false,
+      key: 'k1',
+      accounts: ['карта'],
+    })
+
+    // Две операции, а не три: старая строка исчезнувшего счёта убрана.
+    expect(transactions.value).toHaveLength(2)
+    expect(accounts.value.map((a) => a.key)).toEqual(['карта'])
+  })
+})

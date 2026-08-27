@@ -252,10 +252,39 @@ export const hasData = computed(() => transactions.value.length > 0)
  */
 export function addStatement(list: Tx[], info: SourceInfo): void {
   registerAccounts(list, info)
+
+  /**
+   * Счета, которые этот же файл заводил раньше, а теперь не заводит.
+   *
+   * Так бывает, когда меняется сам разбор. Операции по СБП банк отдаёт без
+   * номера карты, и раньше они уезжали на отдельный счёт; теперь, если карта в
+   * файле одна, они её. Идентификатор считается вместе со счётом — значит у
+   * тех же самых строк он стал другим, и при повторной загрузке они легли бы
+   * рядом со старыми: те же деньги, посчитанные дважды.
+   *
+   * Поэтому строки исчезнувших счетов этого файла убираются. Именно этого
+   * файла: чужие счета трогать нельзя, там может лежать другая выписка.
+   */
+  const before = sources.value.find((s) => s.name === info.name)
+  const now = new Set(info.accounts ?? [])
+  const gone = new Set((before?.accounts ?? []).filter((key) => !now.has(key)))
+
   const byId = new Map<string, Tx>()
-  for (const tx of transactions.value) byId.set(tx.id, tx)
+  for (const tx of transactions.value) {
+    if (gone.has(tx.account)) continue
+    byId.set(tx.id, tx)
+  }
   for (const tx of list) byId.set(tx.id, tx)
   const merged = [...byId.values()].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
+
+  // Счёт без единой операции — пустая кнопка в переключателе. Он мог остаться
+  // и от исчезнувшего разбора, и от выписки, которую человек забыл.
+  const live = new Set(merged.map((tx) => tx.account))
+  const keptAccounts = accounts.value.filter((a) => live.has(a.key))
+  if (keptAccounts.length !== accounts.value.length) {
+    accounts.value = keptAccounts
+    writeJson(KEY_ACCOUNTS, keptAccounts)
+  }
 
   const nextSources = sources.value.filter((s) => s.name !== info.name).concat(info)
   transactions.value = merged
