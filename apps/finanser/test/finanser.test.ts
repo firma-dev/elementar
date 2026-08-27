@@ -479,7 +479,9 @@ describe('сводка', () => {
     expect(kinds).toContain('top')
     expect(kinds).toContain('month')
     expect(kinds).toContain('anomaly')
-    expect(s.insights[0]?.title).toContain('Продукты')
+    // «Еда»: продукты и кафе — её дополнительные, и пока они выключены,
+    // траты складываются в неё.
+    expect(s.insights[0]?.title).toContain('Еда')
   })
 })
 
@@ -507,7 +509,8 @@ describe('выгрузка JSON', () => {
     expect(data).toMatchObject({ format: 'elementar.finanser', version: 2, units: 'kopeck' })
     expect(data.transactions[0]).toMatchObject({
       amount: -123450,
-      category: 'Продукты',
+      // «Еда»: продукты — её дополнительная и по умолчанию свёрнута в неё.
+      category: 'Еда',
       source: 'rule',
     })
     // Выгрузка должна пережить обратное чтение без потерь.

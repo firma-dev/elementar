@@ -47,9 +47,11 @@ const rows: Categorized[] = categorizeAll(
   {},
 )
 
+// Продукты и кафе по умолчанию свёрнуты в «Еду» — списки строятся из того же,
+// что видит человек, поэтому и здесь она.
 const totals = [
-  { category: 'Продукты' as Category, spend: 800000, count: 2 },
-  { category: 'Кафе и рестораны' as Category, spend: 100000, count: 1 },
+  { category: 'Еда' as Category, spend: 800000, count: 2 },
+  { category: 'Транспорт' as Category, spend: 100000, count: 1 },
   { category: 'Прочее' as Category, spend: 50000, count: 1 },
 ]
 
@@ -127,14 +129,15 @@ describe('список категорий', () => {
       <CategoryList
         rows={totals}
         total={950000}
-        expanded={'Продукты' as Category}
+        expanded={'Еда' as Category}
         onToggle={toggle}
-        transactionsOf={() => rows.filter((r) => r.category === 'Продукты')}
+        transactionsOf={() => rows.filter((r) => r.category === 'Еда')}
         onOpenAll={() => {}}
       />,
       root,
     )
-    expect(root.querySelectorAll('.f-peek__row')).toHaveLength(2)
+    // Три: две «Пятёрочки» и кофейня — всё это «Еда».
+    expect(root.querySelectorAll('.f-peek__row')).toHaveLength(3)
     expect(root.querySelector('.f-peek__all')?.textContent).toContain('выписке')
     root.querySelector<HTMLButtonElement>('.f-cat')?.click()
     expect(toggle).toHaveBeenCalledWith(null)
@@ -184,9 +187,9 @@ describe('разбор непонятного', () => {
     act(() => {
       root.querySelector<HTMLButtonElement>('.f-pick__button')?.click()
     })
-    // Не двадцать семь: десять основных и шесть «не трат». Выключенные
+    // Не двадцать семь: одиннадцать основных и шесть «не трат». Выключенные
     // дополнительные сюда не попадают — их включают отдельным разделом.
-    expect(root.querySelectorAll('.f-pick__option')).toHaveLength(16)
+    expect(root.querySelectorAll('.f-pick__option')).toHaveLength(17)
   })
 
   it('предлагает категорию по уже названному похожему получателю', () => {
