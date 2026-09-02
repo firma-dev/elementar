@@ -90,6 +90,7 @@ import { RulesView } from './components/RulesView.js'
 import logo from '@elementar/brand/elementar.svg'
 import { IncomeChart } from './components/IncomeChart.js'
 import { Transfers, sentToPeople } from './components/Transfers.js'
+import { Arrivals } from './components/Arrivals.js'
 
 /**
  * Один экран — сводка. Всё, что отвечает на вопросы «сколько», «на что» и
@@ -99,7 +100,7 @@ import { Transfers, sentToPeople } from './components/Transfers.js'
  * выход к сырым данным: шестьсот строк операций в сводку не кладутся, и место
  * им за её пределами.
  */
-type View = 'year' | 'txs' | 'rules'
+type View = 'year' | 'details' | 'txs' | 'rules'
 
 /** Месяц цели для демо: восемь месяцев вперёд. */
 function demoGoalMonth(): string {
@@ -465,6 +466,27 @@ export function App(): JSX.Element {
     />
   )
 
+  const accountSwitch = (
+    <Accounts
+      list={accounts.value}
+      active={account}
+      counts={counts}
+      onSelect={(key) => {
+        activeAccount.value = key
+        setMonth(null)
+        setDay(null)
+        setCategoryFilter(null)
+      }}
+      removable={view === 'details'}
+      onDrop={(key) => {
+        dropAccount(key)
+        setMonth(null)
+        setDay(null)
+        setCategoryFilter(null)
+      }}
+    />
+  )
+
   const header = (
     <>
       {updateReady.value ? (
@@ -486,7 +508,10 @@ export function App(): JSX.Element {
         <div class="f-head__mark">
           <span class="f-head__logo" style={`--f-logo:url(${logo})`} aria-hidden="true" />
           <span class="f-head__name">финансер</span>
-          <span class="f-head__note">v0</span>
+          {/* Чей это счёт — здесь же. Отдельной полосой под шапкой она занимала
+              шестьдесят пять пикселей ради строки, которая ничего не
+              переключает, когда счёт один. */}
+          {accountSwitch}
         </div>
         {/* Обновить выписку — в правом углу шапки, если данные уже есть.
             Загрузка стояла в подвале рядом с выгрузкой, потому что случается
@@ -667,26 +692,6 @@ export function App(): JSX.Element {
     </p>
   )
 
-  const accountSwitch = (
-    <Accounts
-      list={accounts.value}
-      active={account}
-      counts={counts}
-      onSelect={(key) => {
-        activeAccount.value = key
-        setMonth(null)
-        setDay(null)
-        setCategoryFilter(null)
-      }}
-      onDrop={(key) => {
-        dropAccount(key)
-        setMonth(null)
-        setDay(null)
-        setCategoryFilter(null)
-      }}
-    />
-  )
-
   /**
    * Подвал — только подпись. Действия из него уехали в «Настройку»: словарь
    * правил, тема и «забыть всё» стояли строкой ссылок внизу страницы, где их
@@ -770,14 +775,6 @@ export function App(): JSX.Element {
       onDrop={onDrop}
     >
       {header}
-      {/* Наверху — только то, чем человек переключает картину. Строка про
-          свежесть данных ушла в подвал: она отвечает на вопрос, который
-          задают раз в день, а место занимала в самом дорогом ряду. */}
-      <div class="f-top">
-        {/* Обёртка есть всегда, даже когда счёт один и переключатель молчит:
-            без неё «обновить» уезжало к левому краю. */}
-        <div class="f-top__accs">{accountSwitch}</div>
-      </div>
 
       {/* Валюта: не предупреждение, а поле. Предупреждение не превращает
           неправду в правду — тысяча лир продолжала складываться с тысячей
@@ -825,8 +822,12 @@ export function App(): JSX.Element {
           то, о чём вообще идёт речь. На коротких отрезках это дневной ритм —
           сколько уже потрачено и сколько осталось; на длинных — картина по
           месяцам и категориям (Д-026). */}
+      {/* Четыре отрезка вместо шести. «День» и «полгода» ушли: на дневной
+          вопрос отвечает «можно тратить в день» в строке выше, а полгода никто
+          не смотрит — есть три месяца и год. Каждая лишняя кнопка здесь стоит
+          дороже прочих: это первое, что видит глаз после чисел. */}
       <div class="f-periods" role="group" aria-label="Период">
-        {PERIODS.map((p) => (
+        {PERIODS.filter((p) => p.key !== 'day' && p.key !== 'half').map((p) => (
           <button
             key={p.key}
             type="button"
@@ -879,149 +880,56 @@ export function App(): JSX.Element {
         owedToSavings={toGoal(plan.value, setAside as Kopeck)}
       />
 
-      {/* Три блока. Каждый отвечает на свой вопрос и не залезает в чужой:
-          расходы — «куда ушло», копилка — «сколько отложено и успеваем ли»,
-          доходы — «откуда приходит». Границы блоков видимые: без них соседние
-          смыслы читаются как один длинный список. */}
-      <div class="f-cols">
-        <div class="f-cols__left">
+      {/* Суть — на одном экране.
+          Всё остальное за одной дверью: раньше здесь лежало пять блоков, пять
+          свёрток и шестьдесят восемь кнопок. Каждый кусок отвечал на настоящий
+          вопрос, но вместе они складывались в пульт управления, а не в ответ. */}
+      {view === 'details' ? null : (
+        <div class="f-cols f-cols--main">
           <section class="f-block f-block--spend">
-            <h2 class="f-block__title">Расходы</h2>
-
-            {/* Главное число стоит в своём блоке, над своим графиком и своим
-              списком. Раньше обе плитки жили общей шапкой наверху, а расходы и
-              доходы — блоками ниже: сумма была оторвана от того, что её
-              объясняет. */}
+            <h2 class="f-block__title">На что уходит</h2>
             <Head
-              title={day !== null ? dayLabel(day) : month !== null ? monthLabel(month) : spec.title}
+              title={spec.title}
               spent={planes.spend.total}
               income={planes.income.total}
               limit={limit}
               elapsed={pace}
-              average={
-                daily || months.length === 0
-                  ? null
-                  : {
-                      spend: Math.round(planes.spend.total / months.length) as Kopeck,
-                      income: Math.round(planes.income.total / months.length) as Kopeck,
-                    }
-              }
+              average={null}
               change={change}
-              saving={
-                daily
-                  ? {
-                      done: setAside as Kopeck,
-                      left: toGoal(plan.value, setAside as Kopeck),
-                      goal: plan.value.save,
-                    }
-                  : null
-              }
-              onSetPlan={() => {
-                // Раздел раскрывается перерисовкой, а она случится не сейчас: до неё
-                // блока в разметке ещё нет, и прокручивать не к чему.
-                setPlanOpen(true)
-                requestAnimationFrame(() =>
-                  document.querySelector('.f-plan')?.scrollIntoView({ block: 'center' }),
-                )
-              }}
+              saving={null}
+              onSetPlan={() => setView('details')}
               part="spend"
             />
-
-            {daily ? (
-              <DayChart
-                rows={onAccount}
-                from={period === 'day' ? weekStart(edge) : range.from}
-                to={period === 'day' ? edge : range.to}
-                limit={limitFor('day', edge, plan.value)}
-                selected={day}
-                onSelect={(next) => {
-                  setDay(next)
-                  setCategoryFilter(null)
-                }}
-              />
-            ) : (
-              <MonthChart
-                months={months}
-                selected={month}
-                hovered={hovered}
-                onSelect={setMonth}
-                onHover={setHovered}
-              />
-            )}
-
-            <div class="f-scope">
-              <h2 class="f-eyebrow">
-                {day !== null
-                  ? `Траты по категориям · ${dayLabel(day)}`
-                  : month !== null
-                    ? `Траты по категориям · ${monthLabel(month)}`
-                    : 'Траты по категориям'}
-              </h2>
-              {day === null && month === null ? null : (
-                <button
-                  type="button"
-                  class="f-linkish"
-                  onClick={() => {
-                    setMonth(null)
-                    setDay(null)
-                  }}
-                >
-                  ← {spec.title}
-                </button>
-              )}
-            </div>
             <CategoryList
-              rows={cats}
+              rows={cats.slice(0, 5)}
               total={planes.spend.total}
-              expanded={category}
-              onToggle={setCategoryFilter}
-              transactionsOf={inCategory}
-              onOpenAll={(c) => {
-                setCategoryFilter(c)
+              expanded={null}
+              onToggle={(next) => {
+                setCategoryFilter(next)
                 setView('txs')
               }}
+              transactionsOf={inCategory}
+              onOpenAll={() => setView('txs')}
             />
-
-            {/* Порядок разделов: сначала то, что сообщает, потом то, что
-          настраивает. Разбор непонятного и наличные — первыми: они сильнее
-          всего меняют картину, всё остальное её только объясняет. Переводы
-          людям стояли здесь же, пока были свёрнутым разделом; теперь у них
-          свой блок под расходами. */}
-            <Unknown
-              rows={scope}
-              totalSpend={planes.spend.total}
-              hasCodes={info?.hasCodes ?? true}
-              named={merchantOverrides.value}
-              options={options}
-              onMerchantCategory={setMerchantCategory}
-            />
-
-            {/* Наличные — рядом с разбором непонятного: обе про одно, про деньги,
-          о которых выписка не сказала ничего. */}
-            <CashView
-              rows={scope}
-              splits={cashSplits.value}
-              totalSpend={planes.spend.total}
-              options={options}
-              onSplit={setCashSplit}
-            />
-
-            {/* Что уходит само — рядом с «откуда приходит»: оба про то, что человек
-          не выбирает каждый день, а обнаруживает раз в полгода. */}
-            <Regular rows={onAccount} edge={edge} />
-
-            <MoneyMoves rows={scope} onUnpair={(id) => setCategory(id, 'Доход')} />
           </section>
 
-          {/* Переводы людям — свой блок под расходами, а не строка среди
-              категорий и не свёрнутый раздел внутри них. На выписке без кодов
-              это самая крупная статья трат, и разбирается она не как категория,
-              а по людям: кому и когда.
+          <section class="f-block f-block--income">
+            <h2 class="f-block__title">Откуда приходит</h2>
+            <Head
+              title={spec.title}
+              spent={planes.spend.total}
+              income={planes.income.total}
+              limit={limit}
+              elapsed={pace}
+              average={null}
+              change={change}
+              saving={null}
+              onSetPlan={() => setView('details')}
+              part="income"
+            />
+            <Arrivals sources={incomeSources} next={arrival} edge={edge} />
+          </section>
 
-              Блока нет вовсе, когда переводов нет: рамка с тенью и пустотой
-              внутри — это обещание содержимого, которого не будет. Пустой он
-              и висел, пока условие жило внутри компонента: `null` убирает
-              содержимое, но не коробку. */}
           {sentToPeople(scope).length === 0 ? null : (
             <section class="f-block f-block--transfers">
               <Transfers
@@ -1034,206 +942,384 @@ export function App(): JSX.Element {
             </section>
           )}
         </div>
+      )}
 
-        {/* Доходы — блок наравне с расходами, а не приписка сбоку. Деньги
+      {view !== 'details' ? null : (
+        <>
+          {/* Три блока. Каждый отвечает на свой вопрос и не залезает в чужой:
+          расходы — «куда ушло», копилка — «сколько отложено и успеваем ли»,
+          доходы — «откуда приходит». Границы блоков видимые: без них соседние
+          смыслы читаются как один длинный список. */}
+          <div class="f-cols">
+            <div class="f-cols__left">
+              <section class="f-block f-block--spend">
+                <h2 class="f-block__title">Расходы</h2>
+
+                {/* Главное число стоит в своём блоке, над своим графиком и своим
+              списком. Раньше обе плитки жили общей шапкой наверху, а расходы и
+              доходы — блоками ниже: сумма была оторвана от того, что её
+              объясняет. */}
+                <Head
+                  title={
+                    day !== null ? dayLabel(day) : month !== null ? monthLabel(month) : spec.title
+                  }
+                  spent={planes.spend.total}
+                  income={planes.income.total}
+                  limit={limit}
+                  elapsed={pace}
+                  average={
+                    daily || months.length === 0
+                      ? null
+                      : {
+                          spend: Math.round(planes.spend.total / months.length) as Kopeck,
+                          income: Math.round(planes.income.total / months.length) as Kopeck,
+                        }
+                  }
+                  change={change}
+                  saving={
+                    daily
+                      ? {
+                          done: setAside as Kopeck,
+                          left: toGoal(plan.value, setAside as Kopeck),
+                          goal: plan.value.save,
+                        }
+                      : null
+                  }
+                  onSetPlan={() => {
+                    // Раздел раскрывается перерисовкой, а она случится не сейчас: до неё
+                    // блока в разметке ещё нет, и прокручивать не к чему.
+                    setPlanOpen(true)
+                    requestAnimationFrame(() =>
+                      document.querySelector('.f-plan')?.scrollIntoView({ block: 'center' }),
+                    )
+                  }}
+                  part="spend"
+                />
+
+                {daily ? (
+                  <DayChart
+                    rows={onAccount}
+                    from={period === 'day' ? weekStart(edge) : range.from}
+                    to={period === 'day' ? edge : range.to}
+                    limit={limitFor('day', edge, plan.value)}
+                    selected={day}
+                    onSelect={(next) => {
+                      setDay(next)
+                      setCategoryFilter(null)
+                    }}
+                  />
+                ) : (
+                  <MonthChart
+                    months={months}
+                    selected={month}
+                    hovered={hovered}
+                    onSelect={setMonth}
+                    onHover={setHovered}
+                  />
+                )}
+
+                <div class="f-scope">
+                  <h2 class="f-eyebrow">
+                    {day !== null
+                      ? `Траты по категориям · ${dayLabel(day)}`
+                      : month !== null
+                        ? `Траты по категориям · ${monthLabel(month)}`
+                        : 'Траты по категориям'}
+                  </h2>
+                  {day === null && month === null ? null : (
+                    <button
+                      type="button"
+                      class="f-linkish"
+                      onClick={() => {
+                        setMonth(null)
+                        setDay(null)
+                      }}
+                    >
+                      ← {spec.title}
+                    </button>
+                  )}
+                </div>
+                <CategoryList
+                  rows={cats}
+                  total={planes.spend.total}
+                  expanded={category}
+                  onToggle={setCategoryFilter}
+                  transactionsOf={inCategory}
+                  onOpenAll={(c) => {
+                    setCategoryFilter(c)
+                    setView('txs')
+                  }}
+                />
+
+                {/* Порядок разделов: сначала то, что сообщает, потом то, что
+          настраивает. Разбор непонятного и наличные — первыми: они сильнее
+          всего меняют картину, всё остальное её только объясняет. Переводы
+          людям стояли здесь же, пока были свёрнутым разделом; теперь у них
+          свой блок под расходами. */}
+                <Unknown
+                  rows={scope}
+                  totalSpend={planes.spend.total}
+                  hasCodes={info?.hasCodes ?? true}
+                  named={merchantOverrides.value}
+                  options={options}
+                  onMerchantCategory={setMerchantCategory}
+                />
+
+                {/* Наличные — рядом с разбором непонятного: обе про одно, про деньги,
+          о которых выписка не сказала ничего. */}
+                <CashView
+                  rows={scope}
+                  splits={cashSplits.value}
+                  totalSpend={planes.spend.total}
+                  options={options}
+                  onSplit={setCashSplit}
+                />
+
+                {/* Что уходит само — рядом с «откуда приходит»: оба про то, что человек
+          не выбирает каждый день, а обнаруживает раз в полгода. */}
+                <Regular rows={onAccount} edge={edge} />
+
+                <MoneyMoves rows={scope} onUnpair={(id) => setCategory(id, 'Доход')} />
+              </section>
+
+              {/* Переводы людям — свой блок под расходами, а не строка среди
+              категорий и не свёрнутый раздел внутри них. На выписке без кодов
+              это самая крупная статья трат, и разбирается она не как категория,
+              а по людям: кому и когда.
+
+              Блока нет вовсе, когда переводов нет: рамка с тенью и пустотой
+              внутри — это обещание содержимого, которого не будет. Пустой он
+              и висел, пока условие жило внутри компонента: `null` убирает
+              содержимое, но не коробку. */}
+              {sentToPeople(scope).length === 0 ? null : (
+                <section class="f-block f-block--transfers">
+                  <Transfers
+                    rows={scope}
+                    totalSpend={planes.spend.total}
+                    options={options}
+                    onMerchantCategory={setMerchantCategory}
+                    onCategory={setCategory}
+                  />
+                </section>
+              )}
+            </div>
+
+            {/* Доходы — блок наравне с расходами, а не приписка сбоку. Деньги
             приходят и уходят: это две половины одного вопроса, и разный вес у
             них означал бы, что одна половина важнее. */}
-        <section class="f-block f-block--income">
-          <h2 class="f-block__title">Доходы</h2>
+            <section class="f-block f-block--income">
+              <h2 class="f-block__title">Доходы</h2>
 
-          <Head
-            title={day !== null ? dayLabel(day) : month !== null ? monthLabel(month) : spec.title}
-            spent={planes.spend.total}
-            income={planes.income.total}
-            limit={limit}
-            elapsed={pace}
-            average={
-              daily || months.length === 0
-                ? null
-                : {
-                    spend: Math.round(planes.spend.total / months.length) as Kopeck,
-                    income: Math.round(planes.income.total / months.length) as Kopeck,
-                  }
-            }
-            change={change}
-            saving={
-              daily
-                ? {
-                    done: setAside as Kopeck,
-                    left: toGoal(plan.value, setAside as Kopeck),
-                    goal: plan.value.save,
-                  }
-                : null
-            }
-            onSetPlan={() => {
-              // Раздел раскрывается перерисовкой, а она случится не сейчас: до неё
-              // блока в разметке ещё нет, и прокручивать не к чему.
-              setPlanOpen(true)
-              requestAnimationFrame(() =>
-                document.querySelector('.f-plan')?.scrollIntoView({ block: 'center' }),
-              )
-            }}
-            part="income"
-          />
+              <Head
+                title={
+                  day !== null ? dayLabel(day) : month !== null ? monthLabel(month) : spec.title
+                }
+                spent={planes.spend.total}
+                income={planes.income.total}
+                limit={limit}
+                elapsed={pace}
+                average={
+                  daily || months.length === 0
+                    ? null
+                    : {
+                        spend: Math.round(planes.spend.total / months.length) as Kopeck,
+                        income: Math.round(planes.income.total / months.length) as Kopeck,
+                      }
+                }
+                change={change}
+                saving={
+                  daily
+                    ? {
+                        done: setAside as Kopeck,
+                        left: toGoal(plan.value, setAside as Kopeck),
+                        goal: plan.value.save,
+                      }
+                    : null
+                }
+                onSetPlan={() => {
+                  // Раздел раскрывается перерисовкой, а она случится не сейчас: до неё
+                  // блока в разметке ещё нет, и прокручивать не к чему.
+                  setPlanOpen(true)
+                  requestAnimationFrame(() =>
+                    document.querySelector('.f-plan')?.scrollIntoView({ block: 'center' }),
+                  )
+                }}
+                part="income"
+              />
 
-          {/* График прихода — зеркало расходного: тот же скелет, те же вёдра,
+              {/* График прихода — зеркало расходного: тот же скелет, те же вёдра,
               тот же язык. Без него доходы были единственной половиной картины
               без формы: сумма и список источников, но не видно, ровно они идут
               или рывками. */}
-          <IncomeChart
-            rows={onAccount}
-            from={period === 'day' ? weekStart(edge) : range.from}
-            to={period === 'day' ? edge : range.to}
-            months={months}
-            daily={daily}
-          />
+              <IncomeChart
+                rows={onAccount}
+                from={period === 'day' ? weekStart(edge) : range.from}
+                to={period === 'day' ? edge : range.to}
+                months={months}
+                daily={daily}
+              />
 
-          {/* Все операции, а не отрезок: за один день приходов нет, и раздел
+              {/* Все операции, а не отрезок: за один день приходов нет, и раздел
               исчезал бы ровно тогда, когда о нём вспоминают (Д-026). */}
-          <IncomeView
-            rows={onAccount}
-            edge={edge}
-            total={allIncome as Kopeck}
-            onExclude={(ids) => {
-              // Не удаление, а переклассификация: операции остаются в выписке и
-              // видны в «Движениях денег». Выбросить их значило бы разойтись с
-              // тем, что человек видит в приложении банка.
-              for (const id of ids) setCategory(id, 'Переводы')
-            }}
-          />
-        </section>
+              <IncomeView
+                rows={onAccount}
+                edge={edge}
+                total={allIncome as Kopeck}
+                onExclude={(ids) => {
+                  // Не удаление, а переклассификация: операции остаются в выписке и
+                  // видны в «Движениях денег». Выбросить их значило бы разойтись с
+                  // тем, что человек видит в приложении банка.
+                  for (const id of ids) setCategory(id, 'Переводы')
+                }}
+              />
+            </section>
 
-        <section class="f-block f-block--save">
-          <SavingsView rows={onAccount} edge={edge} plan={plan.value} onChange={setPlan} />
-        </section>
+            <section class="f-block f-block--save">
+              <SavingsView rows={onAccount} edge={edge} plan={plan.value} onChange={setPlan} />
+            </section>
 
-        <section class="f-block f-block--tools">
-          <h2 class="f-block__title">Настройка</h2>
+            <section class="f-block f-block--tools">
+              <h2 class="f-block__title">Настройка</h2>
 
-          {/* Меню, а не россыпь ссылок внизу страницы.
+              {/* Меню, а не россыпь ссылок внизу страницы.
               Там жили шесть действий в трёх видах сразу — подчёркнутая ссылка,
               красная подчёркнутая, синяя — и ни одно не выглядело кнопкой, хотя
               все шесть кнопки. Теперь строка: слева о чём, справа что можно
               сделать. Вид у всех один. */}
-          <div class="f-set">
-            <div class="f-set__row">
-              <span class="f-set__k">Выписка</span>
-              <span class="f-set__acts">
-                <button type="button" class="f-chip" onClick={() => fileRef.current?.click()}>
-                  {busy ? 'читаю…' : 'обновить'}
-                </button>
-                <button type="button" class="f-chip" onClick={saveJson}>
-                  выгрузить JSON
-                </button>
-              </span>
-            </div>
+              <div class="f-set">
+                <div class="f-set__row">
+                  <span class="f-set__k">Выписка</span>
+                  <span class="f-set__acts">
+                    <button type="button" class="f-btn" onClick={() => fileRef.current?.click()}>
+                      {busy ? 'читаю…' : 'обновить'}
+                    </button>
+                    <button type="button" class="f-btn" onClick={saveJson}>
+                      выгрузить JSON
+                    </button>
+                  </span>
+                </div>
 
-            <div class="f-set__row">
-              <span class="f-set__k">Копия</span>
-              <span class="f-set__acts">
-                <button type="button" class="f-chip" onClick={saveJson}>
-                  сохранить копию
-                </button>
-              </span>
-              {/* Напоминание стоит рядом с самим действием, а не отдельной
+                <div class="f-set__row">
+                  <span class="f-set__k">Копия</span>
+                  <span class="f-set__acts">
+                    <button type="button" class="f-btn" onClick={saveJson}>
+                      сохранить копию
+                    </button>
+                  </span>
+                  {/* Напоминание стоит рядом с самим действием, а не отдельной
                   плашкой над сводкой: там оно отодвигало то, ради чего пришли. */}
-              {backupDue(today()) ? (
-                <span class="f-set__note">
-                  Выписка и правки живут только в этом браузере — копии больше недели нет.
-                </span>
-              ) : null}
-            </div>
+                  {backupDue(today()) ? (
+                    <span class="f-set__note">
+                      Выписка и правки живут только в этом браузере — копии больше недели нет.
+                    </span>
+                  ) : null}
+                </div>
 
-            {/* Кнопка на случай, если приложение всё-таки застряло на старой
+                {/* Кнопка на случай, если приложение всё-таки застряло на старой
                 версии. Раньше выхода не было вовсе: воркер отдавал страницу из
                 кэша, не спрашивая сеть, и человеку оставалось чистить данные
                 сайта руками — вместе с выпиской. Здесь снимается воркер и его
                 кэши, выписка и правки остаются на месте. */}
-            <div class="f-set__row">
-              <span class="f-set__k">Приложение</span>
-              <span class="f-set__acts">
-                <button type="button" class="f-chip" onClick={reinstall}>
-                  переустановить
-                </button>
-              </span>
-              <span class="f-set__note">
-                Снимет сохранённую копию приложения и загрузит свежую с сервера. Выписка и
-                проставленные категории останутся.
-              </span>
-            </div>
+                <div class="f-set__row">
+                  <span class="f-set__k">Приложение</span>
+                  <span class="f-set__acts">
+                    <button type="button" class="f-btn" onClick={reinstall}>
+                      переустановить
+                    </button>
+                  </span>
+                  <span class="f-set__note">
+                    Снимет сохранённую копию приложения и загрузит свежую с сервера. Выписка и
+                    проставленные категории останутся.
+                  </span>
+                </div>
 
-            <div class="f-set__row">
-              <span class="f-set__k">Вид</span>
-              <span class="f-set__acts">
-                {/* Тёмная тема — выбор, а не умолчание (Д-035). */}
-                <button type="button" class="f-chip" onClick={toggleTheme}>
-                  {dark.value ? 'светлая тема' : 'тёмная тема'}
-                </button>
-              </span>
-            </div>
+                <div class="f-set__row">
+                  <span class="f-set__k">Вид</span>
+                  <span class="f-set__acts">
+                    {/* Тёмная тема — выбор, а не умолчание (Д-035). */}
+                    <button type="button" class="f-btn" onClick={toggleTheme}>
+                      {dark.value ? 'светлая тема' : 'тёмная тема'}
+                    </button>
+                  </span>
+                </div>
 
-            <div class="f-set__row">
-              <span class="f-set__k">Правила</span>
-              <span class="f-set__acts">
-                <button type="button" class="f-chip" onClick={() => setView('rules')}>
-                  словарь правил
-                </button>
-              </span>
-            </div>
+                <div class="f-set__row">
+                  <span class="f-set__k">Правила</span>
+                  <span class="f-set__acts">
+                    <button type="button" class="f-btn" onClick={() => setView('rules')}>
+                      словарь правил
+                    </button>
+                  </span>
+                </div>
 
-            <div class="f-set__row">
-              <span class="f-set__k">Данные</span>
-              <span class="f-set__acts">
-                <Confirm
-                  label="сбросить всё"
-                  question="сбросить выписку и все проставленные категории?"
-                  confirm="да, сбросить"
-                  chip
-                  onConfirm={() => {
-                    forgetEverything()
-                    setMonth(null)
-                    setCategoryFilter(null)
-                    setView('year')
-                  }}
-                />
-              </span>
-              <span class="f-set__note">
-                Выписка и правки лежат в хранилище этого браузера и никуда не отправляются. На общем
-                компьютере так делать не стоит.
-              </span>
-            </div>
+                <div class="f-set__row">
+                  <span class="f-set__k">Данные</span>
+                  <span class="f-set__acts">
+                    <Confirm
+                      label="сбросить всё"
+                      question="сбросить выписку и все проставленные категории?"
+                      confirm="да, сбросить"
+                      chip
+                      onConfirm={() => {
+                        forgetEverything()
+                        setMonth(null)
+                        setCategoryFilter(null)
+                        setView('year')
+                      }}
+                    />
+                  </span>
+                  <span class="f-set__note">
+                    Выписка и правки лежат в хранилище этого браузера и никуда не отправляются. На
+                    общем компьютере так делать не стоит.
+                  </span>
+                </div>
+              </div>
+
+              <Extras enabled={enabledExtras} pending={pending} onToggle={toggleExtra} />
+              <Fold
+                title="Счётная сводка"
+                meta={summary.value === null ? 'не посчитана' : undefined}
+              >
+                <p class="f-note">
+                  Финансер ничего не считает в фоне. Сводка появится, когда вы её попросите.
+                </p>
+                <p class="f-sum__act">
+                  <button type="button" class="f-linkish" onClick={() => compute(scope)}>
+                    {summary.value === null ? 'посчитать →' : 'пересчитать'}
+                  </button>
+                </p>
+                {summary.value === null ? null : <SummaryView summary={summary.value} />}
+              </Fold>
+            </section>
           </div>
+        </>
+      )}
 
-          <Extras enabled={enabledExtras} pending={pending} onToggle={toggleExtra} />
-          <Fold title="Счётная сводка" meta={summary.value === null ? 'не посчитана' : undefined}>
-            <p class="f-note">
-              Финансер ничего не считает в фоне. Сводка появится, когда вы её попросите.
-            </p>
-            <p class="f-sum__act">
-              <button type="button" class="f-linkish" onClick={() => compute(scope)}>
-                {summary.value === null ? 'посчитать →' : 'пересчитать'}
-              </button>
-            </p>
-            {summary.value === null ? null : <SummaryView summary={summary.value} />}
-          </Fold>
-        </section>
-      </div>
-
-      {/* Единственная громкая кнопка на экране: она ведёт к списку операций,
-          ради которого всё остальное и считалось. Выгрузка и загрузка стояли
-          рядом с ней тихими ссылками — теперь они в «Настройке», где им место:
-          обе про файлы, и обе случаются раз в месяц. */}
+      {/* Двери. На сводке — к операциям и к подробностям, в подробностях —
+          назад. Громкой кнопки на экране нет ни одной: человек пришёл прочитать
+          ответ, а не нажать. */}
       <p class="f-all">
-        <button
-          type="button"
-          class="f-go"
-          onClick={() => {
-            setCategoryFilter(null)
-            setView('txs')
-          }}
-        >
-          {scope.length} операций →
-        </button>
+        {view === 'details' ? (
+          <button type="button" class="f-btn" onClick={() => setView('year')}>
+            ← к сводке
+          </button>
+        ) : (
+          <>
+            <button
+              type="button"
+              class="f-btn"
+              onClick={() => {
+                setCategoryFilter(null)
+                setView('txs')
+              }}
+            >
+              {scope.length} операций
+            </button>
+            <button type="button" class="f-btn" onClick={() => setView('details')}>
+              подробно
+            </button>
+          </>
+        )}
       </p>
 
       {/* Две колонки на широком экране. В одну картина занимала две с
@@ -1247,7 +1333,7 @@ export function App(): JSX.Element {
       {/* Данные старше выбранного отрезка не прячутся молча: если они есть,
           выход к ним стоит здесь же (Д-026). Строка появляется один раз при
           загрузке и не мигает по ходу работы. */}
-      {oldest !== null && oldest < range.from ? (
+      {view !== 'details' ? null : oldest !== null && oldest < range.from ? (
         <p class="f-older">
           есть операции и раньше, с {dayLabel(oldest)} —{' '}
           <button
@@ -1263,7 +1349,7 @@ export function App(): JSX.Element {
           </button>
         </p>
       ) : null}
-      {period === 'all' ? (
+      {view === 'details' && period === 'all' ? (
         <p class="f-older">
           показано всё загруженное —{' '}
           <button
@@ -1281,7 +1367,7 @@ export function App(): JSX.Element {
       ) : null}
       {error === null ? null : <p class="f-err">{error}</p>}
       {freshness}
-      {footer}
+      {view === 'details' ? footer : null}
       {fileInput}
     </main>
   )

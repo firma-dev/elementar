@@ -85,12 +85,12 @@ export function Balance({
                 placeholder="сколько сейчас"
                 aria-label="Остаток на счёте"
               />
-              <button type="submit" class="f-chip">
+              <button type="submit" class="f-btn">
                 запомнить
               </button>
             </form>
           ) : onAccount === null ? (
-            <button type="button" class="f-chip" onClick={() => setAsking(true)}>
+            <button type="button" class="f-btn" onClick={() => setAsking(true)}>
               указать остаток
             </button>
           ) : (

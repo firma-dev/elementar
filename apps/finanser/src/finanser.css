@@ -196,7 +196,10 @@ input {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  gap: 0.5rem;
+  /* Переносится: на телефоне имя счёта и «обновить выписку» в одну строку не
+     помещались и налезали друг на друга. */
+  flex-wrap: wrap;
+  gap: var(--f-step-1) 0.5rem;
   padding: 0.8em 0 0.5em;
   border-bottom: var(--el__border-width-m) solid var(--el__text);
 }
@@ -205,6 +208,7 @@ input {
 .f-head__mark {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 0.5em;
   min-width: 0;
 }
@@ -238,6 +242,73 @@ input {
    кнопкой, хотя все шесть кнопки. Теперь у всех один вид: рамка, капс, серый
    текст. Громкой остаётся только одна кнопка на экране — «столько-то операций»,
    потому что она одна и ведёт к главному списку. */
+/* ─────────────────── Откуда и когда приходят деньги ─────────────────── */
+
+.f-arr {
+  margin-top: var(--f-step-1);
+}
+
+/* Ближайший приход — строкой над списком: это единственное, что про будущее. */
+.f-arr__next {
+  display: flex;
+  align-items: baseline;
+  gap: var(--f-step-1);
+  flex-wrap: wrap;
+  padding-bottom: var(--f-v-2);
+  border-bottom: var(--el__border-width-s) solid var(--el__border);
+}
+
+.f-arr__when {
+  font-size: var(--el__fs-xs);
+  letter-spacing: var(--el__ls-caps-s);
+  text-transform: uppercase;
+  color: var(--el__text-caption);
+}
+
+.f-arr__row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: baseline;
+  gap: var(--f-step-2);
+  padding: var(--f-v-2) 0;
+  border-bottom: var(--el__border-width-s) solid var(--el__border);
+}
+
+.f-arr__row:last-child {
+  border-bottom: 0;
+}
+
+.f-arr__who {
+  font-size: var(--el__fs-m);
+  letter-spacing: var(--el__ls-caps-s);
+  text-transform: uppercase;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.f-arr__mark {
+  font-size: var(--el__fs-xs);
+  letter-spacing: var(--el__ls-caps-s);
+  text-transform: uppercase;
+  color: var(--el__text-caption);
+  white-space: nowrap;
+}
+
+.f-arr__sum {
+  font-size: var(--el__fs-m);
+  white-space: nowrap;
+}
+
+.f-arr__more {
+  margin-top: var(--f-v-2);
+  font-size: var(--el__fs-xs);
+  letter-spacing: var(--el__ls-caps-s);
+  text-transform: uppercase;
+  color: var(--el__text-caption);
+}
+
 /* Ввод остатка прямо в ячейке: поле и плашка в строку. */
 .f-bal__ask {
   display: flex;
@@ -278,7 +349,7 @@ input {
 
 /* Капс у всех плашек: OCR читается заглавными, строчные в нём кривые
    (Д-034). */
-.f-chip,
+.f-btn,
 .f-head__load {
   border: var(--el__border-width-s) solid var(--el__border);
   background: none;
@@ -295,7 +366,7 @@ input {
     border-color var(--el__duration-fast) var(--el__easing-base);
 }
 
-.f-chip:hover,
+.f-btn:hover,
 .f-head__load:hover {
   color: var(--el__text);
   border-color: var(--el__text);
@@ -303,12 +374,12 @@ input {
 
 /* Необратимое — красным по рамке, а не заливкой: заливка сделала бы «забыть
    всё» самой заметной кнопкой экрана. */
-.f-chip--danger {
+.f-btn--danger {
   color: var(--el__accent);
   border-color: color-mix(in srgb, var(--el__accent) 40%, transparent);
 }
 
-.f-chip--danger:hover {
+.f-btn--danger:hover {
   color: var(--el__accent);
   border-color: var(--el__accent);
 }
@@ -353,12 +424,6 @@ input {
   line-height: 1.5;
 }
 
-.f-head__note {
-  font-size: var(--el__fs-xs);
-  letter-spacing: var(--el__ls-caps-s);
-  text-transform: uppercase;
-  color: var(--el__text-caption);
-}
 
 /* Служебная метка над блоком: капс с трекингом. */
 /* Метка раздела — одна на весь корпус: кегль, разрядка и регистр общие.
@@ -1987,18 +2052,7 @@ input {
 
 /* ─────────────────── Верхний ряд управления ─────────────────── */
 
-.f-top__accs {
-  flex: 1;
-  min-width: 0;
-}
 
-.f-top {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--f-step-1);
-  padding: var(--f-step-2) 0;
-}
 
 /* ─────────────────────── Шапка картины ─────────────────────── */
 
@@ -2344,6 +2398,20 @@ input {
   display: grid;
   gap: var(--f-step-1);
   margin-top: var(--f-step-1);
+}
+
+/* Главный экран: три блока, и всё видно сразу.
+   Расходы и доходы рядом, переводы под ними во всю ширину — так на ноутбуке
+   вся сводка помещается без прокрутки, а на телефоне читается двумя экранами
+   сверху вниз. */
+@media (min-width: 1000px) {
+  .f-cols--main {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .f-cols--main .f-block--transfers {
+    grid-column: 1 / -1;
+  }
 }
 
 @media (min-width: 1000px) {

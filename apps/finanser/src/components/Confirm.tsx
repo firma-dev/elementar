@@ -32,7 +32,7 @@ interface Props {
  */
 export function Confirm({ label, question, confirm, chip = false, onConfirm }: Props): JSX.Element {
   const [asking, setAsking] = useState(false)
-  const danger = chip ? 'f-chip f-chip--danger' : 'f-linkish f-linkish--danger'
+  const danger = chip ? 'f-btn f-btn--danger' : 'f-linkish f-linkish--danger'
 
   if (!asking) {
     return (
@@ -56,7 +56,7 @@ export function Confirm({ label, question, confirm, chip = false, onConfirm }: P
         {confirm}
       </button>{' '}
       <span class="f-confirm__sep">·</span>{' '}
-      <button type="button" class={chip ? 'f-chip' : 'f-linkish'} onClick={() => setAsking(false)}>
+      <button type="button" class={chip ? 'f-btn' : 'f-linkish'} onClick={() => setAsking(false)}>
         отмена
       </button>
     </span>

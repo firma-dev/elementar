@@ -11,6 +11,14 @@ export interface AccountsProps {
   onSelect: (key: string | null) => void
   /** Убрать счёт вместе с его операциями. */
   onDrop: (key: string) => void
+  /**
+   * Показывать ли «убрать счёт».
+   *
+   * На сводке — нет: это редкое и необратимое действие, а сводка висит перед
+   * глазами каждый день, и опасная кнопка на ней просится под палец. Место ей
+   * там же, где остальное хозяйство, — в «подробно».
+   */
+  removable?: boolean
 }
 
 /**
@@ -64,6 +72,7 @@ export function Accounts({
   counts,
   onSelect,
   onDrop,
+  removable = false,
 }: AccountsProps): JSX.Element | null {
   if (list.length === 0) return null
 
@@ -138,7 +147,7 @@ export function Accounts({
             Уносит операции этого счёта, поэтому спрашивает. «Сбросить всё»
             рядом не заменяет: там уходит вся работа, здесь — одна выписка из
             нескольких. */}
-        {victim === undefined ? null : (
+        {victim === undefined || !removable ? null : (
           <Confirm
             label="убрать счёт"
             question={`убрать «${victim.name}» и все его операции?`}
