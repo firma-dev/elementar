@@ -428,6 +428,16 @@ export function App(): JSX.Element {
   }, [onAccount, period, edge, day, month, planes])
 
   const incomeSources = useMemo(() => byIncomeSource(onAccount, edge), [onAccount, edge])
+  /**
+   * Источники за выбранный отрезок — для сводки.
+   *
+   * Полный список считается за всё загруженное: одним днём о том, откуда
+   * приходят деньги, не судят (Д-026). Но на сводке под числом «пришло за
+   * месяц» стояли суммы за весь год, и они в это число не складывались —
+   * человек читал противоречие. За дверью «подробно» список по-прежнему за всё
+   * время, и там же написано, почему.
+   */
+  const periodSources = useMemo(() => byIncomeSource(scope, edge), [scope, edge])
   const arrival = useMemo(() => nextArrival(incomeSources, edge), [incomeSources, edge])
 
   const visible = useMemo(() => {
@@ -927,7 +937,7 @@ export function App(): JSX.Element {
               onSetPlan={() => setView('details')}
               part="income"
             />
-            <Arrivals sources={incomeSources} next={arrival} edge={edge} />
+            <Arrivals sources={periodSources} next={arrival} />
           </section>
 
           {sentToPeople(scope).length === 0 ? null : (
