@@ -91,8 +91,11 @@ export function Arrivals({ sources, next, onSetDate, byHand }: ArrivalsProps): J
       ) : (
         <p class="f-arr__row f-arr__row--next">
           <span class="f-arr__who">{next.label}</span>
+          {/* «Изменить» написано словом: пунктирного подчёркивания мало —
+              человек спросил, как поправить дату, глядя прямо на неё. Та же
+              подпись, что у остатка: одно действие — одно слово. */}
           <button type="button" class="f-arr__when" onClick={() => setAsking(true)}>
-            {byHand ? 'ждёте' : 'ждём'} {dayLabel(next.date)}
+            {byHand ? 'ждёте' : 'ждём'} {dayLabel(next.date)} · изменить
           </button>
           <Amount class="f-arr__sum" value={next.amount} kopecks="never" />
         </p>
