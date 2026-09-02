@@ -657,8 +657,6 @@ export function App(): JSX.Element {
         setDay(null)
         setCategoryFilter(null)
       }}
-      onRename={renameAccount}
-      onDrop={dropAccount}
     />
   )
 
@@ -1144,9 +1142,9 @@ export function App(): JSX.Element {
               <span class="f-set__k">Данные</span>
               <span class="f-set__acts">
                 <Confirm
-                  label="забыть всё"
-                  question="забыть выписку и все проставленные категории?"
-                  confirm="да, забыть"
+                  label="сбросить всё"
+                  question="сбросить выписку и все проставленные категории?"
+                  confirm="да, сбросить"
                   chip
                   onConfirm={() => {
                     forgetEverything()

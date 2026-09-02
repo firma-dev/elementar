@@ -2,7 +2,7 @@ import { useState } from 'preact/hooks'
 import type { JSX } from 'preact'
 import { PEOPLE, dayLabel, isCategory, weekdayLabel } from '../model.js'
 import type { Categorized, Category } from '../model.js'
-import { merchantKey, merchantLabel } from '../merchant.js'
+import { merchantKey, merchantLabel, phoneIn } from '../merchant.js'
 import { formatShare } from '../money.js'
 import { operationOf } from '../operation.js'
 import { Amount } from './Amount.js'
@@ -91,14 +91,34 @@ export function Transfers({
   const sent = rows.filter((tx) => tx.amount < 0 && operationOf(tx.description).category === PEOPLE)
   if (sent.length === 0) return null
 
+  /**
+   * Имя по номеру телефона.
+   *
+   * Одну и ту же линию выгрузка называет по-разному: у исходящего перевода в
+   * описании только номер, у входящего от того же человека — имя. Собираем
+   * имена со всех операций сразу и подставляем туда, где банк назвал номер:
+   * «79035965130» человек не узнаёт, «Екатерина Вячеславовна» узнаёт.
+   */
+  const nameByPhone = new Map<string, string>()
+  for (const tx of rows) {
+    const phone = phoneIn(tx.description)
+    if (phone === '') continue
+    const label = merchantLabel(tx.description)
+    if (/^\d+$/.test(label) || label === 'Перевод' || label === 'Без описания') continue
+    if (!nameByPhone.has(phone)) nameByPhone.set(phone, label)
+  }
+
   const map = new Map<string, Person>()
   for (const tx of sent) {
+    // Ключ тот же, по которому хранится сказанное человеком: у перевода это
+    // номер телефона (см. `merchantKey`).
     const key = merchantKey(tx.description)
+    const phone = phoneIn(tx.description)
     const found = map.get(key)
     if (found === undefined) {
       map.set(key, {
         key,
-        label: merchantLabel(tx.description),
+        label: nameByPhone.get(phone) ?? merchantLabel(tx.description),
         total: -tx.amount,
         rows: [tx],
         common: tx.category,
@@ -153,7 +173,7 @@ export function Transfers({
                   <span class="f-tr__sign" aria-hidden="true">
                     {opened ? '−' : '+'}
                   </span>
-                  {person.label}
+                  <span class="f-tr__who">{person.label}</span>
                 </button>
                 <Amount class="f-unknown__sum" value={person.total} kopecks="never" />
               </div>
@@ -183,7 +203,7 @@ export function Transfers({
               {opened ? (
                 <div class="f-peek">
                   {person.rows.map((tx) => (
-                    <div key={tx.id} class="f-peek__row">
+                    <div key={tx.id} class="f-tr__line">
                       {/* День недели и время — то, по чему перевод вспоминается.
                           Сумма и имя получателя об одном переводе из двадцати
                           не говорят ничего, а «пт, 22:48» говорит. Время есть

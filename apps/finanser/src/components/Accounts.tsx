@@ -1,7 +1,5 @@
-import { useState } from 'preact/hooks'
 import type { JSX } from 'preact'
 import type { Account } from '../store.js'
-import { Confirm } from './Confirm.js'
 
 export interface AccountsProps {
   list: readonly Account[]
@@ -10,8 +8,6 @@ export interface AccountsProps {
   /** Сколько операций на каждом счёте: ключ → число. */
   counts: Readonly<Record<string, number>>
   onSelect: (key: string | null) => void
-  onRename: (key: string, name: string, bank: string) => void
-  onDrop: (key: string) => void
 }
 
 /**
@@ -27,6 +23,11 @@ export interface AccountsProps {
  *
  * «Все счета» стоит первым и выбран по умолчанию: вопрос «сколько я трачу»
  * задают про все деньги, а не про одну карту.
+ *
+ * Переименования здесь больше нет. Имя счёта — это карта, а банк узнаётся по
+ * подписи выгрузки: обе строки берутся из самого файла, и править их руками
+ * было нечего. Кнопка стояла рядом с единственным счётом и предлагала работу
+ * там, где работы нет.
  *
  * Банк — не второй уровень переключения, а подпись над группой. Два уровня
  * стоили бы двух касаний вместо одного, а счетов у человека обычно три-пять:
@@ -54,15 +55,7 @@ function short(name: string): string {
   return digits === null ? name : `·${digits[1]}`
 }
 
-export function Accounts({
-  list,
-  active,
-  counts,
-  onSelect,
-  onRename,
-  onDrop,
-}: AccountsProps): JSX.Element | null {
-  const [editing, setEditing] = useState<string | null>(null)
+export function Accounts({ list, active, counts, onSelect }: AccountsProps): JSX.Element | null {
   if (list.length === 0) return null
 
   /**
@@ -75,7 +68,6 @@ export function Accounts({
    */
   const only = list.length === 1 ? list[0] : undefined
 
-  const current = list.find((a) => a.key === editing) ?? null
   const groups = groupByBank(list)
   const named = groups.filter((g) => g.bank !== '').length
 
@@ -126,16 +118,6 @@ export function Accounts({
         ) : named < 2 ? (
           list.map(chip)
         ) : null}
-        {only === undefined ? null : (
-          <button
-            type="button"
-            class={editing === only.key ? 'f-acc f-acc--edit f-acc--on' : 'f-acc f-acc--edit'}
-            aria-expanded={editing === only.key}
-            onClick={() => setEditing(editing === only.key ? null : only.key)}
-          >
-            {editing === only.key ? 'отмена' : 'переименовать'}
-          </button>
-        )}
       </div>
 
       {named < 2 ? null : (
@@ -147,66 +129,6 @@ export function Accounts({
             </div>
           ))}
         </div>
-      )}
-
-      {/* Плашка, а не подчёркнутая ссылка: в этой строке всё остальное —
-          плашки, и ссылка среди них выглядела вставленной из другого места.
-          К тому же по ней попадают пальцем, а по подчёркнутому слову в четыре
-          миллиметра высотой — нет. */}
-      {/* При единственном счёте правка стоит в самой строке — второй такой же
-          кнопкой ниже она и оказалась на экране дважды. */}
-      {active === null || only !== undefined ? null : (
-        <p class="f-accs__act">
-          <button
-            type="button"
-            class={editing === active ? 'f-acc f-acc--edit f-acc--on' : 'f-acc f-acc--edit'}
-            aria-expanded={editing === active}
-            onClick={() => setEditing(editing === active ? null : active)}
-          >
-            {editing === active ? 'отмена' : 'переименовать'}
-          </button>
-        </p>
-      )}
-
-      {current === null ? null : (
-        <form
-          class="f-accs__form"
-          onSubmit={(event) => {
-            event.preventDefault()
-            const form = event.currentTarget
-            const name = (form.elements.namedItem('name') as HTMLInputElement).value.trim()
-            const bank = (form.elements.namedItem('bank') as HTMLInputElement).value.trim()
-            if (name !== '') onRename(current.key, name, bank)
-            setEditing(null)
-          }}
-        >
-          <label class="f-field">
-            <span class="f-field__k">Счёт</span>
-            <input name="name" type="text" defaultValue={current.name} maxLength={40} />
-          </label>
-          <label class="f-field">
-            <span class="f-field__k">Банк</span>
-            <input name="bank" type="text" defaultValue={current.bank} maxLength={40} />
-          </label>
-          <div class="f-accs__buttons">
-            <button type="submit" class="f-go">
-              сохранить
-            </button>
-            {/* Удаление счёта уносит его операции — поэтому оно красное,
-                стоит поодаль от «сохранить» и спрашивает. Цвет и расстояние
-                уменьшают вероятность промаха, но не отменяют его: на телефоне
-                мимо попадают и по красному. */}
-            <Confirm
-              label="убрать счёт вместе с операциями"
-              question={`убрать «${current.name}» и все его операции?`}
-              confirm="да, убрать"
-              onConfirm={() => {
-                onDrop(current.key)
-                setEditing(null)
-              }}
-            />
-          </div>
-        </form>
       )}
     </div>
   )

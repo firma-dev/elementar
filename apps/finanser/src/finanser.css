@@ -238,6 +238,8 @@ input {
    кнопкой, хотя все шесть кнопки. Теперь у всех один вид: рамка, капс, серый
    текст. Громкой остаётся только одна кнопка на экране — «столько-то операций»,
    потому что она одна и ведёт к главному списку. */
+/* Капс у всех плашек: OCR читается заглавными, строчные в нём кривые
+   (Д-034). */
 .f-chip,
 .f-head__load {
   border: var(--el__border-width-s) solid var(--el__border);
@@ -884,11 +886,16 @@ input {
 
 /* Имя получателя — кнопка: за ней раскрывается список его переводов. Ведёт
    себя как строка, а не как кнопка: та же кегль и цвет, что у соседей, и знак
-   раскрытия слева — иначе в плотном списке появляется вторая громкая вещь. */
+   раскрытия слева — иначе в плотном списке появляется вторая громкая вещь.
+
+   Капс, как всё в корпусе: OCR читается заглавными, строчные в нём кривые
+   (Д-034). Знак раскрытия вынесен в свою колонку постоянной ширины — без неё
+   имена начинались то от «+», то от «−», и левый край списка гулял. */
 .f-tr__name {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1ch 1fr;
   align-items: baseline;
-  gap: 0.4em;
+  gap: 0.5em;
   min-width: 0;
   padding: 0;
   border: 0;
@@ -896,11 +903,10 @@ input {
   color: inherit;
   font: inherit;
   font-size: var(--el__fs-s);
+  letter-spacing: var(--el__ls-caps-s);
+  text-transform: uppercase;
   text-align: start;
   cursor: pointer;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .f-tr__name:hover {
@@ -909,7 +915,24 @@ input {
 
 .f-tr__sign {
   color: var(--el__text-caption);
-  flex-shrink: 0;
+}
+
+/* Имя длиннее строки обрезается многоточием, а не толкает сумму. */
+.f-tr__who {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Строка перевода внутри раскрытого человека: день, сумма, выбор. Сетка, а не
+   поток: без неё суммы стояли лесенкой, каждая от своей даты. */
+.f-tr__line {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: baseline;
+  gap: var(--f-step-2);
+  padding: var(--f-v-1) 0;
 }
 
 .f-unknown__count {
@@ -1651,15 +1674,7 @@ input {
   cursor: default;
 }
 
-.f-acc--edit {
-  border-color: var(--el__border);
-  color: var(--el__text-caption);
-}
 
-.f-acc--edit:hover {
-  border-color: var(--el__text);
-  color: var(--el__text);
-}
 
 .f-acc--on {
   background: var(--el__mark);
@@ -1701,27 +1716,8 @@ input {
   outline: var(--el__border-width-s) solid var(--el__background);
 }
 
-.f-accs__act {
-  margin-top: var(--f-step-1);
-  font-size: var(--el__fs-xs);
-}
 
-.f-accs__form {
-  /* Форма всплывает по нажатию, значит лежит над списком. */
-  box-shadow: var(--el__shadow-s);
-  margin-top: var(--f-step-1);
-  border: var(--el__border-width-s) solid var(--el__text);
-  padding: var(--f-v-3) 0.7em;
-}
 
-.f-accs__buttons {
-  display: flex;
-  align-items: baseline;
-  gap: var(--f-step-2);
-  flex-wrap: wrap;
-  margin-top: var(--f-step-2);
-  font-size: var(--el__fs-xs);
-}
 
 .f-field {
   display: flex;

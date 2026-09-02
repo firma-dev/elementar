@@ -184,6 +184,17 @@ const TRANSACTION_ID = /^(?=.*\d)[A-Z0-9]{12,}$/
  * «Пятёрочка» окажется отдельным получателем.
  */
 export function merchantKey(description: string): string {
+  // У перевода человеку ключ — номер телефона, если он в описании есть.
+  //
+  // Имя банк пишет как придётся: у исходящего перевода не пишет вовсе, у
+  // входящего от того же человека пишет полностью, в другой выгрузке — с
+  // инициалами. Номер один и тот же везде. Раз ключ определяет, к кому
+  // относится сказанное человеком «это за аренду», он должен быть тем, что не
+  // меняется.
+  if (operationOf(description).category === 'Переводы людям') {
+    const phone = phoneIn(description)
+    if (phone !== '') return phone
+  }
   return cleanWords(description, true)
 }
 
@@ -294,6 +305,22 @@ export function merchantLabel(description: string): string {
 }
 
 const CYRILLIC = /[А-Яа-яЁё]/
+
+/**
+ * Телефон в описании операции. Пусто — номера нет.
+ *
+ * Нужен, чтобы связать две записи об одном и том же человеке: подробная
+ * выгрузка называет получателя перевода только номером, а отправителя —
+ * именем. Номер один и тот же, и по нему имя находится.
+ */
+export function phoneIn(description: string): string {
+  const digits = fold(description).match(/\b\d{10,15}\b/)
+  if (digits === null) return ''
+  // Ноли и код страны спереди — одна и та же линия: «0079672130470»,
+  // «79672130470» и «89672130470» это один человек.
+  const tail = digits[0].replace(/^0+/, '').slice(-10)
+  return tail.length === 10 ? tail : ''
+}
 
 /** Получатель, собранный из нескольких операций. */
 export interface MerchantGroup {

@@ -383,10 +383,13 @@ describe('перевод человеку — не «Прочее» и не пе
     expect(planeOfTx(row.category, row.amount)).toBe('spend')
   })
 
-  it('ключ получателя — имя человека, а не номер телефона', async () => {
+  it('ключ получателя — номер телефона: он один во всех выгрузках', async () => {
     const { merchantKey } = await import('../src/merchant.js')
+    // Имя банк пишет как придётся: у исходящего перевода не пишет вовсе, у
+    // входящего от того же человека пишет полностью. Номер один и тот же, и
+    // сказанное человеком «это за аренду» держится именно на нём.
     expect(merchantKey(toPerson)).toBe(merchantKey(fromPerson))
-    expect(merchantKey(toPerson)).not.toMatch(/\d/)
+    expect(merchantKey(toPerson)).toBe('9990000000')
   })
 
   it('«внешний перевод по номеру телефона» остаётся переездом между своими', async () => {

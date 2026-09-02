@@ -416,7 +416,17 @@ export function txId(
  */
 export function accountKey(raw: string): string {
   const clean = raw.trim()
-  return clean === '' ? 'default' : fnv1a(clean.toUpperCase())
+  if (clean === '') return 'default'
+  // Ключ — по последним четырём цифрам, а не по написанию.
+  //
+  // Один и тот же банк пишет карту то «**3523», то «*3523», то «553691******3523».
+  // По написанию это три разных счёта: в переключателе появлялись две
+  // одинаковые с виду плашки «Райффайзен Банк ·3523», и операции делились
+  // между ними пополам. Последние четыре цифры — то единственное, что банк не
+  // меняет от выгрузки к выгрузке.
+  const digits = clean.replace(/\D+/g, '')
+  const tail = digits.length >= 4 ? digits.slice(-4) : ''
+  return fnv1a(tail === '' ? clean.toUpperCase() : `КАРТА ${tail}`)
 }
 
 /**

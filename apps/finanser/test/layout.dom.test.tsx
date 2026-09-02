@@ -251,14 +251,16 @@ describe('выбор', () => {
 })
 
 describe('кому вы переводите', () => {
-  const sent = (day: string, amount: number, who: string): Tx =>
-    tx(day, amount, `Перевод на номер 0079990000001. Получатель: ${who} Осуществлен через СБП.`)
+  // У каждого человека свой номер: по нему переводы и собираются в одного
+  // получателя, потому что имя банк пишет как придётся, а номер — всегда.
+  const sent = (day: string, amount: number, who: string, phone = '0079990000001'): Tx =>
+    tx(day, amount, `Перевод на номер ${phone}. Получатель: ${who} Осуществлен через СБП.`)
 
   const people: Categorized[] = categorizeAll(
     [
       sent('2026-01-03', -6500000, 'Марина Игоревна К.'),
       sent('2026-02-03', -6500000, 'Марина Игоревна К.'),
-      sent('2026-02-08', -900000, 'Анна Сергеевна В.'),
+      sent('2026-02-08', -900000, 'Анна Сергеевна В.', '0079990000002'),
       tx('2026-02-09', -500000, 'PYATEROCHKA 1'),
     ],
     {},
@@ -330,10 +332,10 @@ describe('кому вы переводите', () => {
       root.querySelector<HTMLButtonElement>('.f-tr__name')?.click()
     })
     // У Марины два перевода — значит две строки внутри.
-    expect(root.querySelectorAll('.f-peek__row')).toHaveLength(2)
+    expect(root.querySelectorAll('.f-tr__line')).toHaveLength(2)
 
     act(() => {
-      root.querySelector<HTMLButtonElement>('.f-peek__row .f-pick__button')?.click()
+      root.querySelector<HTMLButtonElement>('.f-tr__line .f-pick__button')?.click()
     })
     const option = [...root.querySelectorAll<HTMLElement>('.f-pick__option')].find(
       (node) => node.textContent?.trim() === 'Здоровье',

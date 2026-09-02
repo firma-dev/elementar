@@ -265,13 +265,43 @@ export function addStatement(list: Tx[], info: SourceInfo): void {
    * Поэтому строки исчезнувших счетов этого файла убираются. Именно этого
    * файла: чужие счета трогать нельзя, там может лежать другая выписка.
    */
-  const before = sources.value.find((s) => s.name === info.name)
+  /**
+   * Свежая выписка заменяет прежнюю по своему отрезку — и только по нему.
+   *
+   * Банк выгружает период заново, и в этом периоде его слово последнее: если
+   * операция была отменена, уточнена или проведена задним числом, старая
+   * строка должна уйти, а не лежать рядом. Раньше склейка шла по
+   * идентификаторам, и стоило разбору измениться — те же деньги считались
+   * дважды.
+   *
+   * За пределами отрезка не трогаем ничего: выписка за месяц, загруженная
+   * поверх годовой, не должна стирать одиннадцать месяцев истории.
+   *
+   * Счета, которых в новой выписке нет, тоже не трогаем: другая карта или
+   * другой банк живут рядом, а не вместо.
+   */
+  /**
+   * Счета, которые этот же файл заводил раньше и больше не заводит.
+   *
+   * Так бывает, когда меняется сам разбор: операции по СБП уезжали на
+   * отдельный счёт, а теперь достаются карте. Идентификатор считается вместе
+   * со счётом — значит у тех же строк он стал другим, и без уборки они легли
+   * бы рядом со своими же двойниками.
+   */
+  const before = sources.value.find((source) => source.name === info.name)
   const now = new Set(info.accounts ?? [])
   const gone = new Set((before?.accounts ?? []).filter((key) => !now.has(key)))
+
+  const incoming = new Set(info.accounts ?? list.map((tx) => tx.account))
+  const dates = list.map((tx) => tx.date).sort()
+  const from = dates[0] ?? ''
+  const to = dates[dates.length - 1] ?? ''
 
   const byId = new Map<string, Tx>()
   for (const tx of transactions.value) {
     if (gone.has(tx.account)) continue
+    const replaced = incoming.has(tx.account) && from !== '' && tx.date >= from && tx.date <= to
+    if (replaced) continue
     byId.set(tx.id, tx)
   }
   for (const tx of list) byId.set(tx.id, tx)
