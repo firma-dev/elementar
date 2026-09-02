@@ -596,6 +596,20 @@ export function App(): JSX.Element {
     return info?.name ?? ''
   })()
 
+  /**
+   * Сохранить разметку файлом.
+   *
+   * Одно действие на все кнопки, которые его звали: «выгрузить JSON» и
+   * «сохранить копию» делали одно и то же двумя одинаковыми кусками кода, и
+   * отметку «сохранено» ставил только один из них.
+   */
+  const saveJson = (): void => {
+    downloadJson(buildExport(rows, info, overrides.value, merchantOverrides.value), 'финансер.json')
+    // Ручная выгрузка — тоже сохранение: напоминать о ней сразу после того, как
+    // человек её сделал, значит не смотреть на него вовсе.
+    markSaved(today())
+  }
+
   const freshness = (
     <p class="f-fresh">
       <span class={behind > 2 ? 'f-fresh__k f-fresh__k--old' : 'f-fresh__k'}>
@@ -626,33 +640,13 @@ export function App(): JSX.Element {
     />
   )
 
+  /**
+   * Подвал — только подпись. Действия из него уехали в «Настройку»: словарь
+   * правил, тема и «забыть всё» стояли строкой ссылок внизу страницы, где их
+   * никто не искал, и выглядели тремя разными вещами.
+   */
   const footer = (
-    <footer class="f-foot">
-      <button type="button" class="f-linkish f-linkish--quiet" onClick={() => setView('rules')}>
-        словарь правил →
-      </button>
-      {' · '}
-      {/* Тёмная тема — выбор, а не умолчание: прототип был светлой бумагой,
-          и тёмную сторону дизайнер глазами не проверял. */}
-      <button type="button" class="f-linkish f-linkish--quiet" onClick={toggleTheme}>
-        {dark.value ? 'светлая тема' : 'тёмная тема'}
-      </button>
-      <br />
-      Выписка и правки лежат в хранилище этого браузера и никуда не отправляются. На общем
-      компьютере так делать не стоит —{' '}
-      <Confirm
-        label="забыть всё"
-        question="забыть выписку и все проставленные категории?"
-        confirm="да, забыть"
-        onConfirm={() => {
-          forgetEverything()
-          setMonth(null)
-          setCategoryFilter(null)
-          setView('year')
-        }}
-      />
-      .
-    </footer>
+    <footer class="f-foot">Элементар · финансер · всё считается в этом браузере</footer>
   )
 
   if (view === 'rules') {
@@ -1052,6 +1046,83 @@ export function App(): JSX.Element {
 
         <section class="f-block f-block--tools">
           <h2 class="f-block__title">Настройка</h2>
+
+          {/* Меню, а не россыпь ссылок внизу страницы.
+              Там жили шесть действий в трёх видах сразу — подчёркнутая ссылка,
+              красная подчёркнутая, синяя — и ни одно не выглядело кнопкой, хотя
+              все шесть кнопки. Теперь строка: слева о чём, справа что можно
+              сделать. Вид у всех один. */}
+          <div class="f-set">
+            <div class="f-set__row">
+              <span class="f-set__k">Выписка</span>
+              <span class="f-set__acts">
+                <button type="button" class="f-chip" onClick={() => fileRef.current?.click()}>
+                  {busy ? 'читаю…' : 'обновить'}
+                </button>
+                <button type="button" class="f-chip" onClick={saveJson}>
+                  выгрузить JSON
+                </button>
+              </span>
+            </div>
+
+            <div class="f-set__row">
+              <span class="f-set__k">Копия</span>
+              <span class="f-set__acts">
+                <button type="button" class="f-chip" onClick={saveJson}>
+                  сохранить копию
+                </button>
+              </span>
+              {/* Напоминание стоит рядом с самим действием, а не отдельной
+                  плашкой над сводкой: там оно отодвигало то, ради чего пришли. */}
+              {backupDue(today()) ? (
+                <span class="f-set__note">
+                  Выписка и правки живут только в этом браузере — копии больше недели нет.
+                </span>
+              ) : null}
+            </div>
+
+            <div class="f-set__row">
+              <span class="f-set__k">Вид</span>
+              <span class="f-set__acts">
+                {/* Тёмная тема — выбор, а не умолчание (Д-035). */}
+                <button type="button" class="f-chip" onClick={toggleTheme}>
+                  {dark.value ? 'светлая тема' : 'тёмная тема'}
+                </button>
+              </span>
+            </div>
+
+            <div class="f-set__row">
+              <span class="f-set__k">Правила</span>
+              <span class="f-set__acts">
+                <button type="button" class="f-chip" onClick={() => setView('rules')}>
+                  словарь правил
+                </button>
+              </span>
+            </div>
+
+            <div class="f-set__row">
+              <span class="f-set__k">Данные</span>
+              <span class="f-set__acts">
+                <Confirm
+                  label="забыть всё"
+                  question="забыть выписку и все проставленные категории?"
+                  confirm="да, забыть"
+                  chip
+                  onConfirm={() => {
+                    forgetEverything()
+                    setMonth(null)
+                    setCategoryFilter(null)
+                    setView('year')
+                  }}
+                />
+              </span>
+              <span class="f-set__note">
+                Выписка и правки лежат в хранилище этого браузера и никуда не отправляются. На общем
+                компьютере так делать не стоит.
+              </span>
+            </div>
+          </div>
+
           <Extras enabled={enabledExtras} pending={pending} onToggle={toggleExtra} />
           <Fold title="Счётная сводка" meta={summary.value === null ? 'не посчитана' : undefined}>
             <p class="f-note">
@@ -1067,6 +1138,10 @@ export function App(): JSX.Element {
         </section>
       </div>
 
+      {/* Единственная громкая кнопка на экране: она ведёт к списку операций,
+          ради которого всё остальное и считалось. Выгрузка и загрузка стояли
+          рядом с ней тихими ссылками — теперь они в «Настройке», где им место:
+          обе про файлы, и обе случаются раз в месяц. */}
       <p class="f-all">
         <button
           type="button"
@@ -1078,55 +1153,7 @@ export function App(): JSX.Element {
         >
           {scope.length} операций →
         </button>
-        <button
-          type="button"
-          class="f-linkish f-linkish--quiet"
-          onClick={() => {
-            downloadJson(
-              buildExport(rows, info, overrides.value, merchantOverrides.value),
-              'финансер.json',
-            )
-            // Ручная выгрузка — тоже сохранение: напоминать о ней сразу после
-            // того, как человек её сделал, значит не смотреть на него вовсе.
-            markSaved(today())
-          }}
-        >
-          выгрузить JSON →
-        </button>
-        {/* Загрузка выписки переехала сюда из правого верхнего угла. Она
-            случается раз в месяц, а стояла заметнее всего на экране — заметнее
-            записи траты, ради которой приложение открывают каждый день. Рядом с
-            выгрузкой ей и место: обе операции про файлы. */}
-        <button
-          type="button"
-          class="f-linkish f-linkish--quiet"
-          onClick={() => fileRef.current?.click()}
-        >
-          загрузить выписку →
-        </button>
       </p>
-
-      {/* Напоминание о выгрузке — внизу, рядом с самой выгрузкой, а не над
-          сводкой. Наверху оно отодвигало то, ради чего пришли, и повторяло
-          собой действие, которое стоит двумя строками ниже. */}
-      {backupDue(today()) ? (
-        <p class="f-note f-backup">
-          Выписка и правки живут только в этом браузере.{' '}
-          <button
-            type="button"
-            class="f-linkish"
-            onClick={() => {
-              downloadJson(
-                buildExport(rows, info, overrides.value, merchantOverrides.value),
-                'финансер.json',
-              )
-              markSaved(today())
-            }}
-          >
-            сохранить копию →
-          </button>
-        </p>
-      ) : null}
 
       {/* Две колонки на широком экране. В одну картина занимала две с
           половиной высоты монитора: чтобы увидеть категории, надо было

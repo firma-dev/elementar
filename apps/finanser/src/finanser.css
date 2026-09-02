@@ -232,9 +232,13 @@ input {
   text-transform: uppercase;
 }
 
-/* Обновить выписку — тихая кнопка у правого края шапки. Тихая намеренно:
-   это действие раз в месяц, и громким оно спорило бы с числами, ради которых
-   экран открывают каждый день. */
+/* Тихая кнопка — одна на весь корпус.
+   Внизу страницы жили шесть действий в трёх видах сразу: подчёркнутая ссылка,
+   подчёркнутая красная ссылка и синяя ссылка, — и ни один из них не был
+   кнопкой, хотя все шесть кнопки. Теперь у всех один вид: рамка, капс, серый
+   текст. Громкой остаётся только одна кнопка на экране — «столько-то операций»,
+   потому что она одна и ведёт к главному списку. */
+.f-chip,
 .f-head__load {
   border: var(--el__border-width-s) solid var(--el__border);
   background: none;
@@ -251,9 +255,62 @@ input {
     border-color var(--el__duration-fast) var(--el__easing-base);
 }
 
+.f-chip:hover,
 .f-head__load:hover {
   color: var(--el__text);
   border-color: var(--el__text);
+}
+
+/* Необратимое — красным по рамке, а не заливкой: заливка сделала бы «забыть
+   всё» самой заметной кнопкой экрана. */
+.f-chip--danger {
+  color: var(--el__accent);
+  border-color: color-mix(in srgb, var(--el__accent) 40%, transparent);
+}
+
+.f-chip--danger:hover {
+  color: var(--el__accent);
+  border-color: var(--el__accent);
+}
+
+/* Меню настройки: строка — подпись слева, кнопки справа. */
+.f-set {
+  margin-top: var(--f-step-2);
+}
+
+.f-set__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--f-step-2);
+  flex-wrap: wrap;
+  padding: var(--f-v-2) 0;
+  border-bottom: var(--el__border-width-s) solid var(--el__border);
+}
+
+.f-set__row:last-child {
+  border-bottom: 0;
+}
+
+.f-set__k {
+  font-size: var(--el__fs-xs);
+  letter-spacing: var(--el__ls-caps-s);
+  text-transform: uppercase;
+  color: var(--el__text-caption);
+}
+
+.f-set__acts {
+  display: flex;
+  align-items: center;
+  gap: var(--f-step-1);
+  flex-wrap: wrap;
+}
+
+.f-set__note {
+  flex-basis: 100%;
+  font-size: var(--el__fs-xs);
+  color: var(--el__text-caption);
+  line-height: 1.5;
 }
 
 .f-head__note {
@@ -1547,13 +1604,8 @@ input {
   color: var(--el__color-gray-950);
 }
 
-.f-linkish--quiet {
-  color: var(--el__text-caption);
-}
-
-.f-linkish--quiet:hover {
-  color: var(--el__text);
-}
+/* `.f-linkish--quiet` больше нет: тихие ссылки внизу страницы стали плашками
+   `.f-chip`, и приглушённого варианта ссылки не осталось ни одного. */
 
 .f-linkish--danger {
   color: var(--el__accent);

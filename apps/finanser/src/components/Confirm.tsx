@@ -8,6 +8,12 @@ interface Props {
   question: string
   /** Подтверждение. Не «да», а название действия: «да» без глагола не читают. */
   confirm: string
+  /**
+   * Вид плашки, а не ссылки. Нужен в меню настройки, где всё остальное —
+   * плашки: подчёркнутая ссылка среди них выглядела бы другой породой, и
+   * человек искал бы её глазами дольше, чем нажимал.
+   */
+  chip?: boolean
   onConfirm: () => void
 }
 
@@ -24,12 +30,13 @@ interface Props {
  * подвале рядом с переключателем темы. Промах пальцем по телефону стоил
  * человеку всей работы, и отменить это было нечем.
  */
-export function Confirm({ label, question, confirm, onConfirm }: Props): JSX.Element {
+export function Confirm({ label, question, confirm, chip = false, onConfirm }: Props): JSX.Element {
   const [asking, setAsking] = useState(false)
+  const danger = chip ? 'f-chip f-chip--danger' : 'f-linkish f-linkish--danger'
 
   if (!asking) {
     return (
-      <button type="button" class="f-linkish f-linkish--danger" onClick={() => setAsking(true)}>
+      <button type="button" class={danger} onClick={() => setAsking(true)}>
         {label}
       </button>
     )
@@ -40,7 +47,7 @@ export function Confirm({ label, question, confirm, onConfirm }: Props): JSX.Ele
       <span class="f-confirm__q">{question}</span>{' '}
       <button
         type="button"
-        class="f-linkish f-linkish--danger"
+        class={danger}
         onClick={() => {
           setAsking(false)
           onConfirm()
@@ -49,7 +56,7 @@ export function Confirm({ label, question, confirm, onConfirm }: Props): JSX.Ele
         {confirm}
       </button>{' '}
       <span class="f-confirm__sep">·</span>{' '}
-      <button type="button" class="f-linkish" onClick={() => setAsking(false)}>
+      <button type="button" class={chip ? 'f-chip' : 'f-linkish'} onClick={() => setAsking(false)}>
         отмена
       </button>
     </span>
