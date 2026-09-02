@@ -1,5 +1,6 @@
 import type { JSX } from 'preact'
 import type { Account } from '../store.js'
+import { Confirm } from './Confirm.js'
 
 export interface AccountsProps {
   list: readonly Account[]
@@ -8,6 +9,8 @@ export interface AccountsProps {
   /** Сколько операций на каждом счёте: ключ → число. */
   counts: Readonly<Record<string, number>>
   onSelect: (key: string | null) => void
+  /** Убрать счёт вместе с его операциями. */
+  onDrop: (key: string) => void
 }
 
 /**
@@ -55,18 +58,26 @@ function short(name: string): string {
   return digits === null ? name : `·${digits[1]}`
 }
 
-export function Accounts({ list, active, counts, onSelect }: AccountsProps): JSX.Element | null {
+export function Accounts({
+  list,
+  active,
+  counts,
+  onSelect,
+  onDrop,
+}: AccountsProps): JSX.Element | null {
   if (list.length === 0) return null
 
   /**
    * Один счёт — переключать нечего, но назвать его есть чем.
    *
    * Переключатель из одной кнопки раньше не показывался вовсе, и вместе с ним
-   * пропадала единственная дверь к имени: банк, угаданный по подписи выгрузки,
-   * поправить было негде. Поэтому при одном счёте остаётся строка — имя и
-   * «переименовать», без выбора «все счета», которого не из чего делать.
+   * пропадала единственная дверь к нему: убрать счёт было негде. Поэтому при
+   * одном счёте строка остаётся — имя и «убрать», без выбора «все счета»,
+   * которого не из чего делать.
    */
   const only = list.length === 1 ? list[0] : undefined
+  /** Счёт, о котором сейчас идёт речь: единственный или выбранный. */
+  const victim = only ?? list.find((account) => account.key === active)
 
   const groups = groupByBank(list)
   const named = groups.filter((g) => g.bank !== '').length
@@ -118,6 +129,24 @@ export function Accounts({ list, active, counts, onSelect }: AccountsProps): JSX
         ) : named < 2 ? (
           list.map(chip)
         ) : null}
+
+        {/* Убрать счёт — рядом с ним самим, а не в общем меню: убирают всегда
+            конкретный, и выбирать его вторым действием из списка было бы
+            лишней работой. Появляется, когда счёт один или когда он выбран:
+            в остальных случаях непонятно, о котором речь.
+
+            Уносит операции этого счёта, поэтому спрашивает. «Сбросить всё»
+            рядом не заменяет: там уходит вся работа, здесь — одна выписка из
+            нескольких. */}
+        {victim === undefined ? null : (
+          <Confirm
+            label="убрать счёт"
+            question={`убрать «${victim.name}» и все его операции?`}
+            confirm="да, убрать"
+            chip
+            onConfirm={() => onDrop(victim.key)}
+          />
+        )}
       </div>
 
       {named < 2 ? null : (

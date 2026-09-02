@@ -27,6 +27,20 @@ export interface Plan {
    */
   saved: Kopeck
   /**
+   * Остаток на счёте, названный рукой. Ноль — не назван.
+   *
+   * Половина банков остаток в выгрузку не кладёт вовсе: в файле только
+   * операции. Посчитать его из них нельзя — выписка начинается не с нуля, и
+   * сумма операций это не остаток, а движение за период. Спросить у человека
+   * дешевле, чем показывать пустое место там, где он каждый день смотрит.
+   */
+  onAccount: Kopeck
+  /**
+   * Дата, на которую назван остаток. После неё он пересчитывается операциями:
+   * назвали в понедельник, во вторник потратили — приложение знает про вторник.
+   */
+  onAccountAt: string
+  /**
    * Цель: сколько всего надо накопить. Ноль — цели нет, и тогда не показывается
    * ни полоса, ни срок: пустая шкала врёт не меньше неверной.
    */
@@ -39,7 +53,16 @@ export interface Plan {
   goalDate: string
 }
 
-export const EMPTY_PLAN: Plan = { income: 0, fixed: 0, save: 0, saved: 0, goal: 0, goalDate: '' }
+export const EMPTY_PLAN: Plan = {
+  income: 0,
+  fixed: 0,
+  save: 0,
+  saved: 0,
+  goal: 0,
+  goalDate: '',
+  onAccount: 0,
+  onAccountAt: '',
+}
 
 /**
  * Достроить план, прочитанный из хранилища.
@@ -59,6 +82,8 @@ export function normalizePlan(raw: Partial<Plan> | null | undefined): Plan {
     saved: num(raw.saved),
     goal: num(raw.goal),
     goalDate: typeof raw.goalDate === 'string' ? raw.goalDate : '',
+    onAccount: num(raw.onAccount),
+    onAccountAt: typeof raw.onAccountAt === 'string' ? raw.onAccountAt : '',
   }
 }
 

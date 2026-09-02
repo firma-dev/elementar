@@ -283,6 +283,10 @@ export function App(): JSX.Element {
       saved: 32_000_000 as Kopeck,
       goal: 60_000_000 as Kopeck,
       goalDate: demoGoalMonth(),
+      // В примере остаток назван рукой — как у человека, чей банк его не
+      // выгружает. Иначе главное число «можно тратить» в демо не считается.
+      onAccount: 7_384_000 as Kopeck,
+      onAccountAt: today(),
     })
   }, [accept])
 
@@ -361,12 +365,29 @@ export function App(): JSX.Element {
     return sum
   }, [onAccount, edge])
 
-  /** Остаток по счетам: сумма последних известных остатков выгрузок. */
+  /**
+   * Остаток по счетам.
+   *
+   * Сперва то, что выгрузил банк. Если не выгрузил ни один — то, что назвал
+   * человек, пересчитанное операциями после названной даты: назвал в
+   * понедельник, во вторник потратил — во вторник число уже другое.
+   */
   const balance = useMemo(() => {
     const known = loaded.filter((s) => typeof s.balance === 'number' && s.balance !== null)
-    if (known.length === 0) return null
-    return known.reduce((sum, s) => sum + (s.balance ?? 0), 0)
-  }, [loaded])
+    if (known.length > 0) return known.reduce((sum, s) => sum + (s.balance ?? 0), 0)
+
+    const named = plan.value.onAccountAt
+    if (named === '' || plan.value.onAccount === 0) return null
+    const after = onAccount
+      .filter((tx) => tx.date > named)
+      .reduce((sum, tx) => sum + tx.amount, 0)
+    return plan.value.onAccount + after
+  }, [loaded, onAccount, plan.value.onAccount, plan.value.onAccountAt])
+
+  /** Остаток назван рукой — об этом стоит сказать прямо в ячейке. */
+  const balanceByHand =
+    loaded.every((s) => typeof s.balance !== 'number' || s.balance === null) &&
+    plan.value.onAccountAt !== ''
 
   const allIncome = useMemo(
     () => onAccount.reduce((sum, tx) => (tx.amount > 0 ? sum + tx.amount : sum), 0),
@@ -657,6 +678,12 @@ export function App(): JSX.Element {
         setDay(null)
         setCategoryFilter(null)
       }}
+      onDrop={(key) => {
+        dropAccount(key)
+        setMonth(null)
+        setDay(null)
+        setCategoryFilter(null)
+      }}
     />
   )
 
@@ -831,6 +858,12 @@ export function App(): JSX.Element {
           сейчас», и внутри любого блока читались бы как его часть. */}
       <Balance
         onAccount={balance as Kopeck | null}
+        byHand={balanceByHand}
+        onSet={(kopecks) => {
+          // Остаток называется на край данных: человек смотрит в банк сегодня,
+          // а выписка кончается вчера — и операции между ними уже учтены.
+          setPlan({ ...plan.value, onAccount: kopecks, onAccountAt: edge })
+        }}
         next={arrival}
         edge={edge}
         owedToSavings={toGoal(plan.value, setAside as Kopeck)}

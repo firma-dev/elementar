@@ -238,6 +238,44 @@ input {
    кнопкой, хотя все шесть кнопки. Теперь у всех один вид: рамка, капс, серый
    текст. Громкой остаётся только одна кнопка на экране — «столько-то операций»,
    потому что она одна и ведёт к главному списку. */
+/* Ввод остатка прямо в ячейке: поле и плашка в строку. */
+.f-bal__ask {
+  display: flex;
+  align-items: center;
+  gap: var(--f-step-1);
+  flex-wrap: wrap;
+}
+
+.f-bal__ask input {
+  width: 9em;
+  border: var(--el__border-width-s) solid var(--el__text);
+  background: none;
+  color: var(--el__text);
+  font: inherit;
+  font-size: var(--el__fs-s);
+  padding: var(--f-v-2) 0.5em;
+}
+
+/* «С ваших слов» — тихая приписка под числом: она объясняет, откуда оно, и не
+   спорит с самим числом. */
+.f-bal__edit {
+  display: block;
+  margin-top: var(--f-v-1);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--el__text-caption);
+  font: inherit;
+  font-size: var(--el__fs-xs);
+  letter-spacing: var(--el__ls-caps-s);
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.f-bal__edit:hover {
+  color: var(--el__text);
+}
+
 /* Капс у всех плашек: OCR читается заглавными, строчные в нём кривые
    (Д-034). */
 .f-chip,

@@ -9,6 +9,8 @@ const plan: Plan = {
   saved: 10103500,
   goal: 0,
   goalDate: '',
+  onAccount: 0,
+  onAccountAt: '',
 }
 
 describe('план', () => {

@@ -1,5 +1,7 @@
+import { useState } from 'preact/hooks'
 import type { JSX } from 'preact'
 import type { Kopeck } from '../money.js'
+import { parseAmount } from '../money.js'
 import { dayLabel } from '../model.js'
 import { dailyRoom } from '../savings.js'
 import { Amount } from './Amount.js'
@@ -13,6 +15,10 @@ export interface BalanceProps {
   edge: string
   /** Сколько ещё предстоит отложить по плану в этом месяце. */
   owedToSavings: Kopeck
+  /** Назвать остаток рукой: банк выгружает его не всегда. */
+  onSet: (kopecks: Kopeck) => void
+  /** Назван ли остаток рукой — от этого зависит, что писать в подписи. */
+  byHand: boolean
 }
 
 /**
@@ -38,7 +44,10 @@ export function Balance({
   next,
   edge,
   owedToSavings,
+  onSet,
+  byHand,
 }: BalanceProps): JSX.Element | null {
+  const [asking, setAsking] = useState(false)
   if (onAccount === null && next === null) return null
   const room = dailyRoom(onAccount, next?.date ?? null, edge, owedToSavings)
 
@@ -47,10 +56,54 @@ export function Balance({
       <div class="f-bal__cell">
         <dt class="f-bal__k">на счёте</dt>
         <dd class="f-bal__v">
-          {onAccount === null ? (
-            <span class="f-bal__none">банк не выгрузил остаток</span>
+          {/* Остаток банк кладёт в выгрузку не всегда, а посчитать его из
+              операций нельзя: выписка начинается не с нуля, и их сумма — это
+              движение за период, а не остаток. Значит, спрашиваем. Одно число
+              рукой — не то же, что вести траты руками: его называют раз в
+              месяц, и без него не считается главное, «сколько можно тратить». */}
+          {asking ? (
+            <form
+              class="f-bal__ask"
+              onSubmit={(event) => {
+                event.preventDefault()
+                const field = (event.currentTarget as HTMLFormElement).elements.namedItem(
+                  'сумма',
+                ) as HTMLInputElement
+                const value = parseAmount(field.value)
+                if (value !== null) onSet(Math.abs(value) as Kopeck)
+                setAsking(false)
+              }}
+            >
+              <input
+                name="сумма"
+                type="text"
+                inputMode="decimal"
+                autoFocus
+                placeholder="сколько сейчас"
+                aria-label="Остаток на счёте"
+              />
+              <button type="submit" class="f-chip">
+                запомнить
+              </button>
+            </form>
+          ) : onAccount === null ? (
+            <button type="button" class="f-chip" onClick={() => setAsking(true)}>
+              указать остаток
+            </button>
           ) : (
-            <Amount class="f-bal__num f-bal__num--in" value={onAccount} kopecks="never" />
+            <>
+              <Amount class="f-bal__num f-bal__num--in" value={onAccount} kopecks="never" />
+              {byHand ? (
+                <button
+                  type="button"
+                  class="f-bal__edit"
+                  title="Остаток назван рукой — банк его не выгрузил"
+                  onClick={() => setAsking(true)}
+                >
+                  с ваших слов · изменить
+                </button>
+              ) : null}
+            </>
           )}
         </dd>
       </div>
@@ -73,7 +126,7 @@ export function Balance({
             <span class="f-bal__none">
               {next === null
                 ? 'регулярных источников не видно'
-                : 'банк не выгрузил остаток — не от чего считать'}
+                : 'укажите остаток слева — и посчитаем'}
             </span>
           ) : room.perDay === 0 ? (
             <span class="f-bal__none">
