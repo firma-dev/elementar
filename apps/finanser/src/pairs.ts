@@ -17,11 +17,27 @@
  * участвует ровно в одной паре.
  */
 import type { Categorized } from './model.js'
+import { PEOPLE } from './model.js'
+import { merchantKey } from './merchant.js'
 import { planeOfTx } from './plane.js'
 import { operationOf } from './operation.js'
 
 /** Насколько далеко друг от друга могут стоять две стороны одного перевода. */
 const MAX_DAYS = 2
+
+/**
+ * Расходные стороны, у которых вообще бывает пара.
+ *
+ * Раньше сюда шло всё с планом «переезд» — в том числе снятие наличных и
+ * платёж по кредиту. Снятые в банкомате пять тысяч на другой счёт приходом не
+ * возвращаются: если в те же два дня пришли ровно пять тысяч, это совпадение,
+ * и пара из них ложная. А ложная пара дороже пропущенной — она прячет
+ * настоящий приход, то есть уносит деньги из картины.
+ *
+ * Остались только те два вида, которые и означают «деньги переехали между
+ * моими счетами»: перевод и откладывание.
+ */
+const MOVED_OUT = new Set(['Переводы', 'Накопления'])
 
 export interface Pair {
   out: Categorized
@@ -42,6 +58,30 @@ function looksIncoming(tx: Categorized): boolean {
   return kind === 'topup' || kind === 'transfer' || kind === 'cash'
 }
 
+/**
+ * Не спорят ли стороны именами.
+ *
+ * «Я перевёл пять тысяч Алине» и «Георгий перевёл мне пять тысяч» — не пара, а
+ * два события, случайно совпавших суммой и днём. Когда обе стороны называют
+ * человека и это разные люди, пары нет.
+ *
+ * Сравниваются только переводы людям: у них в описании и правда стоит, кому
+ * или от кого. У «внутреннего перевода» и «пополнения» никакого имени нет, и
+ * требовать совпадения было бы требованием совпасть в пустоте — настоящие пары
+ * перестали бы находиться.
+ *
+ * Так проверка срабатывает там, где и должна: человек сказал рукой, что вон
+ * тот перевод по номеру телефона — это он себе, категория стала «Переводы», и
+ * операция попала в поиск пары. Вот тогда имя на другой стороне и решает.
+ */
+function sameSide(out: Categorized, incoming: Categorized): boolean {
+  if (operationOf(out.description).category !== PEOPLE) return true
+  if (operationOf(incoming.description).category !== PEOPLE) return true
+  const left = merchantKey(out.description)
+  const right = merchantKey(incoming.description)
+  return left === '' || right === '' || left === right
+}
+
 function days(a: string, b: string): number {
   const diff = new Date(`${a}T00:00:00Z`).getTime() - new Date(`${b}T00:00:00Z`).getTime()
   return Math.abs(Math.round(diff / 86400000))
@@ -51,7 +91,7 @@ function days(a: string, b: string): number {
  * Найти пары. Возвращает только уверенные — см. рассуждение выше.
  */
 export function findPairs(rows: readonly Categorized[]): Pair[] {
-  const outs = rows.filter((tx) => tx.amount < 0 && planeOfTx(tx.category, tx.amount) === 'move')
+  const outs = rows.filter((tx) => tx.amount < 0 && MOVED_OUT.has(tx.category))
   const ins = rows.filter((tx) => tx.amount > 0 && looksIncoming(tx))
 
   const taken = new Set<string>()
@@ -62,7 +102,8 @@ export function findPairs(rows: readonly Categorized[]): Pair[] {
         !taken.has(candidate.id) &&
         candidate.amount === -out.amount &&
         candidate.account !== out.account &&
-        days(candidate.date, out.date) <= MAX_DAYS,
+        days(candidate.date, out.date) <= MAX_DAYS &&
+        sameSide(out, candidate),
     )
     if (match === undefined) continue
     taken.add(match.id)

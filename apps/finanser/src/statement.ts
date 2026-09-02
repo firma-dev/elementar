@@ -40,8 +40,22 @@ const COLUMNS = {
     'AMOUNT',
     'СУММА',
   ],
+  /**
+   * Приход и расход в валюте счёта, отдельными колонками.
+   *
+   * Подробная выгрузка того же банка разводит суммы дважды: «в валюте
+   * операции» и «в валюте счёта», и каждую — на приход и расход. Считать надо
+   * по валюте счёта: в ней лежат деньги, и в ней же остаток. По валюте
+   * операции сумма покупки в евро так и осталась бы евро.
+   *
+   * Стоят выше `credit`/`debit`: колонка ищется по первому совпавшему имени,
+   * и когда в файле есть обе пары, выбрать надо эту.
+   */
+  creditPay: ['СУММА В ВАЛЮТЕ СЧЕТА ПОСТУПЛЕНИЯ', 'СУММА В ВАЛЮТЕ СЧЁТА ПОСТУПЛЕНИЯ'],
+  debitPay: ['СУММА В ВАЛЮТЕ СЧЕТА РАСХОДЫ', 'СУММА В ВАЛЮТЕ СЧЁТА РАСХОДЫ'],
   /** Приход и расход отдельными колонками: так отдаёт заметная часть банков. */
   credit: [
+    'СУММА В ВАЛЮТЕ ОПЕРАЦИИ ПОСТУПЛЕНИЯ',
     'ПРИХОД',
     'ПОСТУПЛЕНИЕ',
     'ПОСТУПЛЕНИЯ',
@@ -50,11 +64,20 @@ const COLUMNS = {
     'КРЕДИТ',
     'CREDIT',
   ],
-  debit: ['РАСХОД', 'РАСХОДЫ', 'СПИСАНИЕ', 'СПИСАНИЯ', 'СУММА СПИСАНИЯ', 'ДЕБЕТ', 'DEBIT'],
+  debit: [
+    'СУММА В ВАЛЮТЕ ОПЕРАЦИИ РАСХОДЫ',
+    'РАСХОД',
+    'РАСХОДЫ',
+    'СПИСАНИЕ',
+    'СПИСАНИЯ',
+    'СУММА СПИСАНИЯ',
+    'ДЕБЕТ',
+    'DEBIT',
+  ],
   balance: ['ОСТАТОК', 'ОСТАТОК ПО СЧЕТУ', 'ОСТАТОК ПО СЧЁТУ', 'БАЛАНС', 'BALANCE'],
   currency: ['ВАЛЮТА ОПЕРАЦИИ', 'ВАЛЮТА СЧЕТА', 'ВАЛЮТА СЧЁТА', 'CURRENCY', 'ВАЛЮТА'],
   payAmount: ['СУММА ПЛАТЕЖА'],
-  payCurrency: ['ВАЛЮТА ПЛАТЕЖА'],
+  payCurrency: ['ВАЛЮТА СЧЕТА', 'ВАЛЮТА СЧЁТА', 'ВАЛЮТА ПЛАТЕЖА'],
   description: [
     'ОПИСАНИЕ',
     'ОПИСАНИЕ ОПЕРАЦИИ',
@@ -103,6 +126,7 @@ export function findHeader(rows: readonly (readonly string[])[]): number {
     const columns = mapColumns(row)
     if (columns.date === undefined) continue
     if (columns.amount !== undefined) return i
+    if (columns.creditPay !== undefined || columns.debitPay !== undefined) return i
     if (columns.credit !== undefined || columns.debit !== undefined) return i
   }
   return -1
@@ -249,6 +273,19 @@ export function parseTime(raw: string): string | null {
 function isRouble(currency: string): boolean {
   const c = currency.trim().toUpperCase()
   return c === '' || c === 'RUB' || c === 'RUR' || c === 'РУБ' || c === '643' || c === '₽'
+}
+
+/**
+ * Сумма из пары колонок «приход» и «расход».
+ *
+ * Знак несёт сама колонка, а не число: расход в таких выгрузках записан
+ * положительным, и без разворота траты сложились бы с доходами в одну кучу.
+ */
+function twoColumns(credit: string, debit: string): Kopeck | null {
+  const plus = parseAmount(credit) ?? 0
+  const minus = parseAmount(debit) ?? 0
+  const net = plus - Math.abs(minus)
+  return net === 0 ? null : (net as Kopeck)
 }
 
 /** Что вернул разбор: операции и то, что с ними по дороге случилось. */
@@ -399,7 +436,11 @@ export function parseRows(rows: readonly (readonly string[])[], fallbackAccount 
 
   const columns = mapColumns(header)
   const hasAmount =
-    columns.amount !== undefined || columns.credit !== undefined || columns.debit !== undefined
+    columns.amount !== undefined ||
+    columns.creditPay !== undefined ||
+    columns.debitPay !== undefined ||
+    columns.credit !== undefined ||
+    columns.debit !== undefined
   if (columns.date === undefined || !hasAmount) {
     // Показываем найденные заголовки: если файл всё-таки таблица, но чужая,
     // человек по ним сразу поймёт, что принёс не тот экспорт.
@@ -458,16 +499,22 @@ export function parseRows(rows: readonly (readonly string[])[], fallbackAccount 
     // бы с доходами в одну кучу.
     let foreignCurrency: string | null = null
     let amount: Kopeck | null = parseAmount(at(row, columns.amount))
-    if (amount === null && (columns.credit !== undefined || columns.debit !== undefined)) {
-      const credit = parseAmount(at(row, columns.credit)) ?? 0
-      const debit = parseAmount(at(row, columns.debit)) ?? 0
-      const net = credit - Math.abs(debit)
-      amount = net === 0 ? null : (net as Kopeck)
+
+    // Пара колонок в валюте счёта — самая надёжная: в ней лежат деньги.
+    const paid = twoColumns(at(row, columns.creditPay), at(row, columns.debitPay))
+    if (amount === null && paid !== null) amount = paid
+
+    if (amount === null) {
+      const own = twoColumns(at(row, columns.credit), at(row, columns.debit))
+      if (own !== null) amount = own
     }
 
     // Операция в валюте: сумма операции — в евро, сумма платежа — в рублях.
     // Считаем в рублях, потому что картина года рублёвая.
-    const currency = at(row, columns.currency)
+    //
+    // Когда сумма взята из пары «в валюте счёта», валюта тоже её: сравнивать
+    // рублёвую сумму с валютой операции значило бы объявить рубли евро.
+    const currency = paid !== null ? at(row, columns.payCurrency) : at(row, columns.currency)
     if (!isRouble(currency)) {
       const payCurrency = at(row, columns.payCurrency)
       const pay = parseAmount(at(row, columns.payAmount))

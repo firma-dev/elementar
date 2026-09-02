@@ -52,11 +52,7 @@ export function IncomeView({ rows, edge, total, onExclude }: IncomeViewProps): J
   // Тот же порядок цветов, что у категорий трат: главный источник выделен,
   // остальные тускнеют. Зелёный вместо красного — единственная разница.
   const fill = (i: number): string =>
-    i === 0
-      ? 'var(--el__success)'
-      : i < 3
-        ? 'var(--el__color-gray-700)'
-        : 'var(--el__color-gray-500)'
+    i === 0 ? 'f-inc__fill--top' : i < 3 ? 'f-inc__fill--high' : 'f-inc__fill--rest'
 
   // Раскрыт сразу — как «Траты по категориям» напротив. Источники прихода это
   // и есть содержимое блока доходов: под свёрткой блок состоял из числа,
@@ -91,8 +87,8 @@ export function IncomeView({ rows, edge, total, onExclude }: IncomeViewProps): J
             </div>
             <span class="f-inc__track">
               <span
-                class="f-inc__fill"
-                style={`display:block;width:${Math.max(1, Math.round((100 * source.total) / max))}%;background:${fill(i)}`}
+                class={`f-inc__fill ${fill(i)}`}
+                style={`display:block;width:${Math.max(1, Math.round((100 * source.total) / max))}%`}
               />
             </span>
             <div class="f-inc__meta">

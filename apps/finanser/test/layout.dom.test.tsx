@@ -94,11 +94,12 @@ describe('список категорий', () => {
       />,
       root,
     )
-    const styles = [...root.querySelectorAll('.f-cat__fill')].map(
-      (n) => n.getAttribute('style') ?? '',
-    )
-    expect(styles[0]).toContain('--el__data-negative')
-    expect(styles.join(' ')).not.toContain('gray-400')
+    // Цвет теперь классом, а не строкой в разметке: в логике компонента
+    // цветов больше нет вовсе, и проверять надо разряд полосы.
+    const classes = [...root.querySelectorAll('.f-cat__fill')].map((n) => n.className)
+    expect(classes[0]).toContain('f-cat__fill--top')
+    expect(classes.slice(1).join(' ')).not.toContain('--top')
+    expect(classes.at(-1)).toContain('f-cat__fill--high')
   })
 
   it('у строк есть ранг, доля и сумма', () => {

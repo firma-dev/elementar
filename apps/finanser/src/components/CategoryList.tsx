@@ -38,12 +38,15 @@ export function CategoryList({
 }: CategoryListProps): JSX.Element {
   const max = rows.reduce((m, row) => Math.max(m, row.spend), 1)
 
+  /**
+   * Цвет полосы — классом, а не строкой со значением цвета.
+   *
+   * Три цвета лежали здесь же, в логике, и два из них брались прямо из
+   * палитры мимо слоя смыслов: на тёмной теме серый почти сливался с фоном, и
+   * заметить это было негде — цвет не назывался больше нигде.
+   */
   const fill = (i: number): string =>
-    i === 0
-      ? 'var(--el__data-negative)'
-      : i < 3
-        ? 'var(--el__color-gray-700)'
-        : 'var(--el__color-gray-500)'
+    i === 0 ? 'f-cat__fill--top' : i < 3 ? 'f-cat__fill--high' : 'f-cat__fill--rest'
 
   return (
     <ul role="list">
@@ -68,8 +71,8 @@ export function CategoryList({
               </span>
               <span class="f-cat__track">
                 <span
-                  class="f-cat__fill"
-                  style={`display:block;width:${Math.max(1, Math.round((100 * row.spend) / max))}%;background:${fill(i)}`}
+                  class={`f-cat__fill ${fill(i)}`}
+                  style={`display:block;width:${Math.max(1, Math.round((100 * row.spend) / max))}%`}
                 />
               </span>
             </button>

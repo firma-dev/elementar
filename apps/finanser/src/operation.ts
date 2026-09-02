@@ -58,16 +58,26 @@ const KINDS: ReadonlyArray<{
   marks: readonly string[]
   /** Что вырезать из описания, чтобы осталось имя получателя. */
   strip?: readonly string[]
+  /**
+   * Где обрубить хвост. Всё от первого из этих слов и до конца выбрасывается.
+   *
+   * Английская выгрузка дописывает к переводу целый протокол: «Message … SBP
+   * ID A1B2… Recipient`s bank Т-Банк». Идентификатор там у каждой операции
+   * свой, и без обрубания ключ получателя выходил уникальным — двадцать шесть
+   * переводов одному человеку превращались в двадцать шесть «людей».
+   */
+  cutAt?: readonly string[]
 }> = [
   {
     kind: 'saving',
     category: 'Накопления',
-    marks: ['ИНВЕСТКОПИЛКА', 'НАКОПИТЕЛЬНЫЙ СЧЕТ', 'ВКЛАД', 'КОПИЛКА', 'ЦЕЛЬ '],
+    marks: ['ИНВЕСТКОПИЛКА', 'НАКОПИТЕЛЬНЫЙ СЧЕТ', 'ВКЛАД', 'КОПИЛКА', 'ЦЕЛЬ ', 'SAVINGS ACCOUNT'],
   },
   {
     kind: 'reward',
     category: 'Доход',
-    marks: ['КЭШБЭК', 'КЕШБЭК', 'ПРОЦЕНТЫ НА ОСТАТОК', 'БОНУС'],
+    marks: ['КЭШБЭК', 'КЕШБЭК', 'ПРОЦЕНТЫ НА ОСТАТОК', 'БОНУС', 'CASHBACK', 'INTEREST ON'],
+    cutAt: ['TO ACCOUNT', 'FROM ACCOUNT'],
   },
   {
     // «Прочее», а не «Кредиты». «Кредиты» — план `move`, то есть «деньги
@@ -97,7 +107,13 @@ const KINDS: ReadonlyArray<{
     // иначе «перевод» поймается общим правилом.
     kind: 'transfer',
     category: 'Переводы',
-    marks: ['ПЕРЕВОД СОБСТВЕННЫХ СРЕДСТВ', 'ПЕРЕВОД МЕЖДУ СВОИМИ СЧЕТАМИ'],
+    marks: [
+      'ПЕРЕВОД СОБСТВЕННЫХ СРЕДСТВ',
+      'ПЕРЕВОД МЕЖДУ СВОИМИ СЧЕТАМИ',
+      'INTERNAL TRANSFER',
+      'OWN ACCOUNT TRANSFER',
+    ],
+    cutAt: ['TO ACCOUNT', 'FROM ACCOUNT'],
   },
   {
     kind: 'transfer',
@@ -138,14 +154,28 @@ const KINDS: ReadonlyArray<{
      */
     kind: 'transfer',
     category: 'Переводы людям',
-    marks: ['ПЕРЕВОД НА НОМЕР', 'ПЕРЕВОД С НОМЕРА'],
+    marks: [
+      'ПЕРЕВОД НА НОМЕР',
+      'ПЕРЕВОД С НОМЕРА',
+      // Английская выгрузка того же банка: получателя она называет только
+      // номером телефона, отправителя — именем.
+      'RECIPIENT S PHONE NUMBER',
+      'SENDER S PHONE NUMBER',
+      'TRANSFER FROM',
+      'TRANSFER TO',
+    ],
     strip: [
       'ПЕРЕВОД НА НОМЕР',
       'ПЕРЕВОД С НОМЕРА',
       'ПОЛУЧАТЕЛЬ',
       'ОТПРАВИТЕЛЬ',
       'ОСУЩЕСТВЛЕН ЧЕРЕЗ СБП',
+      'RECIPIENT S PHONE NUMBER',
+      'SENDER S PHONE NUMBER',
+      'TRANSFER FROM',
+      'TRANSFER TO',
     ],
+    cutAt: ['MESSAGE', 'SBP ID', 'TO ACCOUNT', 'FROM ACCOUNT', 'ПЕРЕВОД СРЕДСТВ'],
   },
   {
     kind: 'topup',
@@ -157,8 +187,9 @@ const KINDS: ReadonlyArray<{
     // иначе интернет-провайдер навсегда останется «Прочим».
     kind: 'utility',
     category: null,
-    marks: ['ОПЛАТА УСЛУГ MBANK', 'ОПЛАТА УСЛУГ'],
-    strip: ['ОПЛАТА УСЛУГ MBANK', 'ОПЛАТА УСЛУГ', 'MBANK'],
+    marks: ['ОПЛАТА УСЛУГ MBANK', 'ОПЛАТА УСЛУГ', 'PROVIDER'],
+    strip: ['ОПЛАТА УСЛУГ MBANK', 'ОПЛАТА УСЛУГ', 'MBANK', 'PROVIDER'],
+    cutAt: ['PHONE NUMBER', 'ПО НОМЕРУ ТЕЛЕФОНА'],
   },
   {
     /**
@@ -210,6 +241,10 @@ export function operationOf(description: string): Operation {
     const mark = rule.marks.find((m) => norm.includes(` ${m} `) || norm.startsWith(` ${m}`))
     if (mark === undefined) continue
     let rest = norm
+    for (const cut of rule.cutAt ?? []) {
+      const at = rest.indexOf(` ${cut} `)
+      if (at !== -1) rest = rest.slice(0, at + 1)
+    }
     for (const cut of rule.strip ?? [mark]) rest = rest.split(cut).join(' ')
     return { kind: rule.kind, rest: rest.trim(), category: rule.category }
   }

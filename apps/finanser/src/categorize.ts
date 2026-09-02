@@ -19,7 +19,7 @@
  * выглядела правдоподобно, поэтому ошибку никто бы не заметил.
  */
 import type { Category, Categorized, Tx } from './model.js'
-import { INCOME, OTHER, PARENT, collapse, isCategory } from './model.js'
+import { INCOME, MOVE_CATEGORIES, OTHER, PARENT, collapse, isCategory } from './model.js'
 import { KEYWORD_INDEX } from './rules.js'
 import { fold, normalize } from './text.js'
 import { merchantKey } from './merchant.js'
@@ -27,6 +27,11 @@ import { operationOf } from './operation.js'
 import { byMcc } from './mcc.js'
 
 export { normalize }
+
+/** Трата ли это по своей природе: не приход и не переезд денег. */
+function isSpending(category: Category): boolean {
+  return category !== INCOME && !MOVE_CATEGORIES.includes(category)
+}
 
 /** Категория по словарю правил. null — ни одно слово не подошло. */
 export function byRules(description: string): Category | null {
@@ -137,8 +142,15 @@ export function categorize(
 
   // Правка получателя бьёт всё, что ниже: человек уже сказал, что это за место,
   // и повторять это на каждой из полусотни операций за год он не должен.
+  //
+  // Но только на трату. Ключ получателя у перевода один в обе стороны — это и
+  // нужно, чтобы «за аренду» ложилось на все переводы одному человеку; однако
+  // деньги, пришедшие от него же, тратой на аренду не становятся. Расходная
+  // категория на приходе — неправда, и приход остаётся приходом.
   const byMerchant = merchants[merchantKey(tx.description)]
-  if (byMerchant !== undefined) return { ...tx, category: byMerchant, source: 'merchant' }
+  if (byMerchant !== undefined && (tx.amount < 0 || !isSpending(byMerchant))) {
+    return { ...tx, category: byMerchant, source: 'merchant' }
+  }
 
   const operation = operationOf(tx.description)
   if (operation.category !== null) {

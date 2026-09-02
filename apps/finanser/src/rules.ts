@@ -112,6 +112,7 @@ export const RULES: readonly Rule[] = [
       'KORCHMA',
       'FASTFOOD',
       'ФАСТФУД',
+      'BIMBO TEA',
       'ONE PRICE COFFEE',
       'СКУРАТОВ',
       'DOUBLE B',
@@ -130,8 +131,14 @@ export const RULES: readonly Rule[] = [
       'PIZZA',
       'СУШИ',
       'SUSHI',
-      'ЯНДЕКС ЕДА',
-      'YANDEX EDA',
+      // С хвостовым пробелом: «YANDEX EDA» без него ловил «YANDEX*5411*EDARIT»
+      // — доставку продуктов, у которой код платёжной сети говорит «продукты»,
+      // — и она уходила в кафе. Слово словаря должно кончаться там же, где
+      // кончается слово в описании.
+      'ЯНДЕКС ЕДА ',
+      'YANDEX EDA ',
+      'YANDEX EATS',
+      'ЯНДЕКС ЕДС',
       'DELIVERY CLUB',
       'DELIVERY',
       'КУХНЯ НА РАЙОНЕ',

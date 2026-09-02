@@ -15,7 +15,13 @@
 @font-face {
   font-family: 'OCR A Becker';
   src: url('/fonts/ocr-400.cyrillic.woff2') format('woff2');
-  font-weight: 400 700;
+  /* 400, а не диапазон «400 700». Диапазон обещал браузеру, что в файле есть
+     жирное начертание, — файл же один и в нём только светлое. Обещание
+     принималось на веру: `font-weight: 700` не рисовало ничего, ни настоящего
+     жира, ни синтетического, и подпись, задуманная жирной, молча была обычной.
+     Теперь объявлено то, что есть. Просить 700 в корпусе больше негде: с одним
+     начертанием выделяют кеглем и цветом, а не толщиной (Д-014). */
+  font-weight: 400;
   font-style: normal;
   font-display: optional;
   size-adjust: 92%;
@@ -25,7 +31,7 @@
 @font-face {
   font-family: 'OCR A Becker';
   src: url('/fonts/ocr-400.latin.woff2') format('woff2');
-  font-weight: 400 700;
+  font-weight: 400;
   font-style: normal;
   font-display: optional;
   size-adjust: 92%;
@@ -123,6 +129,11 @@ input {
   --f-v-3: 0.5em; /* между кусками внутри блока */
   --f-v-4: 0.9em; /* между разделами внутри блока */
 
+  /* Шкала одна. Рядом жила вторая — `--el__gap-s/m/l` из общего слоя, — и
+     расходилась с этой на десятую часть: восемь пикселей против шести,
+     шестнадцать против двенадцати. Два ряда почти одинаковых значений хуже
+     одного неидеального: глаз видит разнобой, а автор правки не знает, какой
+     из рядов брать. Все двенадцать мест переведены сюда по ближайшему шагу. */
   --f-step-1: calc(var(--el__spacer-s) * 0.5); /* строка и её подпись   */
   --f-step-2: var(--el__spacer-s); /* внутри блока          */
   --f-step-3: var(--el__spacer-m); /* между блоками         */
@@ -303,7 +314,6 @@ input {
   font-size: var(--el__fs-xl);
   line-height: 1.3;
   margin-bottom: var(--f-v-3);
-  font-weight: 700;
   text-wrap: pretty;
 }
 
@@ -686,6 +696,26 @@ input {
   height: 100%;
 }
 
+/* Цвет полосы — классом, а не строкой в разметке. Первая строка списка
+   выделена, следующие две темнее хвоста: порядок виден и без чтения чисел. */
+.f-cat__fill--top {
+  background: var(--el__data-negative);
+}
+
+.f-inc__fill--top {
+  background: var(--el__success);
+}
+
+.f-cat__fill--high,
+.f-inc__fill--high {
+  background: var(--f-bar-high);
+}
+
+.f-cat__fill--rest,
+.f-inc__fill--rest {
+  background: var(--f-bar-rest);
+}
+
 .f-cat--open {
   background: var(--el__surface);
 }
@@ -901,7 +931,7 @@ input {
 .f-all {
   display: flex;
   align-items: baseline;
-  gap: var(--el__gap-m);
+  gap: var(--f-step-2);
   flex-wrap: wrap;
   margin-top: var(--f-step-4);
   font-size: var(--el__fs-xs);
@@ -1193,7 +1223,6 @@ input {
 
 .f-card__title {
   font-size: var(--el__fs-s);
-  font-weight: 700;
   line-height: 1.35;
   margin-bottom: var(--f-v-2);
   text-wrap: pretty;
@@ -1544,7 +1573,7 @@ input {
 
 .f-accs__row {
   display: flex;
-  gap: var(--el__gap-s);
+  gap: var(--f-step-1);
   flex-wrap: wrap;
 }
 
@@ -1593,27 +1622,27 @@ input {
 }
 
 .f-acc--t0 .f-acc__dot {
-  background: var(--el__accent);
+  background: var(--f-tag-1);
 }
 
 .f-acc--t1 .f-acc__dot {
-  background: var(--el__success);
+  background: var(--f-tag-2);
 }
 
 .f-acc--t2 .f-acc__dot {
-  background: var(--el__link);
+  background: var(--f-tag-3);
 }
 
 .f-acc--t3 .f-acc__dot {
-  background: var(--el__mark);
+  background: var(--f-tag-4);
 }
 
 .f-acc--t4 .f-acc__dot {
-  background: var(--el__text-caption);
+  background: var(--f-tag-5);
 }
 
 .f-acc--t5 .f-acc__dot {
-  background: var(--el__text);
+  background: var(--f-tag-6);
 }
 
 .f-acc--on .f-acc__dot {
@@ -1636,7 +1665,7 @@ input {
 .f-accs__buttons {
   display: flex;
   align-items: baseline;
-  gap: var(--el__gap-m);
+  gap: var(--f-step-2);
   flex-wrap: wrap;
   margin-top: var(--f-step-2);
   font-size: var(--el__fs-xs);
@@ -1646,7 +1675,7 @@ input {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: var(--el__gap-s);
+  gap: var(--f-step-1);
   padding: var(--f-v-2) 0;
   border-bottom: var(--el__border-width-s) solid var(--el__border);
 }
@@ -1701,7 +1730,7 @@ input {
 .f-inc__line {
   display: flex;
   justify-content: space-between;
-  gap: var(--el__gap-s);
+  gap: var(--f-step-1);
   align-items: baseline;
 }
 
@@ -1753,7 +1782,7 @@ input {
 
 .f-plan__out {
   display: flex;
-  gap: var(--el__gap-l);
+  gap: var(--f-step-3);
   flex-wrap: wrap;
   margin-top: var(--f-step-2);
 }
@@ -1851,14 +1880,14 @@ input {
 .f-accs__banks {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--el__gap-s) var(--el__gap-m);
+  gap: var(--f-step-1) var(--f-step-2);
   margin-top: var(--f-step-1);
 }
 
 .f-accs__bank {
   display: flex;
   align-items: center;
-  gap: var(--el__gap-s);
+  gap: var(--f-step-1);
   min-width: 0;
 }
 
@@ -1881,7 +1910,7 @@ input {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: var(--el__gap-s);
+  gap: var(--f-step-1);
   padding: var(--f-step-2) 0;
 }
 
@@ -2053,7 +2082,7 @@ input {
 .f-extras__row {
   display: flex;
   align-items: baseline;
-  gap: var(--el__gap-s);
+  gap: var(--f-step-1);
   padding: var(--f-v-2) 0;
   border-bottom: var(--el__border-width-s) solid var(--el__border);
   flex-wrap: wrap;
@@ -2099,7 +2128,7 @@ input {
 .f-cash__line {
   display: flex;
   align-items: baseline;
-  gap: var(--el__gap-s);
+  gap: var(--f-step-1);
   width: 100%;
   border: none;
   background: none;
@@ -2136,7 +2165,7 @@ input {
 .f-cash__part {
   display: flex;
   align-items: center;
-  gap: var(--el__gap-s);
+  gap: var(--f-step-1);
   flex-wrap: wrap;
   padding: var(--f-v-2) 0;
 }

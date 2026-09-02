@@ -37,12 +37,13 @@ export function MonthChart({
    * `.f-chart__bar`, поэтому дневной и месячный графики выглядят одинаково.
    *
    * Выбранный — жёлтым, как всё выбранное в корпусе: период, счёт, категория,
-   * подпись дня. Цвет задаётся здесь строкой и перебивает класс
-   * `.f-chart__bar--on`, поэтому менять его надо в обоих местах — иначе
-   * дневной график станет жёлтым, а месячный останется прежним.
+   * подпись дня. Раньше цвет стоял здесь строкой и перебивал классы дневного
+   * графика: менять его приходилось в двух местах, и один из них забывался —
+   * дневной становился жёлтым, а месячный оставался прежним. Теперь оба
+   * красятся одними и теми же классами.
    */
-  const barColor = (active: boolean, hover: boolean): string =>
-    active ? 'var(--el__mark)' : hover ? 'var(--el__data-negative)' : 'var(--el__data-tertiary)'
+  const barClass = (active: boolean, hover: boolean): string =>
+    active ? 'f-chart__bar--on' : hover ? 'f-chart__bar--over' : ''
 
   return (
     <section class="f-chart" onMouseLeave={() => onHover(null)}>
@@ -79,8 +80,8 @@ export function MonthChart({
             >
               <span class="f-chart__slot">
                 <span
-                  class="f-chart__bar"
-                  style={`height:${height}%;background:${barColor(active, hover)}`}
+                  class={`f-chart__bar ${barClass(active, hover)}`.trim()}
+                  style={`height:${height}%`}
                 />
               </span>
             </button>
