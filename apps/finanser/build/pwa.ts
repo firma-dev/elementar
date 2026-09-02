@@ -75,14 +75,48 @@ self.addEventListener('fetch', (event) => {
   // но правило записано явно, чтобы оно не появилось незаметно.
   if (new URL(request.url).origin !== self.location.origin) return
 
+  // Страница — сперва из сети, и только если сети нет — из кэша.
+  //
+  // Было наоборот, и это оказалось ловушкой без выхода. Воркер отдавал
+  // сохранённый index.html на любой переход, не спрашивая сеть; в этом
+  // index.html стоят имена ассетов старой сборки, и приложение оставалось
+  // прежним навсегда. Ни перезагрузка, ни адрес с хвостом не помогали:
+  // запрос до сервера просто не доходил. Новая версия могла приехать только
+  // через обновление самого воркера, а он лежал в кэше браузера у хостинга —
+  // сорок пять дней. Человек видел, что правки «не доехали», и был прав.
+  //
+  // Секунда с половиной — потолок ожидания. Дольше ждать нельзя: в метро
+  // сеть отвечает не отказом, а молчанием, и приложение не должно молчать
+  // вместе с ней. Ассеты по-прежнему из кэша: их имена содержат хеш, и по
+  // одному адресу лежит всегда одно и то же.
   if (request.mode === 'navigate') {
-    event.respondWith(
-      caches.match(url('index.html')).then((hit) => hit || fetch(request)),
-    )
+    event.respondWith(fresh(request))
     return
   }
   event.respondWith(caches.match(request).then((hit) => hit || fetch(request)))
 })
+
+const PAGE_TIMEOUT = 1500
+
+async function fresh(request) {
+  const cached = caches.match(url('index.html'))
+  try {
+    const response = await Promise.race([
+      fetch(request),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('долго')), PAGE_TIMEOUT)),
+    ])
+    if (response && response.ok) {
+      const copy = response.clone()
+      // Свежую страницу кладём в тот же кэш: следующий запуск без сети
+      // покажет её, а не позапрошлую.
+      caches.open(CACHE).then((cache) => cache.put(url('index.html'), copy))
+      return response
+    }
+  } catch {
+    // Сети нет или она молчит — ниже отдаём сохранённое.
+  }
+  return (await cached) || fetch(request)
+}
 `
 }
 

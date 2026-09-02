@@ -610,6 +610,28 @@ export function App(): JSX.Element {
     markSaved(today())
   }
 
+  /**
+   * Переустановить приложение.
+   *
+   * Снимает сервис-воркер и его кэши, потом перезагружает страницу. Хранилище
+   * не трогается: выписка и правки живут в `localStorage`, а не в кэше, и
+   * терять их ради обновления кода незачем.
+   */
+  const reinstall = (): void => {
+    void (async () => {
+      try {
+        const workers = (await navigator.serviceWorker?.getRegistrations?.()) ?? []
+        for (const worker of workers) await worker.unregister()
+        const keys = (await globalThis.caches?.keys?.()) ?? []
+        for (const key of keys) await globalThis.caches.delete(key)
+      } catch {
+        // Браузер может запрещать и то и другое — перезагрузка всё равно
+        // полезна: без воркера страница придёт из сети.
+      }
+      globalThis.location.reload()
+    })()
+  }
+
   const freshness = (
     <p class="f-fresh">
       <span class={behind > 2 ? 'f-fresh__k f-fresh__k--old' : 'f-fresh__k'}>
@@ -1079,6 +1101,24 @@ export function App(): JSX.Element {
                   Выписка и правки живут только в этом браузере — копии больше недели нет.
                 </span>
               ) : null}
+            </div>
+
+            {/* Кнопка на случай, если приложение всё-таки застряло на старой
+                версии. Раньше выхода не было вовсе: воркер отдавал страницу из
+                кэша, не спрашивая сеть, и человеку оставалось чистить данные
+                сайта руками — вместе с выпиской. Здесь снимается воркер и его
+                кэши, выписка и правки остаются на месте. */}
+            <div class="f-set__row">
+              <span class="f-set__k">Приложение</span>
+              <span class="f-set__acts">
+                <button type="button" class="f-chip" onClick={reinstall}>
+                  переустановить
+                </button>
+              </span>
+              <span class="f-set__note">
+                Снимет сохранённую копию приложения и загрузит свежую с сервера. Выписка и
+                проставленные категории останутся.
+              </span>
             </div>
 
             <div class="f-set__row">
