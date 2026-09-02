@@ -332,10 +332,10 @@ describe('кому вы переводите', () => {
       root.querySelector<HTMLButtonElement>('.f-tr__name')?.click()
     })
     // У Марины два перевода — значит две строки внутри.
-    expect(root.querySelectorAll('.f-tr__line')).toHaveLength(2)
+    expect(root.querySelectorAll('.f-tr__row--one')).toHaveLength(2)
 
     act(() => {
-      root.querySelector<HTMLButtonElement>('.f-tr__line .f-pick__button')?.click()
+      root.querySelector<HTMLButtonElement>('.f-tr__row--one .f-pick__button')?.click()
     })
     const option = [...root.querySelectorAll<HTMLElement>('.f-pick__option')].find(
       (node) => node.textContent?.trim() === 'Здоровье',

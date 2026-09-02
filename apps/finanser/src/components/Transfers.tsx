@@ -155,15 +155,19 @@ export function Transfers({
         </span>
       </h2>
 
-      <ul class="f-unknown__list" role="list">
+      <ul class="f-tr__list" role="list">
         {shown.map((person) => {
           const opened = open === person.key
           // Переводы приходят в порядке выписки — с самого свежего.
           const last = person.rows[0]
           if (last === undefined) return null
           return (
-            <li key={person.key} class="f-unknown__row">
-              <div class="f-unknown__line">
+            <li key={person.key} class="f-tr__person">
+              {/* Одна строка на человека: имя, когда был последний перевод,
+                  «за что» и сумма. Выбор стоит рядом с суммой и выровнен по
+                  ней — он про эти деньги, а не про имя, и, стоя под именем,
+                  уезжал вслед за длиной даты. */}
+              <div class="f-tr__row">
                 <button
                   type="button"
                   class="f-tr__name"
@@ -175,20 +179,17 @@ export function Transfers({
                   </span>
                   <span class="f-tr__who">{person.label}</span>
                 </button>
-                <Amount class="f-unknown__sum" value={person.total} kopecks="never" />
-              </div>
 
-              <span class="f-unknown__pick">
-                {/* Когда был последний — прямо в строке, не под раскрытием.
-                    Смысл времени в том, чтобы вспомнить перевод, а вспоминать
-                    приходится до нажатия, а не после: строка, в которой стоят
-                    только имя и сумма, не подсказывает, нажимать ли вообще. */}
-                <span class="f-unknown__count">
+                {/* Когда был последний — в строке, а не под раскрытием: смысл
+                    времени в том, чтобы вспомнить перевод, а вспоминают до
+                    нажатия, а не после. */}
+                <span class="f-tr__meta">
                   {person.rows.length} пер. · {when(last)}
                   {person.common === null
                     ? ` · ${person.rows.filter((tx) => tx.category === PEOPLE).length} без имени`
                     : ''}
                 </span>
+
                 <Pick
                   value={person.common === null || person.common === PEOPLE ? '' : person.common}
                   options={options}
@@ -198,31 +199,33 @@ export function Transfers({
                     if (isCategory(next)) onMerchantCategory(person.key, next)
                   }}
                 />
-              </span>
+
+                <Amount class="f-tr__sum" value={person.total} kopecks="never" />
+              </div>
 
               {opened ? (
-                <div class="f-peek">
+                <div class="f-tr__inside">
                   {person.rows.map((tx) => (
-                    <div key={tx.id} class="f-tr__line">
+                    <div key={tx.id} class="f-tr__row f-tr__row--one">
                       {/* День недели и время — то, по чему перевод вспоминается.
                           Сумма и имя получателя об одном переводе из двадцати
                           не говорят ничего, а «пт, 22:48» говорит. Время есть
                           не всегда: зачисления банк проводит без него. */}
-                      <span class="f-peek__day">
+                      <span class="f-tr__when">
                         {weekdayLabel(tx.date)}, {dayLabel(tx.date)}
                         {tx.time === null ? null : <span class="f-tr__time">{tx.time}</span>}
                       </span>
-                      <Amount class="f-peek__sum" value={tx.amount} abs kopecks="never" />
+                      <span class="f-tr__meta" />
                       <Pick
                         value={tx.category === PEOPLE ? '' : tx.category}
                         options={options}
                         placeholder="— за что —"
                         label={`Категория перевода от ${dayLabel(tx.date)}`}
-                        quiet
                         onChange={(next) => {
                           if (isCategory(next)) onCategory(tx.id, next)
                         }}
                       />
+                      <Amount class="f-tr__sum" value={tx.amount} abs kopecks="never" />
                     </div>
                   ))}
                 </div>

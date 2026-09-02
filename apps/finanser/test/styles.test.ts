@@ -120,7 +120,7 @@ describe('стиль корпуса', () => {
     const FIELDS = ['.f-search input', '.f-field input', '.f-cash__amount']
     for (const field of FIELDS) {
       expect(ruleFor(coarse, field)).toMatch(/font-size:\s*16px/)
-      expect(ruleFor(base, field)).toMatch(/font-size:\s*var\(--el__fs-/)
+      expect(ruleFor(base, field)).toMatch(/font-size:\s*var\(--(el__fs-|f-)/)
     }
   })
 
@@ -188,5 +188,35 @@ describe('стиль корпуса', () => {
       .map((v) => v.replace('var(', ''))
       .filter((name) => !declared.has(name))
     expect(missing).toEqual([])
+  })
+})
+
+describe('размеры по ролям, а не по месту', () => {
+  const css = readFileSync(new URL('../src/finanser.css', import.meta.url), 'utf8')
+  const rules = css.replace(/\/\*[\s\S]*?\*\//g, '')
+
+  it('кегль назначается ролью, а не размером из палитры', () => {
+    /**
+     * В файле было девяносто указаний размера и два в ходу: мельчайший `xs`
+     * пятьдесят восемь раз, `s` — двадцать один. Выбирали по месту и на глаз,
+     * и оттого имя получателя оказывалось мельче суммы рядом.
+     *
+     * Роли: `--f-text` — то, что читают (имя, сумма, категория), `--f-label` —
+     * капс-метка и приписка, `--f-note` — связный текст, `--f-big` — число, за
+     * которым пришли, `--f-hero` — главное число блока, `--f-title` — имя
+     * корпуса.
+     * Сами роли объявлены через палитру, всё остальное ссылается на них.
+     */
+    const прямые = [...rules.matchAll(/font-size:\s*var\(--el__fs-[a-z0-9]+\)/g)].map((m) => m[0])
+    // Палитра называется прямо только в объявлении ролей — правил, которые
+    // берут размер из неё, не осталось ни одного.
+    expect(прямые).toEqual([])
+  })
+
+  it('зазоры берутся из шкалы, а не из головы', () => {
+    // Кроме одного: полтора em в подвале — это шаг между разделами, и он
+    // назван своим токеном шага, а не шкалой ритма.
+    const свои = [...rules.matchAll(/gap:[^;]*?\b([0-9.]+)em/g)].map((m) => m[1])
+    expect(свои).toEqual(['1.4'])
   })
 })

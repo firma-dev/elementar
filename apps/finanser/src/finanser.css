@@ -124,6 +124,24 @@ input {
 
      Шаги между блоками остаются в rem (`--f-step-*` ниже): их размер не должен
      зависеть от того, каким кеглем набран соседний текст. */
+  /* Кегли по назначению, а не по размеру.
+     В файле было девяносто указаний размера и всего два в ходу: мельчайший
+     `xs` — пятьдесят восемь раз, `s` — двадцать один. Выбирали их по месту и
+     на глаз: имя получателя оказывалось мельче суммы рядом, приписка — того же
+     кегля, что имя. Отсюда ощущение случайности: размеров вроде мало, а
+     порядка в них нет.
+
+     Теперь три роли. Содержимое строки — имя, сумма, категория. Подпись —
+     капс-метка и приписка при строке. Пояснение — связный текст.
+     Заголовки блоков и главные числа держат свои токены отдельно: их
+     назначение видно и без имени. */
+  --f-text: var(--el__fs-m); /* имя, сумма, категория — то, что читают */
+  --f-label: var(--el__fs-xs); /* капс-метка, приписка при строке */
+  --f-note: var(--el__fs-s); /* связное пояснение */
+  --f-big: var(--el__fs-lg); /* число, за которым пришли: остаток, копилка */
+  --f-hero: var(--el__fs-2xl); /* главное число блока: потрачено, пришло */
+  --f-title: var(--el__fs-base); /* имя корпуса и заголовок пустого экрана */
+
   --f-v-1: 0.15em; /* строка и её подпись, дорожка под строкой */
   --f-v-2: 0.25em; /* поля строки списка */
   --f-v-3: 0.5em; /* между кусками внутри блока */
@@ -183,13 +201,13 @@ input {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 0.6em;
+  gap: var(--f-v-3);
   flex-wrap: wrap;
   background: var(--el__mark);
   border: var(--el__border-width-s) solid var(--el__text);
   padding: var(--f-v-3) 0.7em;
   margin-top: var(--f-step-2);
-  font-size: var(--el__fs-xs);
+  font-size: var(--f-label);
 }
 
 /* Шапка: знак с именем слева, действие справа, между ними — счёт.
@@ -211,7 +229,7 @@ input {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 0.5em;
+  gap: var(--f-v-3);
   min-width: 0;
 }
 
@@ -233,7 +251,7 @@ input {
 }
 
 .f-head__name {
-  font-size: var(--el__fs-base);
+  font-size: var(--f-title);
   letter-spacing: var(--el__ls-caps-s);
   text-transform: uppercase;
 }
@@ -244,6 +262,98 @@ input {
    кнопкой, хотя все шесть кнопки. Теперь у всех один вид: рамка, капс, серый
    текст. Громкой остаётся только одна кнопка на экране — «столько-то операций»,
    потому что она одна и ведёт к главному списку. */
+/* ──────────────────────── Кому вы переводите ───────────────────────── */
+
+/* Одна сетка на все строки раздела — и на человека, и на его переводы внутри.
+   Колонки общие, поэтому «за что» и суммы стоят по одной вертикали, а не
+   уезжают вслед за длиной имени или даты.
+
+   Раньше строка человека была флексом с суммой справа, а приписка с выбором —
+   отдельным флексом под ней. Выравнивать там было нечего: каждая строка
+   считала свою ширину сама. */
+.f-tr__list {
+  margin-top: var(--f-v-3);
+}
+
+.f-tr__person {
+  border-bottom: var(--el__border-width-s) solid var(--el__border);
+  padding: var(--f-v-2) 0;
+}
+
+.f-tr__person:last-child {
+  border-bottom: 0;
+}
+
+.f-tr__row {
+  display: grid;
+  grid-template-columns: minmax(6em, 1fr) auto 11em minmax(5em, auto);
+  align-items: center;
+  gap: var(--f-v-3);
+}
+
+/* Переводы внутри раскрытого человека: те же колонки, но имя занято датой. */
+.f-tr__row--one {
+  padding-top: var(--f-v-2);
+}
+
+.f-tr__name {
+  display: grid;
+  grid-template-columns: 1ch 1fr;
+  align-items: baseline;
+  gap: var(--f-v-3);
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: var(--f-text);
+  letter-spacing: var(--el__ls-caps-s);
+  text-transform: uppercase;
+  text-align: start;
+  cursor: pointer;
+}
+
+.f-tr__name:hover {
+  color: var(--el__link);
+}
+
+.f-tr__sign {
+  color: var(--el__text-caption);
+}
+
+.f-tr__who {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.f-tr__when,
+.f-tr__meta {
+  font-size: var(--f-label);
+  letter-spacing: var(--el__ls-caps-s);
+  text-transform: uppercase;
+  color: var(--el__text-caption);
+  white-space: nowrap;
+}
+
+.f-tr__time {
+  margin-inline-start: 0.5em;
+}
+
+.f-tr__sum {
+  font-size: var(--f-text);
+  text-align: end;
+  white-space: nowrap;
+}
+
+.f-tr__share {
+  color: var(--el__text-caption);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
 /* ─────────────────── Откуда и когда приходят деньги ─────────────────── */
 
 .f-arr {
@@ -271,7 +381,7 @@ input {
 }
 
 .f-arr__who {
-  font-size: var(--el__fs-m);
+  font-size: var(--f-text);
   letter-spacing: var(--el__ls-caps-s);
   text-transform: uppercase;
   min-width: 0;
@@ -281,7 +391,7 @@ input {
 }
 
 .f-arr__mark {
-  font-size: var(--el__fs-xs);
+  font-size: var(--f-label);
   letter-spacing: var(--el__ls-caps-s);
   text-transform: uppercase;
   color: var(--el__text-caption);
@@ -289,13 +399,13 @@ input {
 }
 
 .f-arr__sum {
-  font-size: var(--el__fs-m);
+  font-size: var(--f-text);
   white-space: nowrap;
 }
 
 .f-arr__more {
   margin-top: var(--f-v-2);
-  font-size: var(--el__fs-xs);
+  font-size: var(--f-label);
   letter-spacing: var(--el__ls-caps-s);
   text-transform: uppercase;
   color: var(--el__text-caption);
@@ -315,7 +425,7 @@ input {
   background: none;
   color: var(--el__text);
   font: inherit;
-  font-size: var(--el__fs-s);
+  font-size: var(--f-note);
   padding: var(--f-v-2) 0.5em;
 }
 
@@ -330,7 +440,7 @@ input {
   background: none;
   color: var(--el__text-caption);
   font: inherit;
-  font-size: var(--el__fs-xs);
+  font-size: var(--f-label);
   letter-spacing: var(--el__ls-caps-s);
   text-transform: uppercase;
   cursor: pointer;
@@ -348,7 +458,7 @@ input {
   background: none;
   color: var(--el__text-caption);
   font: inherit;
-  font-size: var(--el__fs-xs);
+  font-size: var(--f-label);
   letter-spacing: var(--el__ls-caps-s);
   text-transform: uppercase;
   padding: var(--f-v-2) 0.7em;
@@ -397,7 +507,7 @@ input {
 }
 
 .f-set__k {
-  font-size: var(--el__fs-xs);
+  font-size: var(--f-label);
   letter-spacing: var(--el__ls-caps-s);
   text-transform: uppercase;
   color: var(--el__text-caption);
@@ -412,7 +522,7 @@ input {
 
 .f-set__note {
   flex-basis: 100%;
-  font-size: var(--el__fs-xs);
+  font-size: var(--f-label);
   color: var(--el__text-caption);
   line-height: 1.5;
 }
@@ -431,7 +541,7 @@ input {
 .f-eyebrow,
 .f-block__title,
 .f-save__qk {
-  font-size: var(--el__fs-xs);
+  font-size: var(--f-label);
   letter-spacing: var(--el__ls-caps-s);
   text-transform: uppercase;
   font-weight: inherit;
@@ -452,7 +562,7 @@ input {
 /* Заметка всегда идёт следом за чем-то и всегда отбивается одинаково: раньше
    этот зазор ставили руками в разметке, каждый раз новым числом. */
 .f-note {
-  font-size: var(--el__fs-xs);
+  font-size: var(--f-note);
   color: var(--el__text-caption);
   line-height: 1.6;
   margin-top: var(--f-step-2);
@@ -466,7 +576,7 @@ input {
 }
 
 .f-empty__title {
-  font-size: var(--el__fs-xl);
+  font-size: var(--f-hero);
   line-height: 1.3;
   margin-bottom: var(--f-v-3);
   text-wrap: pretty;
@@ -492,7 +602,7 @@ input {
 }
 
 .f-empty__lead {
-  font-size: var(--el__fs-s);
+  font-size: var(--f-note);
   line-height: 1.6;
   margin-bottom: var(--f-step-3);
   color: var(--el__text-caption);
@@ -507,7 +617,7 @@ input {
   color: var(--el__background);
   text-align: center;
   padding: var(--f-v-4) 0.6em;
-  font-size: var(--el__fs-base);
+  font-size: var(--f-title);
   border: var(--el__border-width-s) solid var(--el__text);
   box-shadow: var(--el__shadow-m);
   cursor: pointer;
@@ -535,7 +645,7 @@ input {
   border: var(--el__border-width-s) solid var(--el__error);
   color: var(--el__error);
   padding: var(--f-v-3) 0.8em;
-  font-size: var(--el__fs-xs);
+  font-size: var(--f-label);
   line-height: 1.6;
 }
 
@@ -552,16 +662,16 @@ input {
 
 .f-howto li {
   display: flex;
-  gap: 0.7em;
+  gap: var(--f-v-3);
   margin-bottom: var(--f-v-3);
   align-items: baseline;
-  font-size: var(--el__fs-xs);
+  font-size: var(--f-label);
   line-height: 1.6;
 }
 
 .f-demo {
   margin-top: var(--f-step-3);
-  font-size: var(--el__fs-s);
+  font-size: var(--f-note);
 }
 
 .f-hermetic {
@@ -596,7 +706,7 @@ input {
   border-inline-end: var(--el__border-width-s) solid var(--el__text);
   color: var(--el__text);
   font: inherit;
-  font-size: var(--el__fs-xs);
+  font-size: var(--f-label);
   letter-spacing: var(--el__ls-caps-s);
   text-transform: uppercase;
   padding: var(--f-v-3) 0.3em;
@@ -646,15 +756,15 @@ input {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  gap: 0.6em;
+  gap: var(--f-v-3);
   flex-wrap: wrap;
 }
 
 .f-chart__peek {
   display: flex;
-  gap: 0.8em;
+  gap: var(--f-v-4);
   align-items: baseline;
-  font-size: var(--el__fs-xs);
+  font-size: var(--f-label);
   white-space: nowrap;
 }
 
@@ -744,7 +854,7 @@ input {
 .f-chart__tick {
   flex: 1;
   min-width: 0;
-  font-size: var(--el__fs-xs);
+  font-size: var(--f-label);
   text-align: center;
   white-space: nowrap;
   padding-top: var(--f-v-2);
@@ -800,14 +910,14 @@ input {
 .f-cat__line {
   display: flex;
   justify-content: space-between;
-  gap: 0.6em;
+  gap: var(--f-v-3);
   align-items: baseline;
 }
 
 .f-inc__left,
 .f-cat__left {
   display: flex;
-  gap: 0.5em;
+  gap: var(--f-v-3);
   align-items: baseline;
   min-width: 0;
 }
@@ -816,13 +926,13 @@ input {
    контраст 2,76:1 при норме 4,5:1 — цифру было почти не видно. */
 .f-inc__rank,
 .f-cat__rank {
-  font-size: var(--el__fs-xs);
+  font-size: var(--f-label);
   color: var(--el__text-caption);
 }
 
 .f-inc__name,
 .f-cat__name {
-  font-size: var(--el__fs-s);
+  font-size: var(--f-text);
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -831,13 +941,13 @@ input {
 
 .f-inc__share,
 .f-cat__share {
-  font-size: var(--el__fs-xs);
+  font-size: var(--f-label);
   color: var(--el__text-caption);
 }
 
 .f-inc__sum,
 .f-cat__sum {
-  font-size: var(--el__fs-s);
+  font-size: var(--f-text);
   white-space: nowrap;
 }
 
@@ -893,10 +1003,10 @@ input {
   /* «31 декабря» в OCR шире, чем кажется: моноширинная цифра плюс полное имя
      месяца. На узкой колонке дата налезала на имя получателя. */
   grid-template-columns: 6.8em minmax(0, 1fr) auto;
-  gap: 0.6em;
+  gap: var(--f-v-3);
   align-items: baseline;
   padding: var(--f-v-2) 0.6em;
-  font-size: var(--el__fs-xs);
+  font-size: var(--f-label);
 }
 
 .f-peek__day {
@@ -918,7 +1028,7 @@ input {
 
 .f-peek__all {
   margin: 0.3em 0 0 0.6em;
-  font-size: var(--el__fs-xs);
+  font-size: var(--f-label);
 }
 
 /* Заголовок разреза: год или месяц, но никогда оба сразу. */
@@ -926,7 +1036,7 @@ input {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  gap: 0.6em;
+  gap: var(--f-v-3);
   border-bottom: var(--el__border-width-s) solid var(--el__text);
   padding-bottom: var(--f-v-3);
   margin-top: var(--f-step-2);
@@ -936,7 +1046,7 @@ input {
    основным кеглем, он был выше заголовка, и строка разреза становилась на
    шесть пикселей выше — ровно в тот момент, когда человек ткнул в месяц. */
 .f-scope .f-linkish {
-  font-size: var(--el__fs-xs);
+  font-size: var(--f-label);
 }
 
 /* ────────────────────── Разбор непонятного ────────────────────── */
@@ -960,12 +1070,12 @@ input {
 .f-unknown__line {
   display: flex;
   justify-content: space-between;
-  gap: 0.6em;
+  gap: var(--f-v-3);
   align-items: baseline;
 }
 
 .f-unknown__name {
-  font-size: var(--el__fs-s);
+  font-size: var(--f-note);
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -973,13 +1083,13 @@ input {
 }
 
 .f-unknown__sum {
-  font-size: var(--el__fs-s);
+  font-size: var(--f-note);
   white-space: nowrap;
 }
 
 .f-unknown__pick {
   display: flex;
-  gap: 0.6em;
+  gap: var(--f-v-3);
   align-items: center;
   margin-top: var(--f-v-2);
   flex-wrap: wrap;
@@ -992,52 +1102,16 @@ input {
    Капс, как всё в корпусе: OCR читается заглавными, строчные в нём кривые
    (Д-034). Знак раскрытия вынесен в свою колонку постоянной ширины — без неё
    имена начинались то от «+», то от «−», и левый край списка гулял. */
-.f-tr__name {
-  display: grid;
-  grid-template-columns: 1ch 1fr;
-  align-items: baseline;
-  gap: 0.5em;
-  min-width: 0;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
-  font-size: var(--el__fs-s);
-  letter-spacing: var(--el__ls-caps-s);
-  text-transform: uppercase;
-  text-align: start;
-  cursor: pointer;
-}
 
-.f-tr__name:hover {
-  color: var(--el__link);
-}
 
-.f-tr__sign {
-  color: var(--el__text-caption);
-}
 
 /* Имя длиннее строки обрезается многоточием, а не толкает сумму. */
-.f-tr__who {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 
 /* Строка перевода внутри раскрытого человека: день, сумма, выбор. Сетка, а не
    поток: без неё суммы стояли лесенкой, каждая от своей даты. */
-.f-tr__line {
-  display: grid;
-  grid-template-columns: 1fr auto auto;
-  align-items: baseline;
-  gap: var(--f-step-2);
-  padding: var(--f-v-1) 0;
-}
 
 .f-unknown__count {
-  font-size: var(--el__fs-xs);
+  font-size: var(--f-label);
   color: var(--el__text-caption);
   white-space: nowrap;
 }
@@ -1050,7 +1124,7 @@ input {
   background: var(--el__mark);
   color: var(--el__color-gray-950);
   font: inherit;
-  font-size: var(--el__fs-xs);
+  font-size: var(--f-label);
   padding: var(--f-v-1) 0.4em;
   cursor: pointer;
   white-space: nowrap;
@@ -1067,14 +1141,14 @@ input {
 }
 
 .f-moves__k {
-  font-size: var(--el__fs-xs);
+  font-size: var(--f-label);
   color: var(--el__text-caption);
   text-transform: uppercase;
   letter-spacing: var(--el__ls-caps-s);
 }
 
 .f-moves__v {
-  font-size: var(--el__fs-s);
+  font-size: var(--f-note);
 }
 
 .f-moves__v--in {
@@ -1088,11 +1162,11 @@ input {
 .f-moves__row {
   display: flex;
   justify-content: space-between;
-  gap: 0.6em;
+  gap: var(--f-v-3);
   align-items: baseline;
   padding: var(--f-v-3) 0;
   border-bottom: var(--el__border-width-s) solid var(--el__border);
-  font-size: var(--el__fs-xs);
+  font-size: var(--f-label);
 }
 
 .f-moves__name {
@@ -1115,26 +1189,26 @@ input {
   gap: var(--f-step-2);
   flex-wrap: wrap;
   margin-top: var(--f-step-4);
-  font-size: var(--el__fs-xs);
+  font-size: var(--f-label);
 }
 
 /* Возврат набран кеглем списка, к которому относится: основным кеглем он был
    в полтора раза крупнее всего на экране и перетягивал внимание с выписки. */
 .f-txhead .f-linkish {
-  font-size: var(--el__fs-xs);
+  font-size: var(--f-label);
 }
 
 .f-txhead {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 0.6em;
+  gap: var(--f-v-3);
   margin-bottom: var(--f-v-4);
 }
 
 .f-txhead__filters {
   display: flex;
-  gap: 0.5em;
+  gap: var(--f-v-3);
   align-items: center;
   min-width: 0;
 }
@@ -1142,7 +1216,7 @@ input {
 .f-chip {
   border: var(--el__border-width-s) solid var(--el__text);
   padding: var(--f-v-2) 0.5em;
-  font-size: var(--el__fs-xs);
+  font-size: var(--f-label);
   background: var(--el__mark);
   white-space: nowrap;
   overflow: hidden;
@@ -1154,7 +1228,7 @@ input {
   background: var(--el__background);
   color: var(--el__text);
   padding: var(--f-v-2) 0.5em;
-  font-size: var(--el__fs-xs);
+  font-size: var(--f-label);
   cursor: pointer;
   white-space: nowrap;
 }
@@ -1175,7 +1249,7 @@ input {
   background: var(--el__background);
   color: var(--el__text);
   font-family: inherit;
-  font-size: var(--el__fs-s);
+  font-size: var(--f-note);
   padding: var(--f-v-2) 0.5em;
 }
 
@@ -1184,7 +1258,7 @@ input {
 }
 
 .f-txcount {
-  font-size: var(--el__fs-xs);
+  font-size: var(--f-label);
   color: var(--el__text-caption);
   margin-bottom: var(--f-v-3);
 }
@@ -1192,14 +1266,14 @@ input {
 .f-tx {
   display: grid;
   grid-template-columns: 6.8em minmax(0, 1fr) auto;
-  gap: 0.7em;
+  gap: var(--f-v-3);
   align-items: baseline;
   border-bottom: var(--el__border-width-s) solid var(--el__border);
   padding: var(--f-v-3) 0;
 }
 
 .f-tx__day {
-  font-size: var(--el__fs-xs);
+  font-size: var(--f-label);
   color: var(--el__text-caption);
   white-space: nowrap;
   overflow: hidden;
@@ -1212,7 +1286,7 @@ input {
    строчному элементу не действует многоточие — длинное имя просто уезжало. */
 .f-tx__desc {
   display: block;
-  font-size: var(--el__fs-s);
+  font-size: var(--f-note);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1221,7 +1295,7 @@ input {
 .f-tx__cat {
   display: inline-flex;
   align-items: center;
-  gap: 0.35em;
+  gap: var(--f-v-2);
   margin-top: var(--f-v-2);
 }
 
@@ -1257,7 +1331,7 @@ input {
    мониторе плотность прототипа сохранилась. */
 
 .f-tx__sum {
-  font-size: var(--el__fs-s);
+  font-size: var(--f-note);
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -1274,7 +1348,7 @@ input {
   border: var(--el__border-width-s) solid var(--el__text);
   background: var(--el__background);
   color: var(--el__text);
-  font-size: var(--el__fs-xs);
+  font-size: var(--f-label);
   cursor: pointer;
   box-shadow: var(--el__shadow-m);
   letter-spacing: var(--el__ls-caps-s);
@@ -1296,10 +1370,10 @@ input {
 .f-rules__row {
   display: flex;
   align-items: baseline;
-  gap: 0.6em;
+  gap: var(--f-v-3);
   padding: var(--f-v-3) 0;
   border-bottom: var(--el__border-width-s) solid var(--el__border);
-  font-size: var(--el__fs-s);
+  font-size: var(--f-note);
 }
 
 .f-rules__name {
@@ -1317,7 +1391,7 @@ input {
 
 .f-rules__words {
   display: block;
-  font-size: var(--el__fs-xs);
+  font-size: var(--f-label);
   color: var(--el__text-caption);
   line-height: 1.6;
   word-break: break-word;
@@ -1327,7 +1401,7 @@ input {
   margin-top: var(--f-step-4);
   padding-top: var(--f-v-3);
   border-top: var(--el__border-width-s) solid var(--el__border);
-  font-size: var(--el__fs-xs);
+  font-size: var(--f-label);
   color: var(--el__text-caption);
   line-height: 1.6;
 }
@@ -1403,14 +1477,14 @@ input {
 }
 
 .f-card__title {
-  font-size: var(--el__fs-s);
+  font-size: var(--f-note);
   line-height: 1.35;
   margin-bottom: var(--f-v-2);
   text-wrap: pretty;
 }
 
 .f-card__body {
-  font-size: var(--el__fs-xs);
+  font-size: var(--f-label);
   line-height: 1.6;
   color: var(--el__text-caption);
   text-wrap: pretty;
@@ -1433,14 +1507,14 @@ input {
     'name sum year'
     'meta sum year';
   align-items: baseline;
-  gap: 0.1em 0.8em;
+  gap: var(--f-v-1) var(--f-v-4);
   padding: var(--f-v-3) 0;
   border-bottom: var(--el__border-width-s) solid var(--el__border);
 }
 
 .f-sub__name {
   grid-area: name;
-  font-size: var(--el__fs-s);
+  font-size: var(--f-note);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1448,20 +1522,20 @@ input {
 
 .f-sub__meta {
   grid-area: meta;
-  font-size: var(--el__fs-xs);
+  font-size: var(--f-label);
   color: var(--el__text-caption);
 }
 
 .f-sub__sum {
   grid-area: sum;
-  font-size: var(--el__fs-s);
+  font-size: var(--f-note);
   text-align: end;
   white-space: nowrap;
 }
 
 .f-sub__year {
   grid-area: year;
-  font-size: var(--el__fs-xs);
+  font-size: var(--f-label);
   color: var(--el__text-caption);
   text-align: end;
   min-width: 8em;
@@ -1493,7 +1567,7 @@ input {
 .f-fold__head {
   display: flex;
   align-items: baseline;
-  gap: 0.6em;
+  gap: var(--f-v-3);
   width: 100%;
   border: none;
   background: none;
@@ -1523,7 +1597,7 @@ input {
 
 .f-fold__meta {
   margin-left: auto;
-  font-size: var(--el__fs-xs);
+  font-size: var(--f-label);
   color: var(--el__text-caption);
   white-space: nowrap;
 }
@@ -1553,12 +1627,12 @@ input {
 .f-pick__button {
   display: inline-flex;
   align-items: baseline;
-  gap: 0.35em;
+  gap: var(--f-v-2);
   max-width: 13em;
   border: var(--el__border-width-s) solid var(--el__text);
   background: var(--el__background);
   color: var(--el__text);
-  font-size: var(--el__fs-xs);
+  font-size: var(--f-label);
   padding: var(--f-v-2) 0.35em;
   cursor: pointer;
   text-align: left;
@@ -1612,7 +1686,7 @@ input {
   border: none;
   background: none;
   color: var(--el__text);
-  font-size: var(--el__fs-xs);
+  font-size: var(--f-label);
   text-align: left;
   padding: var(--f-v-2) 0.5em;
   cursor: pointer;
@@ -1756,11 +1830,11 @@ input {
 .f-acc {
   display: inline-flex;
   align-items: center;
-  gap: 0.35em;
+  gap: var(--f-v-2);
   border: var(--el__border-width-s) solid var(--el__text);
   background: var(--el__background);
   color: var(--el__text);
-  font-size: var(--el__fs-xs);
+  font-size: var(--f-label);
   padding: var(--f-v-2) 0.5em;
   cursor: pointer;
   white-space: nowrap;
@@ -1830,7 +1904,7 @@ input {
 }
 
 .f-field__k {
-  font-size: var(--el__fs-xs);
+  font-size: var(--f-label);
   color: var(--el__text-caption);
 }
 
@@ -1841,13 +1915,13 @@ input {
   background: none;
   color: var(--el__text);
   font-family: inherit;
-  font-size: var(--el__fs-s);
+  font-size: var(--f-note);
   text-align: end;
   padding: var(--f-v-1) 0.2em;
 }
 
 .f-go--small {
-  font-size: var(--el__fs-xs);
+  font-size: var(--f-label);
   padding: var(--f-v-2) 0.5em;
   white-space: nowrap;
 }
@@ -1886,10 +1960,10 @@ input {
 
 .f-inc__meta {
   display: flex;
-  gap: 0.7em;
+  gap: var(--f-v-3);
   flex-wrap: wrap;
   margin-top: var(--f-v-1);
-  font-size: var(--el__fs-xs);
+  font-size: var(--f-label);
   color: var(--el__text-caption);
 }
 
@@ -1937,14 +2011,14 @@ input {
 }
 
 .f-plan__k {
-  font-size: var(--el__fs-xs);
+  font-size: var(--f-label);
   color: var(--el__text-caption);
   text-transform: uppercase;
   letter-spacing: var(--el__ls-caps-s);
 }
 
 .f-plan__v {
-  font-size: var(--el__fs-s);
+  font-size: var(--f-note);
   margin: 0;
 }
 
@@ -1980,7 +2054,7 @@ input {
 }
 
 .f-bal__k {
-  font-size: var(--el__fs-xs);
+  font-size: var(--f-label);
   color: var(--el__text-caption);
   text-transform: uppercase;
   letter-spacing: var(--el__ls-caps-s);
@@ -1995,7 +2069,7 @@ input {
 }
 
 .f-bal__num {
-  font-size: var(--el__fs-lg);
+  font-size: var(--f-big);
   white-space: nowrap;
 }
 
@@ -2005,7 +2079,7 @@ input {
 
 .f-bal__note,
 .f-bal__none {
-  font-size: var(--el__fs-xs);
+  font-size: var(--f-label);
   color: var(--el__text-caption);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2019,7 +2093,7 @@ input {
    есть: молча спрятать их хуже, чем показать лишнюю ссылку. */
 .f-older {
   margin-bottom: var(--f-step-3);
-  font-size: var(--el__fs-xs);
+  font-size: var(--f-label);
   color: var(--el__text-caption);
 }
 
@@ -2042,7 +2116,7 @@ input {
 }
 
 .f-accs__bankname {
-  font-size: var(--el__fs-xs);
+  font-size: var(--f-label);
   color: var(--el__text-caption);
   text-transform: uppercase;
   letter-spacing: var(--el__ls-caps-s);
@@ -2081,7 +2155,7 @@ input {
 .f-head2__cell {
   display: flex;
   flex-direction: column;
-  gap: 0.25em;
+  gap: var(--f-v-2);
   min-width: 0;
   margin-bottom: var(--f-step-2);
 }
@@ -2095,7 +2169,7 @@ input {
    настоящий, и резерв остаётся. */
 .f-head2__k {
   min-height: calc(2 * 1.45em);
-  font-size: var(--el__fs-xs);
+  font-size: var(--f-label);
   letter-spacing: var(--el__ls-caps-s);
   text-transform: uppercase;
   color: var(--el__text-caption);
@@ -2106,7 +2180,7 @@ input {
    в разных блоках, сравнивать их взглядом уже нельзя, и мельче означает
    просто «другой шрифт в соседнем блоке». */
 .f-head2__v {
-  font-size: var(--el__fs-2xl);
+  font-size: var(--f-hero);
   line-height: 1.05;
   white-space: nowrap;
 }
@@ -2156,7 +2230,7 @@ input {
 /* Тот же резерв и по той же причине: см. `.f-head2__k` выше. */
 .f-head2__sub {
   min-height: calc(2 * 1.45em);
-  font-size: var(--el__fs-xs);
+  font-size: var(--f-label);
   color: var(--el__text-caption);
 }
 
@@ -2165,7 +2239,7 @@ input {
 .f-head2__d {
   display: block;
   min-height: 1.45em;
-  font-size: var(--el__fs-xs);
+  font-size: var(--f-label);
   color: var(--el__text-caption);
 }
 
@@ -2183,7 +2257,7 @@ input {
    спрашивают об этом раз в день — а место занималось в самом дорогом ряду. */
 .f-fresh {
   margin-top: var(--f-step-3);
-  font-size: var(--el__fs-xs);
+  font-size: var(--f-label);
   color: var(--el__text-caption);
 }
 
@@ -2231,7 +2305,7 @@ input {
   border: var(--el__border-width-s) solid var(--el__text);
   background: var(--el__background);
   color: var(--el__text);
-  font-size: var(--el__fs-xs);
+  font-size: var(--f-label);
   padding: var(--f-v-2) 0.5em;
   cursor: pointer;
   white-space: nowrap;
@@ -2246,7 +2320,7 @@ input {
 
 .f-extras__meta {
   margin-inline-start: auto;
-  font-size: var(--el__fs-xs);
+  font-size: var(--f-label);
   color: var(--el__text-caption);
 }
 
@@ -2275,7 +2349,7 @@ input {
   text-align: left;
   padding: var(--f-v-3) 0;
   cursor: pointer;
-  font-size: var(--el__fs-xs);
+  font-size: var(--f-label);
 }
 
 .f-cash__day {
@@ -2316,7 +2390,7 @@ input {
   background: none;
   color: var(--el__text);
   font-family: inherit;
-  font-size: var(--el__fs-s);
+  font-size: var(--f-note);
   text-align: end;
   padding: var(--f-v-1) 0.2em;
 }
@@ -2477,21 +2551,12 @@ input {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 0.6em;
+  gap: var(--f-v-3);
   flex-wrap: wrap;
 }
 
-.f-tr__share {
-  color: var(--el__text-caption);
-  text-transform: none;
-  letter-spacing: 0;
-}
 
 /* Время — следом за днём, тем же серым: оно уточняет дату, а не спорит с ней. */
-.f-tr__time {
-  margin-inline-start: 0.5em;
-  color: var(--el__text-caption);
-}
 
 /* Расходы и доходы — рамка толще и тень крупнее: это ответы на главный вопрос,
    остальное их объясняет и настраивает. Разница в тени делает иерархию видимой
@@ -2537,14 +2602,14 @@ input {
 }
 
 .f-save__sum {
-  font-size: var(--el__fs-2xl);
+  font-size: var(--f-hero);
   line-height: 1.05;
   letter-spacing: 0;
 }
 
 .f-save__of {
   color: var(--el__text-caption);
-  font-size: var(--el__fs-s);
+  font-size: var(--f-note);
 }
 
 /* Полоса пути. Жёсткая заливка без скруглений — как всё остальное. */
@@ -2580,19 +2645,19 @@ input {
 }
 
 .f-save__k {
-  font-size: var(--el__fs-xs);
+  font-size: var(--f-label);
   color: var(--el__text-caption);
 }
 
 .f-save__v {
-  margin: 0.15em 0 0;
-  font-size: var(--el__fs-lg);
+  margin: var(--f-v-1) 0 0;
+  font-size: var(--f-big);
   letter-spacing: 0;
 }
 
 .f-save__unit,
 .f-save__none {
-  font-size: var(--el__fs-xs);
+  font-size: var(--f-label);
   color: var(--el__text-caption);
   letter-spacing: var(--el__ls-caps-s);
 }
@@ -2603,7 +2668,7 @@ input {
   margin: 0 0 var(--f-step-2);
   padding-left: var(--f-step-2);
   border-left: var(--el__border-width-m) solid var(--el__border);
-  font-size: var(--el__fs-s);
+  font-size: var(--f-note);
   line-height: 1.5;
 }
 
@@ -2624,7 +2689,7 @@ input {
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 0.35em;
+  gap: var(--f-v-2);
 }
 
 /* Месяц одной строкой: имя, дорожка, число, вердикт. Колонки фиксированные,
@@ -2636,7 +2701,7 @@ input {
   grid-template-columns: 7.5rem 1fr auto 6.5rem;
   align-items: center;
   gap: var(--f-step-1);
-  font-size: var(--el__fs-xs);
+  font-size: var(--f-label);
 }
 
 .f-save__mname {
@@ -2738,7 +2803,7 @@ input {
    колонка на телефоне, и подпись наезжала на число. */
 .f-save__fields .f-field {
   display: grid;
-  gap: 0.2em;
+  gap: var(--f-v-2);
   padding: var(--f-v-3) 0;
   border-bottom: var(--el__border-width-s) solid var(--el__border);
   min-width: 0;
@@ -2766,7 +2831,7 @@ input {
 }
 
 .f-save__fields .f-field__k {
-  font-size: var(--el__fs-xs);
+  font-size: var(--f-label);
   color: var(--el__text-caption);
 }
 
