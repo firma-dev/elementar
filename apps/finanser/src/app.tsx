@@ -378,9 +378,9 @@ export function App(): JSX.Element {
 
     const named = plan.value.onAccountAt
     if (named === '' || plan.value.onAccount === 0) return null
-    const after = onAccount
-      .filter((tx) => tx.date > named)
-      .reduce((sum, tx) => sum + tx.amount, 0)
+    // Строго после названного дня: то, что случилось в сам этот день, человек
+    // уже видел в банке, когда называл число.
+    const after = onAccount.filter((tx) => tx.date > named).reduce((sum, tx) => sum + tx.amount, 0)
     return plan.value.onAccount + after
   }, [loaded, onAccount, plan.value.onAccount, plan.value.onAccountAt])
 
@@ -859,10 +859,20 @@ export function App(): JSX.Element {
       <Balance
         onAccount={balance as Kopeck | null}
         byHand={balanceByHand}
+        namedAt={plan.value.onAccountAt}
         onSet={(kopecks) => {
-          // Остаток называется на край данных: человек смотрит в банк сегодня,
-          // а выписка кончается вчера — и операции между ними уже учтены.
-          setPlan({ ...plan.value, onAccount: kopecks, onAccountAt: edge })
+          /**
+           * Остаток привязывается ко дню, когда его назвали, а не к краю
+           * выписки.
+           *
+           * Разница не косметическая. Человек смотрит остаток в приложении
+           * банка сегодня — в нём уже учтено всё, включая вчерашние покупки,
+           * которых в загруженной выписке ещё нет. Привяжи мы число к краю
+           * выписки, эти покупки приехали бы со следующей выгрузкой как
+           * «операции после названной даты» и вычлись бы второй раз: остаток
+           * поехал бы вниз на сумму, которую человек уже учёл.
+           */
+          setPlan({ ...plan.value, onAccount: kopecks, onAccountAt: today() })
         }}
         next={arrival}
         edge={edge}

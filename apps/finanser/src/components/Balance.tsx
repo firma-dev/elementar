@@ -19,6 +19,8 @@ export interface BalanceProps {
   onSet: (kopecks: Kopeck) => void
   /** Назван ли остаток рукой — от этого зависит, что писать в подписи. */
   byHand: boolean
+  /** День, на который назван остаток: с него он и пересчитывается. */
+  namedAt: string
 }
 
 /**
@@ -46,6 +48,7 @@ export function Balance({
   owedToSavings,
   onSet,
   byHand,
+  namedAt,
 }: BalanceProps): JSX.Element | null {
   const [asking, setAsking] = useState(false)
   if (onAccount === null && next === null) return null
@@ -97,10 +100,10 @@ export function Balance({
                 <button
                   type="button"
                   class="f-bal__edit"
-                  title="Остаток назван рукой — банк его не выгрузил"
+                  title="Остаток назван рукой — банк его не выгрузил. Дальше считается сам: операции после этого дня прибавляются и вычитаются"
                   onClick={() => setAsking(true)}
                 >
-                  с ваших слов · изменить
+                  с ваших слов на {dayLabel(namedAt)} · изменить
                 </button>
               ) : null}
             </>
@@ -150,7 +153,6 @@ export function Balance({
           )}
         </dd>
       </div>
-
     </dl>
   )
 }
