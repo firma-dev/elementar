@@ -41,6 +41,19 @@ export interface Plan {
    */
   onAccountAt: string
   /**
+   * Когда ждать ближайший приход, если человек поправил догадку.
+   *
+   * Приложение считает эту дату по ритму прошлых поступлений, но ритм знает не
+   * всё: зарплату сдвинули на праздники, работу сменили, премию обещали к
+   * пятнице. От этой даты считается главное число экрана — сколько можно
+   * тратить в день, — и ошибаться в ней дороже, чем в любой другой.
+   *
+   * Пусто — держаться догадки. Дата в прошлом тоже считается пустой: она
+   * осталась от прежнего месяца, и держаться за неё значит считать «сколько
+   * тратить» на ноль дней.
+   */
+  arrivalAt: string
+  /**
    * Цель: сколько всего надо накопить. Ноль — цели нет, и тогда не показывается
    * ни полоса, ни срок: пустая шкала врёт не меньше неверной.
    */
@@ -62,6 +75,7 @@ export const EMPTY_PLAN: Plan = {
   goalDate: '',
   onAccount: 0,
   onAccountAt: '',
+  arrivalAt: '',
 }
 
 /**
@@ -84,6 +98,7 @@ export function normalizePlan(raw: Partial<Plan> | null | undefined): Plan {
     goalDate: typeof raw.goalDate === 'string' ? raw.goalDate : '',
     onAccount: num(raw.onAccount),
     onAccountAt: typeof raw.onAccountAt === 'string' ? raw.onAccountAt : '',
+    arrivalAt: typeof raw.arrivalAt === 'string' ? raw.arrivalAt : '',
   }
 }
 

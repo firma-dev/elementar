@@ -288,6 +288,7 @@ export function App(): JSX.Element {
       // выгружает. Иначе главное число «можно тратить» в демо не считается.
       onAccount: 7_384_000 as Kopeck,
       onAccountAt: today(),
+      arrivalAt: '',
     })
   }, [accept])
 
@@ -438,7 +439,22 @@ export function App(): JSX.Element {
    * время, и там же написано, почему.
    */
   const periodSources = useMemo(() => byIncomeSource(scope, edge), [scope, edge])
-  const arrival = useMemo(() => nextArrival(incomeSources, edge), [incomeSources, edge])
+  const guessed = useMemo(() => nextArrival(incomeSources, edge), [incomeSources, edge])
+  /**
+   * Ближайший приход: сказанное человеком сильнее догадки.
+   *
+   * Дата в прошлом не считается сказанным: она осталась от прежнего месяца, а
+   * «сколько можно тратить» по ней делилось бы на ноль дней.
+   */
+  const arrival = useMemo(() => {
+    const named = plan.value.arrivalAt
+    if (named === '' || named <= edge) return guessed
+    return {
+      date: named,
+      label: guessed?.label ?? 'приход',
+      amount: guessed?.amount ?? (0 as Kopeck),
+    }
+  }, [guessed, plan.value.arrivalAt, edge])
 
   const visible = useMemo(() => {
     const byCat = category === null ? scope : scope.filter((tx) => tx.category === category)
@@ -937,7 +953,12 @@ export function App(): JSX.Element {
               onSetPlan={() => setView('details')}
               part="income"
             />
-            <Arrivals sources={periodSources} next={arrival} />
+            <Arrivals
+              sources={periodSources}
+              next={arrival}
+              byHand={plan.value.arrivalAt !== '' && plan.value.arrivalAt > edge}
+              onSetDate={(date) => setPlan({ ...plan.value, arrivalAt: date })}
+            />
           </section>
 
           {sentToPeople(scope).length === 0 ? null : (

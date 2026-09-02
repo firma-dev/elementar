@@ -11,6 +11,7 @@ const plan: Plan = {
   goalDate: '',
   onAccount: 0,
   onAccountAt: '',
+  arrivalAt: '',
 }
 
 describe('план', () => {

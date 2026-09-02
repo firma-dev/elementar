@@ -1,3 +1,4 @@
+import { useState } from 'preact/hooks'
 import type { JSX } from 'preact'
 import type { IncomeSource } from '../income.js'
 import type { Kopeck } from '../money.js'
@@ -8,6 +9,10 @@ export interface ArrivalsProps {
   sources: readonly IncomeSource[]
   /** Ближайший ожидаемый приход — по регулярным источникам. */
   next: { date: string; label: string; amount: Kopeck } | null
+  /** Поправить дату ожидания. Пустая строка — вернуться к догадке. */
+  onSetDate: (date: string) => void
+  /** Названа ли дата рукой — тогда об этом говорится прямо. */
+  byHand: boolean
 }
 
 /** Сколько источников показываем. Больше трёх — это уже список, а не ответ. */
@@ -38,7 +43,8 @@ function times(n: number): string {
  * шла сплошняком, «25 СЕНТЯБРЯ 73 494 ЗАРПЛАТА АВАНС КАПИТАЛ ГРУП», и читать
  * её приходилось по слогам.
  */
-export function Arrivals({ sources, next }: ArrivalsProps): JSX.Element | null {
+export function Arrivals({ sources, next, onSetDate, byHand }: ArrivalsProps): JSX.Element | null {
+  const [asking, setAsking] = useState(false)
   // Ожидание показывается и без источников за отрезок: в начале месяца
   // приходов ещё нет, а вопрос «когда придут» как раз тогда и задают.
   if (sources.length === 0 && next === null) return null
@@ -48,10 +54,46 @@ export function Arrivals({ sources, next }: ArrivalsProps): JSX.Element | null {
 
   return (
     <div class="f-arr">
-      {next === null ? null : (
+      {next === null ? null : asking ? (
+        /* Дата — то, от чего считается «сколько можно тратить в день», и
+           ошибиться в ней дороже, чем в любой другой. Приложение считает её по
+           ритму прошлых приходов, но ритм знает не всё: праздники сдвигают
+           зарплату, работу меняют, премию обещают к пятнице. */
+        <form
+          class="f-ask"
+          onSubmit={(event) => {
+            event.preventDefault()
+            const field = (event.currentTarget as HTMLFormElement).elements.namedItem(
+              'дата',
+            ) as HTMLInputElement
+            onSetDate(field.value)
+            setAsking(false)
+          }}
+        >
+          <label class="f-ask__k" for="приход-дата">
+            Когда ждёте приход
+          </label>
+          <input id="приход-дата" name="дата" type="date" defaultValue={next.date} autoFocus />
+          <button type="submit" class="f-btn">
+            запомнить
+          </button>
+          <button
+            type="button"
+            class="f-btn"
+            onClick={() => {
+              onSetDate('')
+              setAsking(false)
+            }}
+          >
+            как считает
+          </button>
+        </form>
+      ) : (
         <p class="f-arr__row f-arr__row--next">
           <span class="f-arr__who">{next.label}</span>
-          <span class="f-arr__mark">ждём {dayLabel(next.date)}</span>
+          <button type="button" class="f-arr__when" onClick={() => setAsking(true)}>
+            {byHand ? 'ждёте' : 'ждём'} {dayLabel(next.date)}
+          </button>
           <Amount class="f-arr__sum" value={next.amount} kopecks="never" />
         </p>
       )}

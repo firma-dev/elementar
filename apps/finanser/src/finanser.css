@@ -390,6 +390,25 @@ input {
   white-space: nowrap;
 }
 
+.f-arr__when {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--el__text-caption);
+  font: inherit;
+  font-size: var(--f-label);
+  letter-spacing: var(--el__ls-caps-s);
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+  border-bottom: var(--el__border-width-s) dashed var(--el__border);
+}
+
+.f-arr__when:hover {
+  color: var(--el__text);
+  border-bottom-color: var(--el__text);
+}
+
 .f-arr__mark {
   font-size: var(--f-label);
   letter-spacing: var(--el__ls-caps-s);
@@ -412,21 +431,44 @@ input {
 }
 
 /* Ввод остатка прямо в ячейке: поле и плашка в строку. */
-.f-bal__ask {
+
+
+/* Быстрый ввод — одна форма на весь корпус: подпись строкой сверху, поле и
+   кнопки под ней. Поля до этого были разными в каждом месте: где-то голый
+   input без подписи, где-то поле на девять em и плашка вплотную. Поле набрано
+   тем же кеглем, что число, которое оно правит: иначе человек вводит мелким
+   туда, где только что читал крупное. */
+.f-ask {
   display: flex;
   align-items: center;
-  gap: var(--f-step-1);
   flex-wrap: wrap;
+  gap: var(--f-v-2);
+  margin-top: var(--f-v-2);
 }
 
-.f-bal__ask input {
-  width: 9em;
-  border: var(--el__border-width-s) solid var(--el__text);
-  background: none;
+.f-ask__k {
+  flex: 1 0 100%;
+  font-size: var(--f-label);
+  letter-spacing: var(--el__ls-caps-s);
+  text-transform: uppercase;
+  color: var(--el__text-caption);
+}
+
+.f-ask input {
+  border: var(--el__border-width-m) solid var(--el__text);
+  background: var(--el__background);
   color: var(--el__text);
   font: inherit;
-  font-size: var(--f-note);
-  padding: var(--f-v-2) 0.5em;
+  font-size: var(--f-big);
+  letter-spacing: 0;
+  padding: var(--f-v-2) var(--f-v-3);
+  min-width: 0;
+  max-width: 10em;
+}
+
+.f-ask input:focus-visible {
+  outline: var(--el__border-width-m) solid var(--el__link);
+  outline-offset: var(--f-v-1);
 }
 
 /* «С ваших слов» — тихая приписка под числом: она объясняет, откуда оно, и не

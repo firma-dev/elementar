@@ -55,6 +55,16 @@ export interface IncomeSource {
   steady: number
   /** Обычное число месяца, когда приходит. Для регулярных. */
   typicalDay: number
+  /**
+   * Обычный промежуток между приходами, в днях.
+   *
+   * По нему считается ожидание, а не по числу месяца. Работодатель платит
+   * дважды в месяц — десятого и двадцать пятого, — и «обычное число» у такого
+   * источника выходит двадцать четвёртым: это середина между двумя настоящими
+   * датами, то есть день, когда не приходит ничего. Промежуток же честно
+   * говорит «примерно раз в две недели».
+   */
+  typicalGap: number
   lastDate: string
   /**
    * Операции источника.
@@ -193,6 +203,7 @@ export function byIncomeSource(rows: readonly Categorized[], edge: string): Inco
       typical: median(group.amounts) as Kopeck,
       steady: steadiness(group.amounts),
       typicalDay: median(dates.map((d) => Number(d.slice(8, 10)))),
+      typicalGap: median(gaps(dates)),
       ids: group.ids,
       lastDate: last,
     })
@@ -200,8 +211,32 @@ export function byIncomeSource(rows: readonly Categorized[], edge: string): Inco
   return out.sort((a, b) => b.total - a.total)
 }
 
+/** Промежутки между соседними приходами, в днях. */
+function gaps(dates: readonly string[]): number[] {
+  const out: number[] = []
+  for (let i = 1; i < dates.length; i += 1) {
+    const a = Date.parse(`${dates[i - 1] ?? ''}T00:00:00Z`)
+    const b = Date.parse(`${dates[i] ?? ''}T00:00:00Z`)
+    if (Number.isFinite(a) && Number.isFinite(b)) out.push(Math.round((b - a) / 86400000))
+  }
+  return out.length === 0 ? [30] : out
+}
+
+/** Прибавить дни к ISO-дате. */
+function plusDays(date: string, days: number): string {
+  const stamp = Date.parse(`${date}T00:00:00Z`) + days * 86400000
+  return new Date(stamp).toISOString().slice(0, 10)
+}
+
 /**
  * Когда ждать следующего прихода.
+ *
+ * Считается от последнего прихода плюс обычный промежуток, а не по числу
+ * месяца. Причина простая: зарплату часто платят дважды в месяц, и «обычное
+ * число» такого источника — середина между авансом и расчётом, день, когда не
+ * приходит ничего. На настоящей выписке это давало «ждём 24 сентября» при
+ * приходах десятого и двадцать пятого, и главное число экрана — сколько можно
+ * тратить в день — считалось на двадцать четыре дня вместо девяти.
  *
  * Только по регулярным источникам: у разового «следующего» не бывает, и
  * обещать его — придумывать. Возвращает ближайшую дату от края данных.
@@ -213,8 +248,24 @@ export function nextArrival(
   let best: { date: string; label: string; amount: Kopeck } | null = null
   for (const source of sources) {
     if (!source.regular) continue
-    let date = expectedAfter(edge, source.typicalDay)
-    if (date <= source.lastDate) date = expectedAfter(source.lastDate, source.typicalDay)
+    const gap = Math.max(1, Math.round(source.typicalGap))
+    let date: string
+    if (gap >= 26 && gap <= 32) {
+      // Раз в месяц — ждём то же число. Так честнее, чем шагать тридцатью
+      // днями: зарплату тридцать первого платят тридцатого сентября, а не
+      // первого октября, и в коротком месяце дата поджимается к последнему дню.
+      date = expectedAfter(edge, source.typicalDay)
+      if (date <= source.lastDate) date = expectedAfter(source.lastDate, source.typicalDay)
+    } else {
+      // Чаще или реже месяца — шагаем промежутком от последнего прихода, пока
+      // не окажемся за краем данных.
+      date = plusDays(source.lastDate, gap)
+      let шагов = 0
+      while (date <= edge && шагов < 60) {
+        date = plusDays(date, gap)
+        шагов += 1
+      }
+    }
     if (best === null || date < best.date) {
       best = { date, label: source.label, amount: source.typical }
     }

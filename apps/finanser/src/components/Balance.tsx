@@ -66,7 +66,7 @@ export function Balance({
               месяц, и без него не считается главное, «сколько можно тратить». */}
           {asking ? (
             <form
-              class="f-bal__ask"
+              class="f-ask"
               onSubmit={(event) => {
                 event.preventDefault()
                 const field = (event.currentTarget as HTMLFormElement).elements.namedItem(
@@ -77,16 +77,22 @@ export function Balance({
                 setAsking(false)
               }}
             >
+              <label class="f-ask__k" for="остаток-сумма">
+                Сколько сейчас на счёте — посмотрите в банке
+              </label>
               <input
+                id="остаток-сумма"
                 name="сумма"
                 type="text"
                 inputMode="decimal"
                 autoFocus
-                placeholder="сколько сейчас"
                 aria-label="Остаток на счёте"
               />
               <button type="submit" class="f-btn">
                 запомнить
+              </button>
+              <button type="button" class="f-btn" onClick={() => setAsking(false)}>
+                отмена
               </button>
             </form>
           ) : onAccount === null ? (
