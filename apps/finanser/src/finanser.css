@@ -433,11 +433,26 @@ input {
 /* Ввод остатка прямо в ячейке: поле и плашка в строку. */
 
 
+/* Что изменилось после загрузки — строкой на виду, с зелёной гранью: это не
+   тревога, а отчёт. Убирается нажатием, а не сама: человек читает её тогда,
+   когда посмотрит, а не в первую секунду. */
+.f-changed {
+  margin-top: var(--f-step-1);
+  padding: var(--f-v-2) var(--f-v-3);
+  border-inline-start: var(--el__border-width-m) solid var(--el__success);
+  font-size: var(--f-note);
+  color: var(--el__text-caption);
+}
+
 /* Быстрый ввод — одна форма на весь корпус: подпись строкой сверху, поле и
    кнопки под ней. Поля до этого были разными в каждом месте: где-то голый
-   input без подписи, где-то поле на девять em и плашка вплотную. Поле набрано
-   тем же кеглем, что число, которое оно правит: иначе человек вводит мелким
-   туда, где только что читал крупное. */
+   input без подписи, где-то поле на девять em и плашка вплотную.
+
+   Кегль поля — кегль того, что оно правит, и это разное. Остаток набран
+   крупно, дата прихода стоит строкой среди мелкого: одинаково крупное поле в
+   обоих местах и было тем прыжком, из-за которого дата вылезала вдвое больше
+   соседей. Поэтому по умолчанию поле в кегле строки, а крупное просит себя
+   само — `--big`. */
 .f-ask {
   display: flex;
   align-items: center;
@@ -455,15 +470,21 @@ input {
 }
 
 .f-ask input {
-  border: var(--el__border-width-m) solid var(--el__text);
+  border: var(--el__border-width-s) solid var(--el__text);
   background: var(--el__background);
   color: var(--el__text);
   font: inherit;
-  font-size: var(--f-big);
-  letter-spacing: 0;
+  font-size: var(--f-text);
+  letter-spacing: var(--el__ls-caps-s);
   padding: var(--f-v-2) var(--f-v-3);
   min-width: 0;
   max-width: 10em;
+}
+
+.f-ask--big input {
+  font-size: var(--f-big);
+  border-width: var(--el__border-width-m);
+  letter-spacing: 0;
 }
 
 .f-ask input:focus-visible {

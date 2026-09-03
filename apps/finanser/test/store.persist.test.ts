@@ -207,3 +207,73 @@ describe('повторная загрузка того же файла посл�
     expect(accounts.value.map((a) => a.key)).toEqual(['карта'])
   })
 })
+
+describe('обновление выписки, а не добавление', () => {
+  const tx = (id: string, date: string, amount: number, account: string) => ({
+    id,
+    date,
+    time: null,
+    amount: amount as never,
+    description: 'Покупка',
+    mcc: null,
+    bankCategory: null,
+    account,
+    currency: null,
+  })
+
+  const инфо = (name: string, accounts: string[], labels: Record<string, string>) => ({
+    name,
+    rows: 2,
+    skipped: 0,
+    converted: 0,
+    foreign: 0,
+    loadedAt: '2026-09-03',
+    hasCodes: false,
+    key: name,
+    accounts,
+    accountLabels: labels,
+  })
+
+  it('выгрузка без номера карты ложится на единственный счёт, а не заводит второй', async () => {
+    const { addStatement, accounts, transactions, forgetEverything } =
+      await import('../src/store.js')
+    forgetEverything()
+
+    // Первая выгрузка — с номером карты.
+    addStatement(
+      [tx('1', '2026-08-01', -1000, 'карта')],
+      инфо('account_statement_01.08.csv', ['карта'], { карта: '**3523' }),
+    )
+    expect(accounts.value).toHaveLength(1)
+
+    // Вторая — тот же счёт, но банк не выгрузил колонку с картой. Человек
+    // нажал «обновить выписку», а получал второй счёт рядом с первым.
+    const итог = addStatement(
+      [tx('2', '2026-09-01', -2000, 'файл')],
+      инфо('card_statement_25.06-03.09.csv', ['файл'], {}),
+    )
+    expect(accounts.value).toHaveLength(1)
+    expect(transactions.value).toHaveLength(2)
+    expect(итог.added).toBe(1)
+  })
+
+  it('человеческие имена файлов по-прежнему заводят разные счета', async () => {
+    const { addStatement, accounts, forgetEverything } = await import('../src/store.js')
+    forgetEverything()
+    addStatement([tx('1', '2026-08-01', -1000, 'а')], инфо('дебетовая.csv', ['а'], {}))
+    addStatement([tx('2', '2026-08-01', -1000, 'б')], инфо('кредитная.csv', ['б'], {}))
+    // Человек назвал файлы сам — значит различает счета, и сводить их вместе
+    // значит спорить с ним.
+    expect(accounts.value).toHaveLength(2)
+  })
+
+  it('повторная загрузка того же файла говорит, что нового нет', async () => {
+    const { addStatement, forgetEverything } = await import('../src/store.js')
+    forgetEverything()
+    const строки = [tx('1', '2026-08-01', -1000, 'карта')]
+    addStatement(строки, инфо('выписка.csv', ['карта'], { карта: '**3523' }))
+    const итог = addStatement(строки, инфо('выписка.csv', ['карта'], { карта: '**3523' }))
+    expect(итог.added).toBe(0)
+    expect(итог.replaced).toBe(1)
+  })
+})

@@ -586,3 +586,28 @@ describe('чей это банк и сколько счетов', () => {
     expect(parseStatementText(две, 'выписка.csv').accounts).toHaveLength(3)
   })
 })
+
+describe('дата вводится по-русски', () => {
+  it('«09.10.2026» — девятое октября, а не девятое сентября', async () => {
+    const { parseDayInput, dayInput } = await import('../src/model.js')
+    // Системное поле `input[type=date]` рисует браузер, и порядок частей в нём
+    // по локали устройства: на английской системе русская дата показывалась
+    // как «09/10/2026» и читалась сентябрём.
+    expect(parseDayInput('09.10.2026')).toBe('2026-10-09')
+    expect(dayInput('2026-10-09')).toBe('09.10.2026')
+  })
+
+  it('принимает и точку, и косую, и дефис, и год в две цифры', async () => {
+    const { parseDayInput } = await import('../src/model.js')
+    expect(parseDayInput('9/10/26')).toBe('2026-10-09')
+    expect(parseDayInput('9-10-2026')).toBe('2026-10-09')
+  })
+
+  it('чушь не превращается в дату', async () => {
+    const { parseDayInput } = await import('../src/model.js')
+    expect(parseDayInput('завтра')).toBe('')
+    expect(parseDayInput('32.10.2026')).toBe('')
+    expect(parseDayInput('09.13.2026')).toBe('')
+    expect(parseDayInput('')).toBe('')
+  })
+})

@@ -66,7 +66,7 @@ export function Balance({
               месяц, и без него не считается главное, «сколько можно тратить». */}
           {asking ? (
             <form
-              class="f-ask"
+              class="f-ask f-ask--big"
               onSubmit={(event) => {
                 event.preventDefault()
                 const field = (event.currentTarget as HTMLFormElement).elements.namedItem(

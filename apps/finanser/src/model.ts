@@ -346,6 +346,39 @@ export function dayLabel(date: string): string {
   return `${Number(day)} ${MONTH_GENITIVE[index] ?? ''}`.trim()
 }
 
+/**
+ * Дата для ввода руками: «2026-10-09» → «09.10.2026».
+ *
+ * Своё поле вместо `input[type=date]`. Системное поле рисует браузер, и формат
+ * в нём — по локали устройства: у человека с английской системой русская дата
+ * показывалась как «09/10/2026», то есть девятое октября читалось сентябрём.
+ * Ни формат, ни разделители, ни порядок частей там не наши.
+ */
+export function dayInput(iso: string): string {
+  const [year, month, day] = iso.split('-')
+  if (year === undefined || month === undefined || day === undefined) return ''
+  return `${day}.${month}.${year}`
+}
+
+/**
+ * Обратно: «09.10.2026» → «2026-10-09». Пусто — не дата.
+ *
+ * Принимаем и точку, и косую, и дефис: человек печатает тем, что под пальцем.
+ * Год в две цифры считаем нынешним веком — выписки из девятнадцатого века не
+ * бывает.
+ */
+export function parseDayInput(text: string): string {
+  const parts = text.trim().split(/[.\/-]/)
+  const [day, month, year] = parts
+  if (day === undefined || month === undefined || year === undefined) return ''
+  const d = Number(day)
+  const m = Number(month)
+  const y = year.length === 2 ? 2000 + Number(year) : Number(year)
+  if (!Number.isInteger(d) || !Number.isInteger(m) || !Number.isInteger(y)) return ''
+  if (d < 1 || d > 31 || m < 1 || m > 12 || y < 1990 || y > 2100) return ''
+  return `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+}
+
 const WEEKDAY = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'] as const
 
 /**

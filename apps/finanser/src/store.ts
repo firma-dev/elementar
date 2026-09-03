@@ -9,7 +9,7 @@
  */
 import { computed, signal } from '@preact/signals'
 import type { Category, Categorized, Tx } from './model.js'
-import { PARENT, currentName } from './model.js'
+import { PARENT, currentName, txId } from './model.js'
 import { cleanParts, expandCash } from './cash.js'
 import { markPairs } from './pairs.js'
 import { applyRates } from './rates.js'
@@ -250,7 +250,55 @@ export const hasData = computed(() => transactions.value.length > 0)
  * задваивает — идентификаторы считаны из содержимого (`statementKey`), и
  * совпадающие строки просто перекрываются.
  */
-export function addStatement(list: Tx[], info: SourceInfo): void {
+/**
+ * Что изменилось после загрузки. Показывается человеку строкой.
+ */
+export interface StatementChange {
+  added: number
+  replaced: number
+  total: number
+  account: string
+}
+
+export function addStatement(list: Tx[], info: SourceInfo): StatementChange {
+  /**
+   * Выписка без номера карты попадает на существующий счёт, а не заводит новый.
+   *
+   * Банк даёт две выгрузки одного и того же счёта: в одной есть колонка
+   * «Номер карты», в другой её нет вовсе. Во второй счёт различать нечем, и
+   * ключ считался из имени файла — «card_statement_25.06.26-03.09.26». Человек
+   * нажимал «обновить выписку», а получал второй счёт «Счёт 2» рядом с первым,
+   * и те же деньги считались дважды.
+   *
+   * Если карт в файле нет, счёт заведён ровно один, а имя файла машинное —
+   * это он и есть: другого счёта, к которому выписка могла бы относиться, не
+   * существует.
+   *
+   * Имя файла здесь единственная зацепка, и она работает в обе стороны.
+   * «card_statement_25.06.26-03.09.26» человек не выбирал — так назвал банк.
+   * А «дебетовая.csv» и «кредитная.csv» человек назвал сам, и это значит, что
+   * он их различает: сводить такие в один счёт — спорить с ним.
+   */
+  const безКарт = Object.keys(info.accountLabels ?? {}).length === 0
+  const машинноеИмя = MACHINE_NAME.test(info.name.replace(/\.[a-z0-9]+$/i, ''))
+  if (безКарт && машинноеИмя && accounts.value.length === 1) {
+    const цель = accounts.value[0]?.key
+    if (цель !== undefined) {
+      const seen = new Map<string, number>()
+      list = list.map((tx) => {
+        const key = `${цель}|${tx.date}|${tx.amount}|${tx.description}`
+        const duplicate = seen.get(key) ?? 0
+        seen.set(key, duplicate + 1)
+        return {
+          ...tx,
+          account: цель,
+          id: txId(tx.date, tx.amount, tx.description, duplicate, цель),
+        }
+      })
+      info = { ...info, accounts: [цель] }
+    }
+  }
+
   registerAccounts(list, info)
 
   /**
@@ -288,6 +336,7 @@ export function addStatement(list: Tx[], info: SourceInfo): void {
    * со счётом — значит у тех же строк он стал другим, и без уборки они легли
    * бы рядом со своими же двойниками.
    */
+  const транзакцииДо = transactions.value
   const before = sources.value.find((source) => source.name === info.name)
   const now = new Set(info.accounts ?? [])
   const gone = new Set((before?.accounts ?? []).filter((key) => !now.has(key)))
@@ -322,6 +371,17 @@ export function addStatement(list: Tx[], info: SourceInfo): void {
   summary.value = null
   writeJson(KEY_TX, merged)
   writeJson(KEY_SOURCE, nextSources)
+
+  // Что именно изменилось: сколько строк пришло впервые и сколько заменило
+  // прежние. «Обновил и не понял, что поменялось» — это не обновление.
+  const было = new Set(транзакцииДо.map((tx) => tx.id))
+  const added = list.filter((tx) => !было.has(tx.id)).length
+  return {
+    added,
+    replaced: list.length - added,
+    total: merged.length,
+    account: accounts.value.find((a) => a.key === list[0]?.account)?.name ?? '',
+  }
 }
 
 /**

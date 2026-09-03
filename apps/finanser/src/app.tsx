@@ -109,6 +109,16 @@ function demoGoalMonth(): string {
   return d.toISOString().slice(0, 7)
 }
 
+/** «12 операций», «1 операция», «3 операции» — для строки об изменениях. */
+function операций(n: number): string {
+  const tens = n % 100
+  const ones = n % 10
+  if (tens >= 11 && tens <= 14) return 'операций'
+  if (ones === 1) return 'операция'
+  if (ones >= 2 && ones <= 4) return 'операции'
+  return 'операций'
+}
+
 /** Сегодняшний день по часам устройства. Отдельной функцией — её видно в тестах. */
 function today(): string {
   return new Date().toISOString().slice(0, 10)
@@ -131,6 +141,8 @@ function dayWord(n: number): string {
 
 export function App(): JSX.Element {
   const [error, setError] = useState<string | null>(null)
+  /** Что изменилось после последней загрузки. Показывается строкой под шапкой. */
+  const [changed, setChanged] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [view, setView] = useState<View>('year')
   const [month, setMonth] = useState<string | null>(null)
@@ -176,7 +188,7 @@ export function App(): JSX.Element {
       )
       return
     }
-    addStatement(result.transactions, {
+    const итог = addStatement(result.transactions, {
       name,
       rows: result.rows,
       skipped: result.skipped,
@@ -190,6 +202,20 @@ export function App(): JSX.Element {
       accountLabels: result.accountLabels,
       bank: result.bank,
     })
+    /**
+     * Что поменялось — словами и сразу.
+     *
+     * «Обновил и не понял, что изменилось» — это не обновление. Строка живёт
+     * до следующего действия и говорит ровно две вещи: сколько операций пришло
+     * впервые и сколько заменило прежние.
+     */
+    setChanged(
+      итог.added === 0 && итог.replaced === 0
+        ? 'В выписке не нашлось ни одной операции.'
+        : итог.added === 0
+          ? `Ничего нового: те же ${итог.replaced} ${операций(итог.replaced)} обновлены.`
+          : `Новых операций: ${итог.added}. Обновлено прежних: ${итог.replaced}. Всего: ${итог.total}.`,
+    )
     setView('year')
     setMonth(null)
     setCategoryFilter(null)
@@ -599,6 +625,14 @@ export function App(): JSX.Element {
           </button>
 
           {error === null ? null : <p class="f-err">{error}</p>}
+          {changed === null ? null : (
+            <p class="f-changed" role="status">
+              {changed}{' '}
+              <button type="button" class="f-linkish" onClick={() => setChanged(null)}>
+                понятно
+              </button>
+            </p>
+          )}
 
           <section class="f-howto">
             <h2 class="f-eyebrow f-eyebrow--quiet f-howto__title">Как выгрузить</h2>
@@ -1397,6 +1431,14 @@ export function App(): JSX.Element {
         </p>
       ) : null}
       {error === null ? null : <p class="f-err">{error}</p>}
+      {changed === null ? null : (
+        <p class="f-changed" role="status">
+          {changed}{' '}
+          <button type="button" class="f-linkish" onClick={() => setChanged(null)}>
+            понятно
+          </button>
+        </p>
+      )}
       {freshness}
       {view === 'details' ? footer : null}
       {fileInput}

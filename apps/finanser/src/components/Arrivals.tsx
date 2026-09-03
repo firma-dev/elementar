@@ -2,7 +2,7 @@ import { useState } from 'preact/hooks'
 import type { JSX } from 'preact'
 import type { IncomeSource } from '../income.js'
 import type { Kopeck } from '../money.js'
-import { dayLabel } from '../model.js'
+import { dayInput, dayLabel, parseDayInput } from '../model.js'
 import { Amount } from './Amount.js'
 
 export interface ArrivalsProps {
@@ -66,14 +66,24 @@ export function Arrivals({ sources, next, onSetDate, byHand }: ArrivalsProps): J
             const field = (event.currentTarget as HTMLFormElement).elements.namedItem(
               'дата',
             ) as HTMLInputElement
-            onSetDate(field.value)
+            const iso = parseDayInput(field.value)
+            if (iso !== '') onSetDate(iso)
             setAsking(false)
           }}
         >
           <label class="f-ask__k" for="приход-дата">
             Когда ждёте приход
           </label>
-          <input id="приход-дата" name="дата" type="date" defaultValue={next.date} autoFocus />
+          <input
+            id="приход-дата"
+            name="дата"
+            type="text"
+            inputMode="numeric"
+            maxLength={10}
+            placeholder="ДД.ММ.ГГГГ"
+            defaultValue={dayInput(next.date)}
+            autoFocus
+          />
           <button type="submit" class="f-btn">
             запомнить
           </button>
