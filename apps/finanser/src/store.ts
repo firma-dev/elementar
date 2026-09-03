@@ -55,6 +55,8 @@ export interface SourceInfo {
   accountLabels?: Record<string, string>
   /** Чей это банк, по подписи выгрузки. Догадка, не факт. */
   bank?: { name: string; why: string } | null
+  /** Выписка по счёту или по карте. См. `ParseResult.kind`. */
+  kind?: 'account' | 'card'
 }
 
 /**
@@ -258,6 +260,12 @@ export interface StatementChange {
   replaced: number
   total: number
   account: string
+  /** Сколько прежних операций исчезло под новой выпиской. */
+  removed: number
+  /** Сколько прихода в них было: главная потеря, если она случилась. */
+  removedIncome: number
+  /** Разошлись ли выгрузки видом: по счёту против по карте. */
+  kindChanged: boolean
 }
 
 export function addStatement(list: Tx[], info: SourceInfo): StatementChange {
@@ -347,10 +355,14 @@ export function addStatement(list: Tx[], info: SourceInfo): StatementChange {
   const to = dates[dates.length - 1] ?? ''
 
   const byId = new Map<string, Tx>()
+  const выброшены: Tx[] = []
   for (const tx of transactions.value) {
     if (gone.has(tx.account)) continue
     const replaced = incoming.has(tx.account) && from !== '' && tx.date >= from && tx.date <= to
-    if (replaced) continue
+    if (replaced) {
+      выброшены.push(tx)
+      continue
+    }
     byId.set(tx.id, tx)
   }
   for (const tx of list) byId.set(tx.id, tx)
@@ -376,11 +388,25 @@ export function addStatement(list: Tx[], info: SourceInfo): StatementChange {
   // прежние. «Обновил и не понял, что поменялось» — это не обновление.
   const было = new Set(транзакцииДо.map((tx) => tx.id))
   const added = list.filter((tx) => !было.has(tx.id)).length
+  const пришли = new Set(list.map((tx) => tx.id))
+  const исчезли = выброшены.filter((tx) => !пришли.has(tx.id))
   return {
     added,
     replaced: list.length - added,
     total: merged.length,
     account: accounts.value.find((a) => a.key === list[0]?.account)?.name ?? '',
+    removed: исчезли.length,
+    removedIncome: исчезли.reduce((sum, tx) => (tx.amount > 0 ? sum + tx.amount : sum), 0),
+    // Вид сравнивается не с одноимённым файлом, а с любой прежней выпиской
+    // того же счёта: банк называет свои выгрузки по-разному, и совпадения имён
+    // ждать нечего.
+    kindChanged: sources.value.some(
+      (src) =>
+        src.name !== info.name &&
+        src.kind !== undefined &&
+        src.kind !== info.kind &&
+        (src.accounts ?? []).some((key) => incoming.has(key)),
+    ),
   }
 }
 

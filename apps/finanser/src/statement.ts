@@ -326,6 +326,19 @@ export interface ParseResult {
    */
   bank: { name: string; why: string } | null
   /**
+   * Какая это выгрузка: по счёту или по карте.
+   *
+   * Один и тот же банк даёт обе, и они видят разное. Выписка по счёту знает
+   * всё: покупки, переводы, зарплату. Выписка по карте — только то, что
+   * прошло картой, и приход в ней почти пустой.
+   *
+   * Различать обязательно. Обе покрывают один период и один счёт, но одну и ту
+   * же покупку описывают по-разному — значит, слить их нельзя: получится
+   * двойной счёт. Заменять одну другой можно, но человеку надо сказать, что он
+   * при этом теряет.
+   */
+  kind: 'account' | 'card'
+  /**
    * Были ли в файле колонки MCC и «Категория».
    *
    * Банки отдают выписку в двух видах. Короткая — пять
@@ -379,6 +392,7 @@ const EMPTY_RESULT: ParseResult = {
   accounts: [],
   accountLabels: {},
   bank: null,
+  kind: 'account',
   hasCodes: false,
 }
 
@@ -399,6 +413,7 @@ export function parseStatement(bytes: Uint8Array, fallbackAccount = ''): ParseRe
       accounts: [],
       accountLabels: {},
       bank: null,
+      kind: 'account',
       hasCodes: false,
     }
   }
@@ -430,6 +445,7 @@ export function parseRows(rows: readonly (readonly string[])[], fallbackAccount 
     accounts: [],
     accountLabels: {},
     bank: null,
+    kind: 'account',
     hasCodes: false,
   }
   if (header === undefined) return { ...empty, error: 'Файл пуст.' }
@@ -621,6 +637,13 @@ export function parseRows(rows: readonly (readonly string[])[], fallbackAccount 
       header,
       transactions.map((tx) => tx.description),
     ),
+    // Выписка по карте узнаётся по тому, чего в ней нет: колонки с номером
+    // карты (она там не нужна — карта одна) и раздельных колонок прихода и
+    // расхода. Сумма в ней одна, со знаком.
+    kind:
+      columns.account !== undefined || columns.creditPay !== undefined || columns.credit !== undefined
+        ? 'account'
+        : 'card',
     hasCodes: columns.mcc !== undefined || columns.category !== undefined,
   }
 }
