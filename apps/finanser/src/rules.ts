@@ -54,7 +54,11 @@ export const RULES: readonly Rule[] = [
       'VKUSVILL',
       'АЗБУКА ВКУСА',
       'AZBUKA',
-      'МЕТРО',
+      // «МЕТРО» без уточнения — это подземка, а не мелкооптовый магазин: после
+      // сворачивания ключ совпадал с транспортным «МЕТРО » до буквы, продукты
+      // стояли в списке раньше, и проезд за 60 ₽ ложился в еду.
+      'МЕТРО КЭШ',
+      'METRO CASH',
       'METRO C',
       'OKEY',
       'ОКЕЙ',
@@ -797,6 +801,12 @@ export const RULES: readonly Rule[] = [
 function indexKey(keyword: string): string {
   const folded = foldKeyword(keyword)
   const bare = folded.trim()
+  // Хвостовой пробел, написанный в словаре, значит «слово кончается здесь», и
+  // срезать его нельзя. Из-за среза ключ «YANDEX EDA » ловил «YANDEX*5411*
+  // EDARIT» — доставку продуктов, у которой в описании есть свой MCC, — и
+  // клал её в «Кафе и рестораны»: словарь стоит выше кодов.
+  const tail = /\s$/.test(keyword) ? ' ' : ''
+  if (tail === ' ') return ` ${bare} `
   if (bare.length >= 6 || bare.includes(' ')) return ` ${bare}`
   return ` ${bare} `
 }

@@ -39,6 +39,24 @@ const MAX_DAYS = 2
  */
 const MOVED_OUT = new Set(['Переводы', 'Накопления'])
 
+/**
+ * Перевод самому себе по номеру телефона.
+ *
+ * Такой перевод банк пишет одинаково в обе стороны и оба раза с одним и тем же
+ * номером. Категория у него «Переводы людям», то есть в поиск пар исходящая
+ * сторона не попадала совсем: свои же деньги считались и тратой, и доходом, а
+ * приходы по этому номеру приложение объявляло регулярным источником и строило
+ * на них прогноз зарплаты. На настоящей выписке по одному номеру ушло 41 492 ₽
+ * и «пришло» 17 642 ₽.
+ *
+ * Пускаем такие в поиск, но только под замок совпадения ключа: пара сойдётся
+ * лишь тогда, когда номер на обеих сторонах один. С чужим человеком это не
+ * случится.
+ */
+function ownTransfer(tx: Categorized): boolean {
+  return tx.category === PEOPLE && merchantKey(tx.description) !== ''
+}
+
 export interface Pair {
   out: Categorized
   in: Categorized
@@ -54,6 +72,7 @@ export interface Pair {
  */
 function looksIncoming(tx: Categorized): boolean {
   if (planeOfTx(tx.category, tx.amount) === 'move') return true
+  if (tx.category === PEOPLE) return true
   const kind = operationOf(tx.description).kind
   return kind === 'topup' || kind === 'transfer' || kind === 'cash'
 }
@@ -75,10 +94,13 @@ function looksIncoming(tx: Categorized): boolean {
  * операция попала в поиск пары. Вот тогда имя на другой стороне и решает.
  */
 function sameSide(out: Categorized, incoming: Categorized): boolean {
-  if (operationOf(out.description).category !== PEOPLE) return true
-  if (operationOf(incoming.description).category !== PEOPLE) return true
   const left = merchantKey(out.description)
   const right = merchantKey(incoming.description)
+  // Обе стороны названы человеком или номером — решает совпадение ключа, и
+  // только оно. Это и есть замок для самопереводов по номеру телефона.
+  if (out.category === PEOPLE && incoming.category === PEOPLE) return left === right
+  if (operationOf(out.description).category !== PEOPLE) return true
+  if (operationOf(incoming.description).category !== PEOPLE) return true
   return left === '' || right === '' || left === right
 }
 
@@ -91,7 +113,9 @@ function days(a: string, b: string): number {
  * Найти пары. Возвращает только уверенные — см. рассуждение выше.
  */
 export function findPairs(rows: readonly Categorized[]): Pair[] {
-  const outs = rows.filter((tx) => tx.amount < 0 && MOVED_OUT.has(tx.category))
+  const outs = rows.filter(
+    (tx) => tx.amount < 0 && (MOVED_OUT.has(tx.category) || ownTransfer(tx)),
+  )
   const ins = rows.filter((tx) => tx.amount > 0 && looksIncoming(tx))
 
   const taken = new Set<string>()
@@ -101,7 +125,9 @@ export function findPairs(rows: readonly Categorized[]): Pair[] {
       (candidate) =>
         !taken.has(candidate.id) &&
         candidate.amount === -out.amount &&
-        candidate.account !== out.account &&
+        // Переводы себе по номеру телефона банк показывает на одном счёте:
+        // ушло и вернулось. Для них требование разных счетов не работает.
+        (candidate.account !== out.account || (ownTransfer(out) && ownTransfer(candidate))) &&
         days(candidate.date, out.date) <= MAX_DAYS &&
         sameSide(out, candidate),
     )
@@ -132,14 +158,29 @@ export function pairedIncoming(pairs: readonly Pair[]): Set<string> {
  * уже была на другом счёте, и в «Поступлениях» она удваивала настоящий доход.
  */
 export function markPairs(rows: readonly Categorized[]): Categorized[] {
-  const paired = pairedIncoming(findPairs(rows))
+  const pairs = findPairs(rows)
+  const paired = pairedIncoming(pairs)
+  /**
+   * У перевода самому себе помечаются обе стороны.
+   *
+   * Обычная пара — это движение между счетами: расходная сторона уже названа
+   * переводом, помечать нечего. А самоперевод по номеру телефона выглядит как
+   * перевод человеку, и без пометки его расходная сторона осталась бы тратой:
+   * пять тысяч, ушедшие себе же, лежали бы в «На что уходит».
+   *
+   * Пара для них сходится только при совпадении номера на обеих сторонах, так
+   * что чужой перевод сюда не попадёт.
+   */
+  for (const pair of pairs) {
+    if (pair.out.category === PEOPLE && pair.in.category === PEOPLE) paired.add(pair.out.id)
+  }
   if (paired.size === 0) return rows as Categorized[]
   return rows.map((tx) =>
     // Рука человека сильнее пары. Человек уже посмотрел на эту операцию и
     // сказал, чем она является; пара — догадка по совпадению суммы и даты, и
     // догадка не отменяет сказанного. Без этой проверки правка молча
     // откатывалась: поставил «Доход», нажал ещё раз, и снова «Переводы».
-    paired.has(tx.id) && tx.source !== 'manual'
+    paired.has(tx.id) && tx.source !== 'manual' && tx.source !== 'merchant'
       ? { ...tx, category: 'Переводы' as const, source: 'operation' as const }
       : tx,
   )

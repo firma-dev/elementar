@@ -44,8 +44,9 @@ export function sniffNotCsv(bytes: Uint8Array): string | null {
       '(.xlsx) — пересохраните или выгрузите заново.'
     )
   }
-  // Нулевой байт в начале файла — верный признак двоичного формата.
-  if (bytes.slice(0, 512).includes(0)) {
+  // Нулевой байт в начале файла — признак двоичного формата. Кроме UTF-16:
+  // в нём нули стоят через один у всей латиницы, и это обычный текст.
+  if (bytes.slice(0, 512).includes(0) && utf16Order(bytes) === null) {
     return 'Похоже, это не текстовый файл. Финансер читает CSV — выгрузку операций из банка.'
   }
   return null
@@ -57,7 +58,37 @@ export function sniffNotCsv(bytes: Uint8Array): string | null {
  * Приём: UTF-8 с `fatal: true` не переварит кириллицу в 1251 и бросит; поймали —
  * значит однобайтовая кодировка.
  */
+/**
+ * UTF-16 и в какую сторону. Excel сохраняет «Текст в кодировке Юникод» именно
+ * так, и часть банков отдаёт выгрузку тем же способом.
+ *
+ * Признак — метка порядка байтов в начале либо каждый второй байт нулевой
+ * среди первых двух сотен: у русского и латинского текста это верно, а у
+ * настоящего двоичного файла нули стоят вразнобой.
+ */
+function utf16Order(bytes: Uint8Array): 'le' | 'be' | null {
+  if (bytes[0] === 0xff && bytes[1] === 0xfe) return 'le'
+  if (bytes[0] === 0xfe && bytes[1] === 0xff) return 'be'
+  const head = bytes.slice(0, 200)
+  if (head.length < 8) return null
+  let even = 0
+  let odd = 0
+  for (let i = 0; i < head.length; i += 2) {
+    if (head[i] === 0) even += 1
+    if (head[i + 1] === 0) odd += 1
+  }
+  const half = Math.floor(head.length / 2)
+  if (odd >= half - 1) return 'le'
+  if (even >= half - 1) return 'be'
+  return null
+}
+
 export function decodeBytes(bytes: Uint8Array): string {
+  const wide = utf16Order(bytes)
+  if (wide !== null) {
+    const text = new TextDecoder(wide === 'le' ? 'utf-16le' : 'utf-16be').decode(bytes)
+    return text.charCodeAt(0) === 0xfeff ? text.slice(1) : text
+  }
   let text: string
   try {
     text = new TextDecoder('utf-8', { fatal: true }).decode(bytes)

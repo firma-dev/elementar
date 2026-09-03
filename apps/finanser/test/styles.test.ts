@@ -131,7 +131,15 @@ describe('стиль корпуса', () => {
     //
     // Мишень набирается высотой, а не кеглем: набранная кеглем, она делает
     // подпись самым крупным текстом на экране.
-    for (const selector of ['.f-period', '.f-fold__head', '.f-cat']) {
+    for (const selector of [
+      '.f-period',
+      '.f-fold__head',
+      '.f-cat',
+      '.f-btn',
+      '.f-arr__when',
+      '.f-bal__edit',
+      '.f-tr__name',
+    ]) {
       const rule = ruleFor(coarse, selector)
       expect(rule, `${selector} без мишени под палец`).toMatch(/min-height:\s*44px/)
       expect(rule, `${selector} набирает мишень кеглем`).not.toMatch(/font-size/)
@@ -211,6 +219,28 @@ describe('размеры по ролям, а не по месту', () => {
     // Палитра называется прямо только в объявлении ролей — правил, которые
     // берут размер из неё, не осталось ни одного.
     expect(прямые).toEqual([])
+  })
+
+  it('кегль не пишется числом', () => {
+    // Проверка про палитру ниже ловит только `var(--el__fs-…)`. Литерал
+    // `font-size: 13px` не ловило ничто: посаженное нарушение прошло все
+    // четырнадцать проверок. Исключения два: 16px на пальце (правило §4.3) и
+    // `1rem` у страницы — корень, от которого считаются роли в `em`.
+    const числом = [...rules.matchAll(/font-size:\s*([0-9.]+(?:px|rem|em|pt))/g)]
+      .map((m) => m[1])
+      .filter((v) => v !== '16px' && v !== '1rem')
+    expect(числом).toEqual([])
+  })
+
+  it('в разметке нет ни цвета, ни кегля строкой', () => {
+    // Тест читал только CSS, а инлайновые стили в TSX не смотрел никто.
+    const плохие: string[] = []
+    for (const m of readMarkup().matchAll(/style=\{?["'`]([^"'`]+)["'`]/g)) {
+      const value = m[1] ?? ''
+      if (/#[0-9a-f]{3,8}\b|\brgba?\(|\bhsla?\(/i.test(value)) плохие.push(value)
+      if (/font-size:\s*[0-9]/.test(value)) плохие.push(value)
+    }
+    expect(плохие).toEqual([])
   })
 
   it('зазоры берутся из шкалы, а не из головы', () => {

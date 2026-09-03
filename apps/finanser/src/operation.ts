@@ -237,9 +237,32 @@ const LEFTOVER = new Set(['V', 'S', 'NA', 'PO', 'ZA', 'IZ', 'OT', 'DLYA'])
  */
 export function operationOf(description: string): Operation {
   const norm = normalize(description)
+  /**
+   * Побеждает марка, стоящая в описании раньше, а не правило, стоящее раньше
+   * в списке.
+   *
+   * Вид операции банк называет служебным началом описания — «Оплата покупки по
+   * карте», «Перевод на номер». Дальше идёт имя получателя, и в нём может
+   * встретиться слово из чужого списка. Пока побеждал порядок правил, покупка
+   * «Оплата покупки 2659.00 RUB Пополнение ЛС_SBP» становилась пополнением, а
+   * «Оплата в ВКЛАД ЮНИОН МАГАЗИН» — накоплением, и трата исчезала из картины
+   * целиком.
+   *
+   * Ничья решается порядком правил, как раньше.
+   */
+  let found: { rule: (typeof KINDS)[number]; mark: string; at: number } | null = null
   for (const rule of KINDS) {
-    const mark = rule.marks.find((m) => norm.includes(` ${m} `) || norm.startsWith(` ${m}`))
-    if (mark === undefined) continue
+    for (const m of rule.marks) {
+      const at = norm.indexOf(` ${m} `)
+      if (at === -1) continue
+      if (found === null || at < found.at) found = { rule, mark: m, at }
+      break
+    }
+  }
+  {
+    if (found === null) return { kind: 'purchase', rest: norm.trim(), category: null }
+    const rule = found.rule
+    const mark = found.mark
     let rest = norm
     for (const cut of rule.cutAt ?? []) {
       const at = rest.indexOf(` ${cut} `)
@@ -248,7 +271,6 @@ export function operationOf(description: string): Operation {
     for (const cut of rule.strip ?? [mark]) rest = rest.split(cut).join(' ')
     return { kind: rule.kind, rest: rest.trim(), category: rule.category }
   }
-  return { kind: 'purchase', rest: norm.trim(), category: null }
 }
 
 /** Убирает служебные огрызки начала описания из уже нарезанных слов. */

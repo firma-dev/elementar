@@ -376,6 +376,16 @@ export function parseDayInput(text: string): string {
   const y = year.length === 2 ? 2000 + Number(year) : Number(year)
   if (!Number.isInteger(d) || !Number.isInteger(m) || !Number.isInteger(y)) return ''
   if (d < 1 || d > 31 || m < 1 || m > 12 || y < 1990 || y > 2100) return ''
+  /**
+   * Числа, которого в месяце нет, не бывает и в календаре.
+   *
+   * «31.11.2026» проходило: в строке стояло «ждёте 31 ноября», а счёт дней шёл
+   * через `new Date`, который катит такую дату на 1 декабря. Подпись и
+   * арифметика расходились на сутки, а в строгом разборе выходило `NaN` —
+   * и «можно тратить» показывало «NaN,NaN».
+   */
+  const вМесяце = new Date(Date.UTC(y, m - 1, d))
+  if (вМесяце.getUTCMonth() !== m - 1 || вМесяце.getUTCDate() !== d) return ''
   return `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
 }
 

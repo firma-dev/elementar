@@ -57,7 +57,15 @@ export interface SourceInfo {
   bank?: { name: string; why: string } | null
   /** Выписка по счёту или по карте. См. `ParseResult.kind`. */
   kind?: 'account' | 'card'
+  /** Это пример, а не выписка человека. См. `DEMO_NAME`. */
+  demo?: boolean
 }
+
+/**
+ * Имя примера. Одно на приложение: по нему пример отличается от настоящей
+ * выписки — и в хранилище, и при загрузке следующего файла.
+ */
+export const DEMO_NAME = 'пример выписки'
 
 /**
  * Счёт.
@@ -268,6 +276,24 @@ export interface StatementChange {
   kindChanged: boolean
 }
 
+/**
+ * Период выписки, объявленный в имени файла: «…25.06.26-01.09.26.csv».
+ *
+ * Банк называет выгрузку сам и кладёт в имя ровно те даты, по которым резал.
+ * Другого способа узнать период у приложения нет: внутри файла его нет.
+ * Не нашли — null, и тогда отрезок считается по датам операций, как раньше.
+ */
+function периодИзИмени(name: string): { from: string; to: string } | null {
+  const m = /(\d{2})[._-](\d{2})[._-](\d{2,4})\s*-\s*(\d{2})[._-](\d{2})[._-](\d{2,4})/.exec(name)
+  if (m === null) return null
+  const iso = (d: string, mo: string, y: string): string =>
+    `${y.length === 2 ? `20${y}` : y}-${mo}-${d}`
+  const from = iso(m[1] ?? '', m[2] ?? '', m[3] ?? '')
+  const to = iso(m[4] ?? '', m[5] ?? '', m[6] ?? '')
+  if (from > to) return null
+  return { from, to }
+}
+
 export function addStatement(list: Tx[], info: SourceInfo): StatementChange {
   /**
    * Выписка без номера карты попадает на существующий счёт, а не заводит новый.
@@ -287,9 +313,47 @@ export function addStatement(list: Tx[], info: SourceInfo): StatementChange {
    * А «дебетовая.csv» и «кредитная.csv» человек назвал сам, и это значит, что
    * он их различает: сводить такие в один счёт — спорить с ним.
    */
+  /**
+   * Настоящая выписка выгоняет пример, а не подселяется к нему.
+   *
+   * Пример — один счёт с машинно-выглядящим содержимым, и следующая настоящая
+   * выгрузка приклеивалась прямо к нему: 676 выдуманных операций становились
+   * операциями человека под именем «пример выписки», а выдуманный остаток
+   * 73 840 ₽ стоял в ячейке «на счёте» как выгруженный банком. Ещё и часть
+   * примера при этом стиралась, так что итог не повторялся дважды.
+   */
+  if (info.demo !== true && sources.value.some((src) => src.demo === true)) {
+    const примеры = new Set(
+      sources.value.filter((src) => src.demo === true).flatMap((src) => src.accounts ?? []),
+    )
+    transactions.value = transactions.value.filter((tx) => !примеры.has(tx.account))
+    accounts.value = accounts.value.filter((a) => !примеры.has(a.key))
+    sources.value = sources.value.filter((src) => src.demo !== true)
+    writeJson(KEY_TX, transactions.value)
+    writeJson(KEY_ACCOUNTS, accounts.value)
+    writeJson(KEY_SOURCE, sources.value)
+  }
+
   const безКарт = Object.keys(info.accountLabels ?? {}).length === 0
   const машинноеИмя = MACHINE_NAME.test(info.name.replace(/\.[a-z0-9]+$/i, ''))
-  if (безКарт && машинноеИмя && accounts.value.length === 1) {
+  /**
+   * И банк должен быть тот же.
+   *
+   * Без этой проверки выгрузка чужого банка — а машинное имя есть почти у
+   * любой: `statement`, `export`, `operations`, дата в имени — приклеивалась к
+   * единственному счёту человека и своим отрезком стирала его настоящие
+   * операции за те же дни. Проверено: две строки чужого банка убирали восемь
+   * райффайзеновских.
+   *
+   * Банк — догадка по подписи колонок, поэтому «не знаю» не запрещает склейку:
+   * запрещает только явное расхождение.
+   */
+  const тотЖеБанк =
+    info.bank == null ||
+    accounts.value[0]?.bank === undefined ||
+    accounts.value[0]?.bank === '' ||
+    accounts.value[0]?.bank === info.bank.name
+  if (безКарт && машинноеИмя && тотЖеБанк && accounts.value.length === 1) {
     const цель = accounts.value[0]?.key
     if (цель !== undefined) {
       const seen = new Map<string, number>()
@@ -350,16 +414,79 @@ export function addStatement(list: Tx[], info: SourceInfo): StatementChange {
   const gone = new Set((before?.accounts ?? []).filter((key) => !now.has(key)))
 
   const incoming = new Set(info.accounts ?? list.map((tx) => tx.account))
-  const dates = list.map((tx) => tx.date).sort()
-  const from = dates[0] ?? ''
-  const to = dates[dates.length - 1] ?? ''
+
+  /**
+   * Отрезок замены считается по каждому счёту отдельно.
+   *
+   * В одном файле лежат две карты: по первой операции с июня, по второй — одна
+   * августовская. Общий отрезок объявлял бы июнь–август обеим, и прежние
+   * июньские операции второй карты исчезали бы, хотя новая выписка про них
+   * ничего не сказала.
+   */
+  const окна = new Map<string, { from: string; to: string }>()
+  for (const tx of list) {
+    const было = окна.get(tx.account)
+    if (было === undefined) окна.set(tx.account, { from: tx.date, to: tx.date })
+    else {
+      if (tx.date < было.from) было.from = tx.date
+      if (tx.date > было.to) было.to = tx.date
+    }
+  }
+
+  /**
+   * Начало отрезка — не раньше периода, который банк объявил в имени файла.
+   *
+   * Банк режет выписку по дате проведения, а операции в ней датированы днём
+   * покупки. В месячной выгрузке за 02.08–01.09 поэтому лежат покупки от
+   * 30 июля, проведённые в августе. Считая отрезок по самой ранней дате
+   * операции, приложение объявляло себя хозяином и конца июля — и стирало
+   * оттуда всё, чего в месячном файле нет: шесть настоящих покупок, 10 637 ₽,
+   * молча, при каждом ежемесячном обновлении.
+   *
+   * Строки раньше объявленного периода из файла всё равно берутся: они не
+   * лишние. Права стирать чужие дни они не дают.
+   */
+  const период = периодИзИмени(info.name)
+  if (период !== null) {
+    for (const окно of окна.values()) {
+      if (окно.from < период.from) окно.from = период.from
+    }
+  }
+
+  /**
+   * Внутри отрезка уходит не всё подряд, а только то, про что банк сказал
+   * заново: строка с тем же счётом, днём и суммой.
+   *
+   * Раньше отрезок стирался целиком. Выписка по карте, загруженная поверх
+   * выписки по счёту за те же дни, уносила с собой 320 операций и 458 699 ₽
+   * зарплаты: покупки в новом файле были, а зарплата по карте не проходит, и
+   * банк про неё просто ничего не сказал. Молчание — не отмена.
+   *
+   * Сравнение по дню и сумме, а не по идентификатору: тот же банк пишет одну
+   * и ту же покупку то кириллицей, то латиницей, и по описанию строки не
+   * узнают друг друга. День и сумма совпадают всегда.
+   */
+  const названы = new Map<string, number>()
+  for (const tx of list) {
+    const key = `${tx.account}|${tx.date}|${tx.amount}`
+    названы.set(key, (названы.get(key) ?? 0) + 1)
+  }
 
   const byId = new Map<string, Tx>()
   const выброшены: Tx[] = []
+  const исчезли: Tx[] = []
   for (const tx of transactions.value) {
-    if (gone.has(tx.account)) continue
-    const replaced = incoming.has(tx.account) && from !== '' && tx.date >= from && tx.date <= to
-    if (replaced) {
+    if (gone.has(tx.account)) {
+      исчезли.push(tx)
+      continue
+    }
+    const окно = окна.get(tx.account)
+    const вОкне =
+      окно !== undefined && incoming.has(tx.account) && tx.date >= окно.from && tx.date <= окно.to
+    const key = `${tx.account}|${tx.date}|${tx.amount}`
+    const осталось = названы.get(key) ?? 0
+    if (вОкне && осталось > 0) {
+      названы.set(key, осталось - 1)
       выброшены.push(tx)
       continue
     }
@@ -388,11 +515,18 @@ export function addStatement(list: Tx[], info: SourceInfo): StatementChange {
   // прежние. «Обновил и не понял, что поменялось» — это не обновление.
   const было = new Set(транзакцииДо.map((tx) => tx.id))
   const added = list.filter((tx) => !было.has(tx.id)).length
-  const пришли = new Set(list.map((tx) => tx.id))
-  const исчезли = выброшены.filter((tx) => !пришли.has(tx.id))
+  /**
+   * «Исчезло» — только то, что действительно пропало из картины: строки
+   * счетов, которых этот файл больше не заводит.
+   *
+   * Заменённые строки сюда не идут, даже когда идентификатор у них сменился.
+   * Раньше шли — и отчёт об обновлении выписки по карте сообщал «исчезло 252,
+   * из них дохода на 5 064 ₽», хотя все 252 были названы заново, той же датой
+   * и той же суммой. Пугать человека потерей, которой не было, нельзя.
+   */
   return {
     added,
-    replaced: list.length - added,
+    replaced: выброшены.length,
     total: merged.length,
     account: accounts.value.find((a) => a.key === list[0]?.account)?.name ?? '',
     removed: исчезли.length,
@@ -568,7 +702,52 @@ export function restoreEverything(
   nextOverrides: Overrides,
   nextMerchants: MerchantOverrides,
   info: SourceInfo | null,
+  settings: {
+    plan?: unknown
+    accounts?: unknown
+    rates?: unknown
+    cashSplits?: unknown
+    extras?: unknown
+  } = {},
 ): void {
+  /**
+   * Выбранный счёт снимается.
+   *
+   * Ключи счетов в чужой копии другие, и оставшийся выбор указывал в пустоту:
+   * операции загрузились, а экран после успешного возврата был пуст, ни одна
+   * кнопка в переключателе не подсвечена, и почему — не сказано.
+   */
+  activeAccount.value = null
+
+  // Настройка из копии — до операций: имена счетов ставятся раньше, чем
+  // `registerAccounts` придумает «Счёт 1» для ещё безымянного ключа.
+  if (Array.isArray(settings.accounts)) {
+    const годные = (settings.accounts as unknown[]).filter(
+      (a): a is Account =>
+        typeof a === 'object' && a !== null && typeof (a as Account).key === 'string',
+    )
+    accounts.value = годные
+    writeJson(KEY_ACCOUNTS, годные)
+  }
+  if (typeof settings.plan === 'object' && settings.plan !== null) {
+    const next = normalizePlan(settings.plan as Partial<Plan>)
+    plan.value = next
+    writeJson(KEY_PLAN, next)
+  }
+  if (typeof settings.rates === 'object' && settings.rates !== null) {
+    rates.value = settings.rates as Rates
+    writeJson(KEY_RATES, rates.value)
+  }
+  if (typeof settings.cashSplits === 'object' && settings.cashSplits !== null) {
+    cashSplits.value = settings.cashSplits as CashSplits
+    writeJson(KEY_CASH, cashSplits.value)
+  }
+  if (Array.isArray(settings.extras)) {
+    const список = (settings.extras as unknown[]).filter((x): x is string => typeof x === 'string')
+    extras.value = список
+    writeJson(KEY_EXTRAS, список)
+  }
+
   if (info !== null) registerAccounts(list, info)
   transactions.value = list
   overrides.value = { ...nextOverrides }

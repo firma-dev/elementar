@@ -219,7 +219,9 @@ function gaps(dates: readonly string[]): number[] {
     const b = Date.parse(`${dates[i] ?? ''}T00:00:00Z`)
     if (Number.isFinite(a) && Number.isFinite(b)) out.push(Math.round((b - a) / 86400000))
   }
-  return out.length === 0 ? [30] : out
+  // У единственного прихода промежутка нет вовсе. Тридцать дней, взятые из
+  // воздуха, выглядели бы ритмом, которого никто не наблюдал.
+  return out
 }
 
 /** Прибавить дни к ISO-дате. */
@@ -246,8 +248,37 @@ export function nextArrival(
   edge: string,
 ): { date: string; label: string; amount: Kopeck } | null {
   let best: { date: string; label: string; amount: Kopeck } | null = null
+
+  /**
+   * Мелкие источники не считаются: они сдвигают дату, не принося денег.
+   *
+   * Друг, скидывающий по пятьсот рублей каждые пять дней, — тоже регулярный
+   * источник. Ближайший приход выбирался по одной дате, и «можно тратить»
+   * делилось на четыре дня вместо двенадцати: число втрое больше правды, а в
+   * подписи стоял приход, который ничего не пополняет.
+   *
+   * Порог — пятая часть самого крупного регулярного источника.
+   */
+  const крупнейший = sources.reduce(
+    (max, s) => (s.regular && s.typical > max ? s.typical : max),
+    0,
+  )
+  const порог = Math.round(крупнейший / 5)
+
   for (const source of sources) {
     if (!source.regular) continue
+    if (source.typical < порог) continue
+    /**
+     * Источник, который замолчал, ничего не обещает.
+     *
+     * Проверки на давность не было вовсе: зарплата, приходившая с января по
+     * июнь, при крае данных в сентябре по-прежнему давала «ждём 10 октября ·
+     * 100 000», и остаток делился на дни до этой даты. Главное число экрана
+     * считалось на деньги от работы, которой нет три месяца.
+     *
+     * Два обычных промежутка молчания — уже не ритм.
+     */
+    if (plusDays(source.lastDate, Math.max(2, Math.round(source.typicalGap) * 2)) < edge) continue
     const gap = Math.max(1, Math.round(source.typicalGap))
     let date: string
     if (gap >= 26 && gap <= 32) {
@@ -265,6 +296,9 @@ export function nextArrival(
         date = plusDays(date, gap)
         шагов += 1
       }
+      // Ограничитель исчерпан — дата всё ещё в прошлом. Обещать её нельзя:
+      // «можно тратить весь остаток · 1 день до вчера» хуже, чем молчание.
+      if (date <= edge) continue
     }
     if (best === null || date < best.date) {
       best = { date, label: source.label, amount: source.typical }
@@ -279,7 +313,10 @@ function expectedAfter(after: string, day: number): string {
   const month = Number(after.slice(5, 7))
   const inThis = Math.min(day, daysInMonth(`${after.slice(0, 7)}-01`))
   const candidate = `${after.slice(0, 7)}-${String(inThis).padStart(2, '0')}`
-  if (candidate > after) return candidate
+  // Не строго больше: край данных 31 января при зарплате 31-го значит «сегодня
+  // и ждём», а не «через месяц». Строгое сравнение отправляло человека на
+  // 28 февраля и делило остаток на двадцать восемь дней вместо нуля.
+  if (candidate >= after) return candidate
   const nextMonth = month === 12 ? 1 : month + 1
   const nextYear = month === 12 ? year + 1 : year
   const stamp = `${nextYear}-${String(nextMonth).padStart(2, '0')}`

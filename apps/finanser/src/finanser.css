@@ -204,6 +204,9 @@ input {
   gap: var(--f-v-3);
   flex-wrap: wrap;
   background: var(--el__mark);
+  /* Маркер жёлтый в обеих темах, а текст в тёмной — светло-серый: контраст
+     1,04:1, плашка читалась как пустая. На жёлтом цвет назначается явно. */
+  color: var(--el__color-gray-950);
   border: var(--el__border-width-s) solid var(--el__text);
   padding: var(--f-v-3) 0.7em;
   margin-top: var(--f-step-2);
@@ -487,6 +490,15 @@ input {
   letter-spacing: 0;
 }
 
+/* Сказать, что дата не понята, — прямо под полем, куда её вводили. Строка
+   занимает всю ширину, чтобы не толкать кнопки. */
+.f-ask__err {
+  flex: 1 0 100%;
+  margin: 0;
+  font-size: var(--f-label);
+  color: var(--el__error);
+}
+
 .f-ask input:focus-visible {
   outline: var(--el__border-width-m) solid var(--el__link);
   outline-offset: var(--f-v-1);
@@ -513,15 +525,27 @@ input {
   color: var(--el__text);
 }
 
+/* Кнопка сама по себе — набирается подписью. Внутри строки, у которой кегль
+   уже назначен, она его наследует: см. `font-size: inherit` ниже. */
+.f-block > .f-btn,
+.f-head__load {
+  font-size: var(--f-label);
+}
+
 /* Капс у всех плашек: OCR читается заглавными, строчные в нём кривые
    (Д-034). */
 .f-btn,
 .f-head__load {
-  border: var(--el__border-width-s) solid var(--el__border);
+  border: var(--el__border-width-s) solid var(--el__text-caption);
   background: none;
   color: var(--el__text-caption);
   font: inherit;
-  font-size: var(--f-label);
+  /* Роли объявлены в `em`, и потому складываются: строка «f-all» уже набрана
+     подписью, и кнопка внутри неё, поставив подпись ещё раз, получала 0,49em —
+     около семи пикселей на телефоне. Так набирались «подробно» и «← к сводке»,
+     две главные двери сводки. Кегль берётся от строки-хозяйки, а роль ставит
+     тот, кто стоит сам по себе. */
+  font-size: inherit;
   letter-spacing: var(--el__ls-caps-s);
   text-transform: uppercase;
   padding: var(--f-v-2) 0.7em;
@@ -970,6 +994,18 @@ input {
   background: var(--el__surface);
 }
 
+/* Хвост списка — не кнопка: он ничего не открывает, он только называет, что
+   осталось за пятью показанными строками. */
+.f-cat--rest {
+  margin: 0;
+  cursor: default;
+  color: var(--el__text-caption);
+}
+
+.f-cat--rest:hover {
+  background: none;
+}
+
 .f-cat__line {
   display: flex;
   justify-content: space-between;
@@ -1281,6 +1317,7 @@ input {
   padding: var(--f-v-2) 0.5em;
   font-size: var(--f-label);
   background: var(--el__mark);
+  color: var(--el__color-gray-950);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1298,6 +1335,7 @@ input {
 
 .f-chipoff:hover {
   background: var(--el__mark);
+  color: var(--el__color-gray-950);
 }
 
 /* Поиск: две тысячи операций иначе не пролистать. */
@@ -1420,6 +1458,7 @@ input {
 
 .f-more:hover {
   background: var(--el__mark);
+  color: var(--el__color-gray-950);
 }
 
 .f-more:active {
@@ -1776,6 +1815,16 @@ input {
   .f-field input,
   .f-cash__amount {
     font-size: 16px;
+  }
+
+  /* Двери, появившиеся при пересборке сводки, мишени не получили: «подробно»,
+     «← к сводке», «N операций», правка даты прихода и правка остатка — 20-25px
+     в высоту при нулевых полях. Промах по такой попадает в соседнюю. */
+  .f-btn,
+  .f-arr__when,
+  .f-bal__edit,
+  .f-tr__name {
+    min-height: 44px;
   }
 
   .f-pick__button {
@@ -2567,7 +2616,7 @@ input {
      разорвать один смысл на части. */
   .f-cols__left {
     grid-column: 1;
-    grid-row: 1 / span 3;
+    grid-row: 1 / span 4;
     display: grid;
     align-content: start;
     gap: var(--f-step-1);
@@ -2579,22 +2628,27 @@ input {
     grid-row: 1;
   }
 
-  .f-block--save {
+  .f-block--plan {
     grid-column: 2;
     grid-row: 2;
   }
 
-  .f-block--tools {
+  .f-block--save {
     grid-column: 2;
     grid-row: 3;
   }
 
+  .f-block--tools {
+    grid-column: 2;
+    grid-row: 4;
+  }
+
   /* Переводы — под расходами, в той же колонке: разбор идёт сразу за тем, что
-     он объясняет. Четвёртая строка сетки принадлежит им одним, поэтому высота
+     он объясняет. Последняя строка сетки принадлежит им одним, поэтому высота
      правой стопки на них не влияет и наоборот. */
   .f-block--transfers {
     grid-column: 1;
-    grid-row: 4;
+    grid-row: 5;
   }
 }
 

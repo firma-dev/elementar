@@ -120,3 +120,25 @@ export function formatShare(part: Kopeck, whole: Kopeck): string {
   const pct = (Math.abs(part) / Math.abs(whole)) * 100
   return pct < 10 ? pct.toFixed(1).replace('.', ',') : String(Math.round(pct))
 }
+
+/**
+ * Курс валюты: рублей за единицу, в копейках.
+ *
+ * Разбирается отдельно от сумм из выписки. У суммы «ровно три цифры после
+ * запятой» — это группа тысяч: «1.234» значит 1234 рубля. У курса ровно
+ * наоборот: «2,345» вводят те, у кого лира или иена, и это два рубля тридцать
+ * пять копеек, а не две тысячи. Общая эвристика умножала такой курс на тысячу,
+ * а с ним — и все валютные операции.
+ */
+export function parseRate(raw: string): Kopeck | null {
+  const s = raw.replace(/[\s\u00a0\u202f]/g, '').replace(/[^0-9.,-]/g, '')
+  if (s === '') return null
+  const sep = Math.max(s.lastIndexOf(','), s.lastIndexOf('.'))
+  const intPart = (sep === -1 ? s : s.slice(0, sep)).replace(/[.,]/g, '')
+  const fracPart = sep === -1 ? '' : s.slice(sep + 1).replace(/[^0-9]/g, '')
+  if (intPart.replace('-', '') === '' && fracPart === '') return null
+  const rub = intPart === '' || intPart === '-' ? 0 : Number(intPart)
+  if (!Number.isFinite(rub)) return null
+  const kop = fracPart === '' ? 0 : Math.round(Number(`0.${fracPart}`) * 100)
+  return (Math.abs(rub) * 100 + kop) as Kopeck
+}

@@ -8,7 +8,7 @@ import { fold } from './text.js'
 import type { ParseResult } from './statement.js'
 import { pendingExtras } from './categorize.js'
 import { byCategory, byMonth, byPlane } from './stats.js'
-import { formatAmount, formatShare, parseAmount } from './money.js'
+import { formatAmount, formatShare, parseRate } from './money.js'
 import type { Kopeck } from './money.js'
 import {
   PERIODS,
@@ -22,7 +22,7 @@ import {
   weekStart,
 } from './period.js'
 import type { PeriodKey } from './period.js'
-import { limitFor, toGoal } from './plan.js'
+import { hasPlan, limitFor, toGoal } from './plan.js'
 import { byIncomeSource, nextArrival } from './income.js'
 import { foreignCurrencies, stillForeign } from './rates.js'
 import { buildExport, downloadJson, looksLikeExport, readExport } from './export.js'
@@ -58,6 +58,7 @@ import {
   sources,
   source,
   summary,
+  DEMO_NAME,
 } from './store.js'
 import { applyUpdate, updateReady } from './pwa.js'
 import { dark, toggleTheme } from './theme.js'
@@ -75,6 +76,7 @@ import { CategoryList } from './components/CategoryList.js'
 import { CashView } from './components/CashView.js'
 import { Extras } from './components/Extras.js'
 import { Fold } from './components/Fold.js'
+import { PlanView } from './components/PlanView.js'
 import { SavingsView } from './components/SavingsView.js'
 import { Unknown } from './components/Unknown.js'
 import { TxList } from './components/TxList.js'
@@ -171,6 +173,11 @@ export function App(): JSX.Element {
 
   const accept = useCallback((result: ParseResult, name: string): void => {
     if (result.error !== null) {
+      // Отчёт о прошлой загрузке снимается вместе с новой ошибкой. Иначе над
+      // красным «файл не удалось прочитать» продолжало висеть бодрое «Новых
+      // операций: 40» от предыдущего файла — и было непонятно, что из этого
+      // сейчас правда.
+      setChanged(null)
       setError(result.error)
       return
     }
@@ -179,6 +186,7 @@ export function App(): JSX.Element {
       // для человека решающая: в первом случае он принёс не тот файл, во
       // втором — тот, и виновато приложение. Молчать об этом значит отправить
       // его искать ошибку у банка.
+      setChanged(null)
       setError(
         result.rows > 0
           ? `Строк в файле ${result.rows}, но ни одну не удалось прочитать: ` +
@@ -196,6 +204,7 @@ export function App(): JSX.Element {
       foreign: result.foreign,
       loadedAt: new Date().toISOString().slice(0, 10),
       hasCodes: result.hasCodes,
+      demo: name === DEMO_NAME,
       key: name,
       balance: result.balance,
       accounts: result.accounts,
@@ -230,9 +239,9 @@ export function App(): JSX.Element {
      */
     const подмена =
       итог.kindChanged && result.kind === 'card'
-        ? ' Это выгрузка по карте: в ней только покупки картой, без переводов и зарплаты. Выписка по счёту за тот же период заменена — загрузите её снова, если нужен весь приход.'
+        ? ' Это выгрузка по карте: в ней только покупки картой, без переводов и зарплаты. Обновлены те операции, которые в ней названы; переводы и зарплата из выписки по счёту остались на месте.'
         : итог.kindChanged
-          ? ' Это выгрузка по счёту: она заменила прежнюю выписку по карте за тот же период.'
+          ? ' Это выгрузка по счёту: она обновила те операции, которые называет, а прежняя выписка по карте осталась.'
           : ''
     setChanged(
       итог.added === 0 && итог.replaced === 0
@@ -275,11 +284,21 @@ export function App(): JSX.Element {
             key: back.source?.name ?? file.name,
             balance: null,
             accounts: [...new Set(back.transactions.map((t) => t.account))],
-          })
+          }, back.settings)
           setView('year')
           setMonth(null)
+          setDay(null)
           setCategoryFilter(null)
           setError(null)
+          // Возврат копии — тоже изменение, и о нём говорится тем же способом,
+          // что о загрузке выписки. Раньше экран менялся молча, а под ним
+          // висел отчёт от прошлого CSV — про данные, которых уже нет.
+          setChanged(
+            `Копия прочитана: операций ${back.transactions.length}, ` +
+              `правок по операциям ${Object.keys(back.overrides).length}, ` +
+              `по получателям ${Object.keys(back.merchantOverrides).length}. ` +
+              'Прежние данные заменены целиком.',
+          )
           return
         }
         // Имя файла передаётся как запасной ключ счёта: если банк не выгрузил
@@ -325,11 +344,16 @@ export function App(): JSX.Element {
   )
 
   const loadDemo = useCallback((): void => {
-    accept(parseStatementText(demoCsv(), 'пример выписки'), 'пример выписки')
+    accept(parseStatementText(demoCsv(), DEMO_NAME), DEMO_NAME)
     // Демо приходит с заполненным планом. Без него копилка показывала нули и
     // шесть месяцев «без плана»: половина экрана уходила на объяснение, что
     // здесь ничего нет, — а демо существует ровно затем, чтобы показать, как
     // выглядит заполненное приложение.
+    // План примера не затирает названный человеком. Убрал счёт, нажал
+    // «посмотреть на примере» — и цель с копилкой исчезали без вопроса и без
+    // возврата. Пример показывает заполненное приложение только тому, у кого
+    // ещё ничего не заполнено.
+    if (hasPlan(plan.value) || plan.value.onAccountAt !== '') return
     setPlan({
       income: 18_500_000 as Kopeck,
       fixed: 7_200_000 as Kopeck,
@@ -428,21 +452,53 @@ export function App(): JSX.Element {
    * понедельник, во вторник потратил — во вторник число уже другое.
    */
   const balance = useMemo(() => {
-    const known = loaded.filter((s) => typeof s.balance === 'number' && s.balance !== null)
-    if (known.length > 0) return known.reduce((sum, s) => sum + (s.balance ?? 0), 0)
+    /**
+     * Берётся остаток по выбранному счёту, а не сумма по всем выпискам.
+     *
+     * Две вещи разом. Выбрал в шапке одну карту — расходы и графики
+     * пересчитались по ней, а «на счёте» показывало сумму по всем: два соседних
+     * числа на экране были про разные деньги. И две выписки одного счёта за
+     * разные месяцы обе несут остаток — они складывались, и остаток удваивался.
+     *
+     * Поэтому: только выписки выбранного счёта (или все, когда счёт не выбран),
+     * и по одному остатку на счёт — самый свежий, а не сумма.
+     */
+    const свежие = new Map<string, { at: string; balance: number }>()
+    for (const s of loaded) {
+      if (typeof s.balance !== 'number' || s.balance === null) continue
+      for (const key of s.accounts ?? []) {
+        if (account !== null && key !== account) continue
+        const было = свежие.get(key)
+        if (было === undefined || s.loadedAt >= было.at) {
+          свежие.set(key, { at: s.loadedAt, balance: s.balance })
+        }
+      }
+    }
+    if (свежие.size > 0) {
+      let sum = 0
+      for (const { balance: b } of свежие.values()) sum += b
+      return sum
+    }
 
     const named = plan.value.onAccountAt
-    if (named === '' || plan.value.onAccount === 0) return null
+    // Ноль — законный ответ, особенно перед зарплатой. Раньше форма после
+    // «запомнить» просто закрывалась, и на её месте снова стояло «указать
+    // остаток»: человек называл ноль, и его не слышали.
+    if (named === '') return null
     // Строго после названного дня: то, что случилось в сам этот день, человек
     // уже видел в банке, когда называл число.
     const after = onAccount.filter((tx) => tx.date > named).reduce((sum, tx) => sum + tx.amount, 0)
     return plan.value.onAccount + after
-  }, [loaded, onAccount, plan.value.onAccount, plan.value.onAccountAt])
+  }, [loaded, account, onAccount, plan.value.onAccount, plan.value.onAccountAt])
 
   /** Остаток назван рукой — об этом стоит сказать прямо в ячейке. */
   const balanceByHand =
-    loaded.every((s) => typeof s.balance !== 'number' || s.balance === null) &&
-    plan.value.onAccountAt !== ''
+    loaded.every(
+      (s) =>
+        typeof s.balance !== 'number' ||
+        s.balance === null ||
+        (account !== null && !(s.accounts ?? []).includes(account)),
+    ) && plan.value.onAccountAt !== ''
 
   const allIncome = useMemo(
     () => onAccount.reduce((sum, tx) => (tx.amount > 0 ? sum + tx.amount : sum), 0),
@@ -500,14 +556,22 @@ export function App(): JSX.Element {
    * «сколько можно тратить» по ней делилось бы на ноль дней.
    */
   const arrival = useMemo(() => {
+    /**
+     * Названная дата сравнивается с сегодняшним днём, а не с краем выписки.
+     *
+     * Край отстаёт: выписка загружена неделю назад. Человек ставил завтрашнее
+     * число по календарю, оно оказывалось «в прошлом» относительно края, и
+     * приложение молча возвращалось к своей догадке — экран не менялся вовсе,
+     * и было непонятно, услышали его или нет.
+     */
     const named = plan.value.arrivalAt
-    if (named === '' || named <= edge) return guessed
+    if (named === '' || named <= today()) return guessed
     return {
       date: named,
       label: guessed?.label ?? 'приход',
       amount: guessed?.amount ?? (0 as Kopeck),
     }
-  }, [guessed, plan.value.arrivalAt, edge])
+  }, [guessed, plan.value.arrivalAt])
 
   const visible = useMemo(() => {
     const byCat = category === null ? scope : scope.filter((tx) => tx.category === category)
@@ -737,7 +801,17 @@ export function App(): JSX.Element {
    * отметку «сохранено» ставил только один из них.
    */
   const saveJson = (): void => {
-    downloadJson(buildExport(rows, info, overrides.value, merchantOverrides.value), 'финансер.json')
+    downloadJson(
+      buildExport(rows, info, overrides.value, merchantOverrides.value, {
+        plan: plan.value,
+        accounts: accounts.value,
+        rates: rates.value,
+        cashSplits: cashSplits.value,
+        extras: extras.value,
+        sources: sources.value,
+      }),
+      'финансер.json',
+    )
     // Ручная выгрузка — тоже сохранение: напоминать о ней сразу после того, как
     // человек её сделал, значит не смотреть на него вовсе.
     markSaved(today())
@@ -842,7 +916,7 @@ export function App(): JSX.Element {
           />
         </label>
         <p class="f-txcount">
-          {visible.length} операций · итог <Amount value={total} kopecks="never" plus />
+          {visible.length} {операций(visible.length)} · итог <Amount value={total} kopecks="never" plus />
         </p>
         <TxList rows={visible} options={options} onCategory={setCategory} />
         {footer}
@@ -897,7 +971,7 @@ export function App(): JSX.Element {
                 }
                 onChange={(event) => {
                   const raw = (event.currentTarget as HTMLInputElement).value
-                  setRate(code, Math.abs(parseAmount(raw) ?? 0))
+                  setRate(code, parseRate(raw) ?? 0)
                 }}
               />
             </label>
@@ -963,7 +1037,16 @@ export function App(): JSX.Element {
           setPlan({ ...plan.value, onAccount: kopecks, onAccountAt: today() })
         }}
         next={arrival}
-        edge={edge}
+        /**
+         * Дни до прихода считаются от сегодняшнего дня, а не от края выписки.
+         *
+         * Остаток привязан к сегодня — так сказано строкой выше. Делить его на
+         * дни от края значило считать две половины одного числа по разным
+         * календарям: выписка недельной давности при зарплате через три дня
+         * давала «можно тратить 3 000 в день» вместо 10 000, и приложение само
+         * же писало рядом «данные по 27 августа, это 7 дней назад».
+         */
+        edge={today()}
         owedToSavings={toGoal(plan.value, setAside as Kopeck)}
       />
 
@@ -989,6 +1072,23 @@ export function App(): JSX.Element {
             />
             <CategoryList
               rows={cats.slice(0, 5)}
+              /**
+               * Хвост назван, а не спрятан.
+               *
+               * На сводке стояло пять строк из двенадцати, а над ними — полный
+               * итог: «потрачено 104 000», под ним строк на 61 000, и куда
+               * делись остальные 43 000, не сказано нигде.
+               */
+              rest={
+                cats.length > 5
+                  ? {
+                      count: cats.length - 5,
+                      total: cats
+                        .slice(5)
+                        .reduce((sum, row) => sum + row.spend, 0) as Kopeck,
+                    }
+                  : null
+              }
               total={planes.spend.total}
               expanded={null}
               onToggle={(next) => {
@@ -1017,7 +1117,7 @@ export function App(): JSX.Element {
             <Arrivals
               sources={periodSources}
               next={arrival}
-              byHand={plan.value.arrivalAt !== '' && plan.value.arrivalAt > edge}
+              byHand={plan.value.arrivalAt !== '' && plan.value.arrivalAt > today()}
               onSetDate={(date) => setPlan({ ...plan.value, arrivalAt: date })}
             />
           </section>
@@ -1266,6 +1366,21 @@ export function App(): JSX.Element {
               />
             </section>
 
+            {/* Форма плана. Без неё «подробнее →» вела в пустоту: кнопка звала
+            задать предел трат, а места, где его задают, в приложении не было —
+            компонент написан, но нигде не выведен. Из-за этого «осталось до
+            предела», дорожка расхода и сравнение с темпом месяца молчали у
+            всех, кроме тех, кто смотрел демо. */}
+            <section class="f-block f-block--plan">
+              <PlanView
+                plan={plan.value}
+                setAside={setAside as Kopeck}
+                open={planOpen}
+                onOpenChange={setPlanOpen}
+                onChange={setPlan}
+              />
+            </section>
+
             <section class="f-block f-block--save">
               <SavingsView rows={onAccount} edge={edge} plan={plan.value} onChange={setPlan} />
             </section>
@@ -1355,7 +1470,10 @@ export function App(): JSX.Element {
                       onConfirm={() => {
                         forgetEverything()
                         setMonth(null)
+                        setDay(null)
                         setCategoryFilter(null)
+                        setChanged(null)
+                        setError(null)
                         setView('year')
                       }}
                     />
@@ -1392,7 +1510,18 @@ export function App(): JSX.Element {
           ответ, а не нажать. */}
       <p class="f-all">
         {view === 'details' ? (
-          <button type="button" class="f-btn" onClick={() => setView('year')}>
+          <button
+            type="button"
+            class="f-btn"
+            onClick={() => {
+              // Вместе с видом снимается и разрез. Иначе выбранный на графике
+              // день уезжал на сводку, где его не видно и снять нечем: экран
+              // говорил «Потрачено за месяц 1 240 ₽», имея в виду один день.
+              setDay(null)
+              setMonth(null)
+              setView('year')
+            }}
+          >
             ← к сводке
           </button>
         ) : (
@@ -1405,7 +1534,7 @@ export function App(): JSX.Element {
                 setView('txs')
               }}
             >
-              {scope.length} операций
+              {scope.length} {операций(scope.length)}
             </button>
             <button type="button" class="f-btn" onClick={() => setView('details')}>
               подробно
@@ -1425,7 +1554,7 @@ export function App(): JSX.Element {
       {/* Данные старше выбранного отрезка не прячутся молча: если они есть,
           выход к ним стоит здесь же (Д-026). Строка появляется один раз при
           загрузке и не мигает по ходу работы. */}
-      {view !== 'details' ? null : oldest !== null && oldest < range.from ? (
+      {oldest !== null && oldest < range.from ? (
         <p class="f-older">
           есть операции и раньше, с {dayLabel(oldest)} —{' '}
           <button

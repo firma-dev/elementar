@@ -189,6 +189,45 @@ function mapColumns(header: readonly string[]): Partial<Record<ColumnKey, number
 }
 
 /**
+ * Сумма — в валюте счёта, значит и валюта её.
+ *
+ * Выписка по карте отдаёт обе пары сразу: «сумма в валюте операции / валюта
+ * операции» и «сумма в валюте счёта / валюта счёта». Сумму надо брать в валюте
+ * счёта — в ней лежат деньги, — но подписать её валютой операции значило бы
+ * объявить рубли евро. Дальше приложение честно предлагало назвать курс, и
+ * названный курс умножал уже рублёвую тысячу на 95: покупка на 1 000 ₽
+ * становилась 95 000 ₽, и на экране это выглядело как исправление ошибки.
+ *
+ * Поэтому колонка суммы и колонка валюты выбираются вместе, одной парой.
+ * Возвращает true, когда сумма взята в валюте счёта.
+ */
+function preferAccountCurrency(
+  header: readonly string[],
+  columns: Partial<Record<ColumnKey, number>>,
+): boolean {
+  const normalized = header.map(normalizeHeader)
+  const own = (index: number | undefined): boolean =>
+    index !== undefined && /ВАЛЮТЕ СЧЕТА|ВАЛЮТЕ СЧЁТА/u.test(normalized[index] ?? '')
+
+  if (columns.creditPay !== undefined || columns.debitPay !== undefined) return true
+
+  // Сумма уже в валюте счёта — остаётся подтянуть к ней валюту.
+  if (own(columns.amount)) {
+    if (columns.payCurrency === undefined) columns.payCurrency = columns.currency
+    return true
+  }
+
+  // Сумма в валюте операции, но рядом лежит сумма в валюте счёта: берём её.
+  const better = normalized.findIndex(
+    (name, i) => i !== columns.amount && /^СУММА .*ВАЛЮТЕ СЧЕТА$/u.test(name),
+  )
+  if (better === -1) return false
+  columns.amount = better
+  if (columns.payCurrency === undefined) columns.payCurrency = columns.currency
+  return true
+}
+
+/**
  * Дата к ISO. Понимает «31.12.2025 14:23:45», «31.12.2025», «2025-12-31»,
  * «31/12/2025». Возвращает null, если даты нет: строка без даты в картину года
  * не встанет и должна быть пропущена, а не приписана к сегодняшнему дню.
@@ -237,7 +276,10 @@ export function parseDate(raw: string): string | null {
   const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(s)
   if (iso !== null) {
     const year = Number(iso[1])
+    const month = Number(iso[2])
+    const day = Number(iso[3])
     if (year < YEAR_MIN || year > YEAR_MAX) return null
+    if (month < 1 || month > 12 || day < 1 || day > 31) return null
     return `${iso[1]}-${iso[2]}-${iso[3]}`
   }
 
@@ -451,6 +493,7 @@ export function parseRows(rows: readonly (readonly string[])[], fallbackAccount 
   if (header === undefined) return { ...empty, error: 'Файл пуст.' }
 
   const columns = mapColumns(header)
+  const inAccountCurrency = preferAccountCurrency(header, columns)
   const hasAmount =
     columns.amount !== undefined ||
     columns.creditPay !== undefined ||
@@ -530,7 +573,10 @@ export function parseRows(rows: readonly (readonly string[])[], fallbackAccount 
     //
     // Когда сумма взята из пары «в валюте счёта», валюта тоже её: сравнивать
     // рублёвую сумму с валютой операции значило бы объявить рубли евро.
-    const currency = paid !== null ? at(row, columns.payCurrency) : at(row, columns.currency)
+    const currency =
+      paid !== null || inAccountCurrency
+        ? at(row, columns.payCurrency)
+        : at(row, columns.currency)
     if (!isRouble(currency)) {
       const payCurrency = at(row, columns.payCurrency)
       const pay = parseAmount(at(row, columns.payAmount))
@@ -587,21 +633,33 @@ export function parseRows(rows: readonly (readonly string[])[], fallbackAccount 
   // Если во всём файле встретилась ровно одна карта, безымянные строки — её.
   // Если карт несколько, догадываться не о чем: они остаются при своём файле.
   const cards = new Set(Object.values(accountLabels))
-  if (cards.size === 1) {
-    const single = Object.keys(accountLabels)[0]
-    const fileKey = accountKey(fallbackAccount)
-    if (single !== undefined && single !== fileKey && accounts.has(fileKey)) {
-      for (let i = 0; i < transactions.length; i += 1) {
-        const tx = transactions[i]
-        if (tx === undefined || tx.account !== fileKey) continue
-        transactions[i] = {
-          ...tx,
-          account: single,
-          id: txId(tx.date, tx.amount, tx.description, 0, single),
-        }
+  const single = cards.size === 1 ? Object.keys(accountLabels)[0] : undefined
+  const fileKey = accountKey(fallbackAccount)
+  if (single !== undefined && single !== fileKey && accounts.has(fileKey)) {
+    /**
+     * Идентификаторы считаются заново и все сразу.
+     *
+     * В них входит счёт, а две одинаковые операции одного дня различаются
+     * только порядковым номером повтора. Пересчёт половины списка с нулевым
+     * номером схлопывал такие пары: два перевода по тысяче в один день
+     * становились одним, и тысяча пропадала молча — при том что «добавлено: 3»
+     * в отчёте оставалось.
+     */
+    const again = new Map<string, number>()
+    for (let i = 0; i < transactions.length; i += 1) {
+      const tx = transactions[i]
+      if (tx === undefined) continue
+      const account = tx.account === fileKey ? single : tx.account
+      const key = `${account}|${tx.date}|${tx.amount}|${tx.description}`
+      const duplicate = again.get(key) ?? 0
+      again.set(key, duplicate + 1)
+      transactions[i] = {
+        ...tx,
+        account,
+        id: txId(tx.date, tx.amount, tx.description, duplicate, account),
       }
-      accounts.delete(fileKey)
     }
+    accounts.delete(fileKey)
   }
 
   transactions.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))

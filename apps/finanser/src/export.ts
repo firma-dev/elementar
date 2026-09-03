@@ -14,8 +14,15 @@ import { currentName, isCategory } from './model.js'
 import type { MerchantOverrides, Overrides } from './categorize.js'
 import type { SourceInfo } from './store.js'
 
-/** Версия формата. 1 — только операции, 2 — операции и правки. */
-const VERSION = 2
+/**
+ * Версия формата. 1 — только операции, 2 — операции и правки, 3 — вся
+ * настройка: план, счета, курсы, наличные, дополнительные категории.
+ *
+ * Копия существует ровно затем, чтобы пережить чистку хранилища браузером, и
+ * без плана она эту работу не делала: человек возвращал файл и обнаруживал,
+ * что цель, копилка, названный остаток и имена счетов исчезли.
+ */
+const VERSION = 3
 
 export interface ExportShape {
   format: 'elementar.finanser'
@@ -27,6 +34,18 @@ export interface ExportShape {
   overrides: Record<string, string>
   /** Ручные правки по получателю. */
   merchantOverrides: Record<string, string>
+  /** План и копилка. Выгрузок второй версии не знали — поле необязательное. */
+  plan?: unknown
+  /** Счета: имя, банк, цвет. Без них счета зовутся «Счёт 1». */
+  accounts?: unknown
+  /** Названные курсы валют. */
+  rates?: unknown
+  /** Разложенные наличные. */
+  cashSplits?: unknown
+  /** Включённые дополнительные категории. */
+  extras?: unknown
+  /** Все выписки, а не только последняя. */
+  sources?: unknown
   transactions: Array<{
     id: string
     date: string
@@ -55,6 +74,7 @@ export function buildExport(
   source: SourceInfo | null,
   overrides: Overrides = {},
   merchantOverrides: MerchantOverrides = {},
+  settings: ExportSettings = {},
 ): ExportShape {
   return {
     format: 'elementar.finanser',
@@ -63,6 +83,7 @@ export function buildExport(
     units: 'kopeck',
     overrides: { ...overrides },
     merchantOverrides: { ...merchantOverrides },
+    ...settings,
     transactions: list.map((tx) => ({
       id: tx.id,
       date: tx.date,
@@ -79,12 +100,29 @@ export function buildExport(
   }
 }
 
+/**
+ * Настройка, которую копия возит вместе с операциями.
+ *
+ * Отдельным типом, а не пятью аргументами: смысл у них один — «всё остальное,
+ * что человек сказал руками», и растёт этот список вместе с приложением.
+ */
+export interface ExportSettings {
+  plan?: unknown
+  accounts?: unknown
+  rates?: unknown
+  cashSplits?: unknown
+  extras?: unknown
+  sources?: unknown
+}
+
 /** Что удалось прочитать из своего же файла. */
 export interface ImportResult {
   transactions: Tx[]
   overrides: Overrides
   merchantOverrides: MerchantOverrides
   source: SourceInfo | null
+  /** Настройка из копии. Пусто у выгрузок второй версии и старше. */
+  settings: ExportSettings
   error: string | null
 }
 
@@ -93,6 +131,7 @@ const EMPTY: ImportResult = {
   overrides: {},
   merchantOverrides: {},
   source: null,
+  settings: {},
   error: null,
 }
 
@@ -172,10 +211,20 @@ export function readExport(text: string): ImportResult {
   }
 
   const source = shape.source ?? null
+  const объект = (raw: unknown): unknown =>
+    typeof raw === 'object' && raw !== null ? raw : undefined
   return {
     transactions,
     overrides: categoryMap(shape.overrides),
     merchantOverrides: categoryMap(shape.merchantOverrides),
+    settings: {
+      plan: объект(shape.plan),
+      accounts: Array.isArray(shape.accounts) ? shape.accounts : undefined,
+      rates: объект(shape.rates),
+      cashSplits: объект(shape.cashSplits),
+      extras: Array.isArray(shape.extras) ? shape.extras : undefined,
+      sources: Array.isArray(shape.sources) ? shape.sources : undefined,
+    },
     source:
       source === null
         ? null

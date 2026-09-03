@@ -506,7 +506,7 @@ describe('выгрузка JSON', () => {
       hasCodes: true,
       key: 'test',
     })
-    expect(data).toMatchObject({ format: 'elementar.finanser', version: 2, units: 'kopeck' })
+    expect(data).toMatchObject({ format: 'elementar.finanser', version: 3, units: 'kopeck' })
     expect(data.transactions[0]).toMatchObject({
       amount: -123450,
       // «Еда»: продукты — её дополнительная и по умолчанию свёрнута в неё.

@@ -15,6 +15,11 @@ export interface CategoryListProps {
   /** Операции категории в текущем разрезе — год или выбранный месяц. */
   transactionsOf: (category: Category) => readonly Categorized[]
   onOpenAll: (category: Category) => void
+  /**
+   * Хвост списка, если показаны не все строки: сколько категорий и на сколько
+   * денег осталось. Без него числа на экране не сходятся с итогом над ними.
+   */
+  rest?: { count: number; total: number } | null
 }
 
 /** Сколько трат показываем под раскрытой категорией, прежде чем звать в выписку. */
@@ -35,6 +40,7 @@ export function CategoryList({
   onToggle,
   transactionsOf,
   onOpenAll,
+  rest = null,
 }: CategoryListProps): JSX.Element {
   const max = rows.reduce((m, row) => Math.max(m, row.spend), 1)
 
@@ -100,6 +106,19 @@ export function CategoryList({
           </li>
         )
       })}
+      {rest === null || rest.count === 0 ? null : (
+        <li>
+          <p class="f-cat f-cat--rest">
+            <span class="f-cat__line">
+              <span class="f-cat__left">
+                <span class="f-cat__name">ещё {rest.count}</span>
+                <span class="f-cat__share">{formatShare(rest.total, total)}%</span>
+              </span>
+              <Amount class="f-cat__sum" value={rest.total} kopecks="never" />
+            </span>
+          </p>
+        </li>
+      )}
     </ul>
   )
 }
