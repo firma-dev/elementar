@@ -24,7 +24,12 @@ export interface TransfersProps {
 interface Person {
   key: string
   label: string
+  /** Ушло минус вернулось: это и есть потраченное на этого человека. */
   total: number
+  /** Сколько ушло всего, до вычета вернувшегося. По нему строится порядок. */
+  gross: number
+  /** Сколько вернулось обратно по тому же номеру. Ноль — ничего не возвращалось. */
+  back: number
   rows: Categorized[]
   /** Общая категория, если она у всех переводов одна. Иначе null. */
   common: Category | null
@@ -120,17 +125,53 @@ export function Transfers({
         key,
         label: nameByPhone.get(phone) ?? merchantLabel(tx.description),
         total: -tx.amount,
+        gross: -tx.amount,
+        back: 0,
         rows: [tx],
         common: tx.category,
       })
     } else {
       found.total -= tx.amount
+      found.gross -= tx.amount
       found.rows.push(tx)
       if (found.common !== tx.category) found.common = null
     }
   }
 
-  const people = [...map.values()].sort((a, b) => b.total - a.total)
+  /**
+   * Приходы по тем же номерам — сюда же.
+   *
+   * Перевод самому себе по своему номеру виден в выписке дважды: ушло и
+   * вернулось. Показывать одну половину значило бы называть тратой деньги,
+   * которые никуда не делись, а не показывать вовсе — прятать операцию,
+   * которую человек в банке видит.
+   *
+   * Поэтому обе стороны стоят в одной строке, а «ушло» считается за вычетом
+   * вернувшегося. У перевода себе разница выходит нулевой, и строка честно
+   * говорит: ушло и вернулось.
+   */
+  for (const tx of rows) {
+    if (tx.amount <= 0) continue
+    if (operationOf(tx.description).category !== PEOPLE) continue
+    const found = map.get(merchantKey(tx.description))
+    if (found === undefined) continue
+    found.total -= tx.amount
+    found.back += tx.amount
+    found.rows.push(tx)
+  }
+  for (const person of map.values()) {
+    if (person.back === 0) continue
+    person.rows.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
+  }
+
+  /**
+   * Порядок — по тому, сколько ушло, а не по остатку после возврата.
+   *
+   * Перевод себе с возвратом даёт ноль, и по остатку такая строка уезжала бы в
+   * самый низ, за кнопку «ещё». А вопрос раздела — «кому вы переводите», и
+   * ответ «себе, сорок одна тысяча» на него отвечает не хуже прочих.
+   */
+  const people = [...map.values()].sort((a, b) => b.gross - a.gross)
   const shown = people.slice(0, limit)
   const tail = people.slice(limit)
   const tailSum = tail.reduce((sum, p) => sum + p.total, 0)
@@ -138,7 +179,9 @@ export function Transfers({
   // Сколько ещё не названо — по переводам, а не по людям. По людям считать
   // нельзя: человек, у которого один перевод назван, а двадцать три нет,
   // «названным» не становится, но и в «неназванные» целиком не попадает.
-  const left = sent.filter((tx) => tx.category === PEOPLE).reduce((s, tx) => s - tx.amount, 0)
+  const left = sent
+    .filter((tx) => tx.category === PEOPLE)
+    .reduce((s, tx) => s - tx.amount, 0)
 
   return (
     <>
@@ -185,6 +228,11 @@ export function Transfers({
                     нажатия, а не после. */}
                 <span class="f-tr__meta">
                   {person.rows.length} пер. · {when(last)}
+                  {person.back === 0
+                    ? ''
+                    : person.total === 0
+                      ? ' · ушло и вернулось'
+                      : ` · вернулось ${Math.round(person.back / 100)}`}
                   {person.common === null
                     ? ` · ${person.rows.filter((tx) => tx.category === PEOPLE).length} без имени`
                     : ''}
@@ -225,7 +273,7 @@ export function Transfers({
                           if (isCategory(next)) onCategory(tx.id, next)
                         }}
                       />
-                      <Amount class="f-tr__sum" value={tx.amount} abs kopecks="never" />
+                      <Amount class="f-tr__sum" value={tx.amount} kopecks="never" plus />
                     </div>
                   ))}
                 </div>

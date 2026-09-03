@@ -190,3 +190,34 @@ describe('слияние выписок', () => {
     expect(transactions.value.filter((t) => t.amount > 0)).toHaveLength(приходДо)
   })
 })
+
+describe('перевод себе по своему номеру', () => {
+  it('виден в переводах, но тратой не считается', async () => {
+    const { categorizeAll } = await import('../src/categorize.js')
+    const { markPairs } = await import('../src/pairs.js')
+    const { sentToPeople } = await import('../src/components/Transfers.js')
+    const строки = [
+      {
+        id: 'a',
+        date: '2026-08-10',
+        amount: -500000,
+        description: ' Перевод на номер 0079990001122. Получатель: Виктор С.',
+        account: 'A',
+      },
+      {
+        id: 'b',
+        date: '2026-08-10',
+        amount: 500000,
+        description: ' Перевод с номера 0079990001122. Отправитель: Виктор С.',
+        account: 'A',
+      },
+    ]
+    const c = markPairs(categorizeAll(строки as never, {} as never, {} as never))
+    // В блоке переводов строка есть: отбор идёт по виду операции, а не по
+    // тому, чем операция в итоге назвалась.
+    expect(sentToPeople(c)).toHaveLength(1)
+    // А тратой она не считается: обе стороны — переезд денег.
+    const { planeOfTx } = await import('../src/plane.js')
+    expect(c.map((t) => planeOfTx(t.category, t.amount))).toEqual(['move', 'move'])
+  })
+})
