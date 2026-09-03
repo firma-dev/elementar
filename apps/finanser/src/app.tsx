@@ -426,7 +426,18 @@ export function App(): JSX.Element {
   const cats = useMemo(() => byCategory(scope), [scope])
 
   /** Предел трат на период: считается из плана, а не вводится (Д-026). */
-  const limit = useMemo(() => limitFor(period, edge, plan.value), [period, edge, plan.value])
+  /**
+   * Предел считается по тому же разрезу, что и трата, а не по кнопке периода.
+   *
+   * Выбрал на графике один день при периоде «месяц» — «потрачено» считалось за
+   * день, а предел оставался месячным: «1 240 из 113 000 · осталось 111 760»,
+   * полоса на процент, а риска темпа месяца на семнадцати. Три числа рядом, и
+   * ни одно не про то же, что соседнее.
+   */
+  const limit = useMemo(
+    () => limitFor(day !== null ? 'day' : month !== null ? 'month' : period, edge, plan.value),
+    [period, day, month, edge, plan.value],
+  )
   const pace = useMemo(() => elapsed(period, edge), [period, edge])
 
   /**
