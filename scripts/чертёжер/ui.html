@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>элементар · чертёжер</title>
+<style>
+/* Чертёжер в языке прототипа «элементар ос» (elementaros.ru/prototip2).
+
+   Приёмы и палитра сняты оттуда как есть: всё моноширинным капсом, ноль
+   радиусов, чёрные тени со смещением, нумерованные метки разделов чёрной
+   плашкой, жёлтая плашка для главного, цветная полоса сверху у карточек.
+
+   Палитра здесь своя, прототипа, а не семантический слой Элементара: у
+   прототипа вивидный жёлтый и нейтральный чёрный, которых в токенах нет.
+   Если чертёжер когда-нибудь поедет внутрь корпуса, сводить это к токенам
+   должен designer — за ним и токены, и решение. */
+
+@font-face {
+  font-family: 'OCR A Becker';
+  src: url(/fonts/ocr-400.cyrillic.woff2) format('woff2');
+  font-weight: 400 700; font-style: normal; font-display: swap; size-adjust: 92%;
+  unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: 'OCR A Becker';
+  src: url(/fonts/ocr-400.latin.woff2) format('woff2');
+  font-weight: 400 700; font-style: normal; font-display: swap; size-adjust: 92%;
+  unicode-range: U+0000-00FF, U+2000-206F, U+2190-21BB, U+2212;
+}
+
+:root {
+  --w: #fff;
+  --g100: rgb(238, 240, 242); --g200: rgb(220, 221, 223); --g400: rgb(153, 156, 160);
+  --g600: rgb(85, 88, 92); --g900: rgb(18, 18, 20); --g950: rgb(5, 5, 5);
+  --blue: rgb(0, 100, 240); --green: rgb(30, 170, 60);
+  --red: rgb(253, 47, 75); --yellow: rgb(255, 225, 0);
+  --text: var(--g950); --cap: var(--g600); --bg: var(--w); --surface: var(--g100);
+  --sh-s: 2px 2px 0 var(--text); --sh-m: 3px 3px 0 var(--text); --sh-l: 5px 5px 0 var(--text);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { font-size: clamp(15px, 12px + .55vw, 22px); }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font-family: 'OCR A Becker', ui-monospace, 'SF Mono', monospace;
+  line-height: 1.5; text-transform: uppercase; letter-spacing: .02em;
+  -webkit-font-smoothing: antialiased; padding: 0 1rem 4rem;
+}
+.page { max-width: 60rem; margin: 0 auto; }
+h1, h2, p, ul { margin: 0; }
+
+.head {
+  display: flex; justify-content: space-between; align-items: center; gap: 1rem;
+  padding: 1rem 0 .7rem; border-bottom: 2px solid var(--text);
+}
+.mark { display: flex; align-items: center; gap: .6em; }
+.cap { font-size: .85em; letter-spacing: .14em; color: var(--cap); }
+.logo {
+  display: block; flex: none; block-size: 1.05em; inline-size: calc(1.05em * 563 / 370);
+  background: currentColor;
+  mask: url(/elementar.svg) no-repeat center/contain;
+  -webkit-mask: url(/elementar.svg) no-repeat center/contain;
+}
+
+.hero { padding: 3rem 0 0; }
+.hero h1 { font-size: 3.2em; line-height: 1.05; font-weight: 400; letter-spacing: .04em; }
+.hero .sub { margin-top: .7em; font-size: 1.25em; max-width: 30em; line-height: 1.35; }
+
+/* Жёлтая плашка — самое важное на экране. */
+.plate {
+  display: inline-block; background: var(--yellow); color: var(--g950);
+  border: 1px solid var(--g950); box-shadow: var(--sh-m);
+  padding: .8em 1em; margin-top: 1.4em; font-size: 1.05em; max-width: 34em; line-height: 1.4;
+}
+
+section { margin-top: 3.2rem; }
+.slabel {
+  display: flex; gap: .8em; align-items: baseline;
+  border-bottom: 2px solid var(--text); padding-bottom: .35em;
+}
+.slabel .n { background: var(--text); color: var(--bg); padding: .05em .5em; font-size: .9em; }
+.slabel h2 { font-size: 1.5em; font-weight: 400; letter-spacing: .1em; }
+
+/* Приёмник файла. */
+.drop {
+  border: 1px dashed var(--g400); box-shadow: var(--sh-s); background: var(--bg);
+  padding: 2.2em 1em; margin-top: 1.3rem; text-align: center; cursor: pointer;
+  color: var(--cap); font-size: 1.05em; line-height: 1.4;
+}
+.drop:hover, .drop.over { background: var(--surface); color: var(--text); }
+.drop.has { border: 1px solid var(--text); border-top: 6px solid var(--yellow);
+            color: var(--text); text-align: start; padding: .8em .9em; }
+.drop .name { display: block; font-size: 1.25em; overflow-wrap: anywhere; }
+.drop .size { display: block; margin-top: .35em; font-size: .85em;
+              letter-spacing: .12em; color: var(--cap); }
+
+/* Переключатели: те же карточки, только нажимаются. */
+.chips { display: flex; gap: .8rem; flex-wrap: wrap; margin-top: 1.3rem; }
+.chip {
+  appearance: none; cursor: pointer; font: inherit; text-transform: inherit;
+  letter-spacing: inherit; border: 1px solid var(--text); border-radius: 0;
+  background: var(--bg); color: var(--text); box-shadow: var(--sh-s);
+  padding: .5em .9em; font-size: .95em;
+}
+.chip:hover { background: var(--surface); }
+.chip:active { box-shadow: none; translate: 2px 2px; }
+.chip[aria-pressed="true"] { background: var(--text); color: var(--bg); box-shadow: none; }
+
+/* Единственное действие. */
+.cta {
+  display: block; width: 100%; margin-top: 2.4rem; cursor: pointer;
+  font: inherit; text-transform: inherit; letter-spacing: .1em; font-size: 1.3em;
+  padding: .8em 1em; text-align: center; text-decoration: none;
+  background: var(--text); color: var(--bg);
+  border: 1px solid var(--text); border-radius: 0; box-shadow: var(--sh-l);
+}
+.cta:hover:not(:disabled) { translate: -1px -1px; }
+.cta:active:not(:disabled) { translate: 5px 5px; box-shadow: none; }
+.cta:disabled { background: var(--surface); color: var(--g400);
+                border-color: var(--g200); box-shadow: none; cursor: default; }
+.cta.dl { margin-top: 1.1rem; font-size: 1.05em; background: var(--yellow);
+          color: var(--g950); border-color: var(--g950); box-shadow: var(--sh-m); }
+
+:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+/* Карточки: полоса сверху задаёт смысл. */
+.card {
+  border: 1px solid var(--text); border-top: 6px solid var(--text);
+  box-shadow: var(--sh-m); padding: .8em .9em; background: var(--bg);
+  margin-top: 1.3rem; min-width: 0;
+}
+.card.r { border-top-color: var(--red); }
+.card.g { border-top-color: var(--green); }
+.card.y { border-top-color: var(--yellow); }
+.card b { display: block; font-weight: 400; font-size: 1.25em; }
+.card p { margin-top: .5em; font-size: .95em; line-height: 1.4; overflow-wrap: anywhere; }
+.card .tag { display: block; margin-top: .7em; font-size: .8em;
+             letter-spacing: .12em; color: var(--cap); }
+.card.done { opacity: .45; }
+
+.note { border-left: 5px solid var(--red); padding: .5em .9em; margin-top: 1.3rem;
+        font-size: 1.05em; max-width: 40em; line-height: 1.4; }
+.note.b { border-color: var(--blue); }
+.note.y { border-color: var(--yellow); }
+.note.g { border-color: var(--green); }
+
+.pic { margin-top: .9em; border: 1px solid var(--text); background: var(--surface); }
+.pic svg { display: block; width: 100%; height: auto; max-height: 15rem; }
+
+details.more { margin-top: 1em; border-top: 1px solid var(--g200); padding-top: .7em; }
+details.more summary { cursor: pointer; font-size: .8em; letter-spacing: .12em;
+                       color: var(--cap); }
+.report { margin-top: .7em; white-space: pre-wrap; text-transform: none;
+          font-size: .78em; line-height: 1.5; color: var(--cap); }
+
+.preview { margin-top: 1.3rem; border: 1px solid var(--text); box-shadow: var(--sh-m);
+           background: var(--bg); }
+.preview svg { display: block; width: 100%; height: auto; max-height: 60svh; }
+
+input[type=file] { display: none; }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="head">
+    <span class="mark"><span class="logo" aria-hidden="true"></span><span>элементар</span></span>
+    <span class="cap">чертёжер · dwg → svg</span>
+  </header>
+
+  <div class="hero">
+    <h1>чертёжер</h1>
+    <p class="sub">Превращает DWG в SVG со стилизацией под объект.</p>
+    <p class="plate">Beta v0.1 · возможны ошибки</p>
+  </div>
+
+  <section>
+    <div class="slabel"><span class="n">01</span><h2>чертёж</h2></div>
+    <div class="drop" id="drop" role="button" tabindex="0">
+      Перетащите DWG или DXF, либо нажмите, чтобы выбрать
+    </div>
+    <input type="file" id="file" accept=".dwg,.dxf">
+  </section>
+
+  <section>
+    <div class="slabel"><span class="n">02</span><h2>стиль</h2></div>
+    <div class="chips" id="styles"></div>
+  </section>
+
+  <button class="cta" id="go" disabled>Собрать SVG</button>
+
+  <div id="out"></div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+let file = null, style = null, svg = null, осталось = 0;
+
+const esc = s => String(s).replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
+const human = n => n > 1048576 ? (n / 1048576).toFixed(1) + ' МБ' : Math.round(n / 1024) + ' КБ';
+const ready = () => { $('#go').disabled = !(file && style); };
+
+fetch('/styles').then(r => r.json()).then(list => {
+  $('#styles').innerHTML = list.map(s =>
+    `<button class="chip" aria-pressed="false" data-s="${esc(s)}">${esc(s)}</button>`).join('');
+  document.querySelectorAll('#styles .chip').forEach(b => b.onclick = () => {
+    document.querySelectorAll('#styles .chip').forEach(x => x.setAttribute('aria-pressed', 'false'));
+    b.setAttribute('aria-pressed', 'true');
+    style = b.dataset.s; ready();
+  });
+  if (list.length === 1) document.querySelector('#styles .chip').click();
+});
+
+// Выбор чертежа на листе в бете снят: кнопки работали криво. Конвертор берёт
+// самый крупный чертёж сам, остальные считаются в «другой чертёж на листе»
+// внутри разбора — молча ничего не теряется. Вернуть выбор — отдельная задача.
+
+// Незнакомый слой — вопрос, а не тупик: показываем, что в нём лежит, и спрашиваем.
+// Три ответа — ровно те решения, которые есть у конвертора.
+function спросить(слои, картинки) {
+  осталось = слои.length;
+  $('#out').innerHTML =
+    `<p class="note">Этих слоёв я не знаю, поэтому чертёж не собран. Их геометрия
+      пропала бы молча — так однажды исчезли все перегородки дома.</p>` +
+    слои.map(u => `
+      <div class="card r" data-layer="${esc(u.layer)}">
+        <b>${esc(u.layer)}</b>
+        <span class="tag">${u.objects} объектов</span>
+        <div class="pic">${картинки[u.layer] || 'картинку построить не удалось'}</div>
+        <div class="chips">
+          <button class="chip" data-d="стена">Стена</button>
+          <button class="chip" data-d="второстепенное">Второстепенное</button>
+          <button class="chip" data-d="оформление">Оформление</button>
+        </div>
+      </div>`).join('');
+  document.querySelectorAll('[data-layer] .chip').forEach(b => b.onclick = async () => {
+    const карточка = b.closest('[data-layer]');
+    if (карточка.classList.contains('done')) return;
+    const r = await fetch('/decide', {
+      method: 'POST',
+      body: JSON.stringify({ layer: карточка.dataset.layer, decision: b.dataset.d })
+    });
+    if (!r.ok) { b.textContent = 'не вышло'; return; }
+    карточка.classList.add('done');
+    b.setAttribute('aria-pressed', 'true');
+    if (--осталось === 0) $('#go').click();   // все слои разобраны — собираем
+  });
+}
+
+function take(f) {
+  if (!f) return;
+  file = f; $('#out').innerHTML = '';
+  $('#drop').className = 'drop has';
+  $('#drop').innerHTML = `<span class="name">${esc(f.name)}</span>` +
+                         `<span class="size">${human(f.size)}</span>`;
+  ready();
+}
+$('#drop').onclick = () => $('#file').click();
+$('#drop').onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') $('#file').click(); };
+$('#file').onchange = e => take(e.target.files[0]);
+['dragenter', 'dragover'].forEach(t => $('#drop').addEventListener(t, e => {
+  e.preventDefault(); $('#drop').classList.add('over');
+}));
+['dragleave', 'drop'].forEach(t => $('#drop').addEventListener(t, e => {
+  e.preventDefault(); $('#drop').classList.remove('over');
+}));
+$('#drop').addEventListener('drop', e => take(e.dataTransfer.files[0]));
+
+$('#go').onclick = async () => {
+  const btn = $('#go');
+  btn.disabled = true; btn.textContent = 'Разбираю чертёж…';
+  $('#out').innerHTML = '';
+  try {
+    const r = await fetch('/convert', {
+      method: 'POST', body: file,
+      headers: {
+        'X-Name': encodeURIComponent(file.name),
+        'X-Style': encodeURIComponent(style),
+      }
+    });
+    const d = await r.json();
+    if (r.status === 422 && d.unknown) { спросить(d.unknown, d.previews || {}); return; }
+    if (!r.ok) throw new Error(d.error || 'не получилось');
+    svg = d.svg;
+    const blob = new Blob([svg], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    const name = file.name.replace(/\.(dwg|dxf)$/i, '') + '.svg';
+    // Человеку показываем размер листа и предупреждения — то, что меняет его
+    // действия. Разбор по классам и баланс объектов нужны мне и гейту, а не ему.
+    const s = d.summary || {};
+    $('#out').innerHTML =
+      (s.warnings || []).map(w => `<p class="note">${esc(w)}</p>`).join('') +
+      `<div class="card g">
+         <b>Готово</b>
+         <span class="tag">${human(blob.size)}${s.sheet ? ' · лист ' + esc(s.sheet) : ''}` +
+           `${s.real ? ' · чертёж ' + esc(s.real) : ''}</span>
+         <a class="cta dl" href="${url}" download="${esc(name)}">Скачать ${esc(name)}</a>
+         <details class="more"><summary>Подробности разбора</summary>
+           <pre class="report">${esc(d.report.trim())}</pre></details>
+       </div>
+       <div class="preview">${svg}</div>`;
+  } catch (e) {
+    $('#out').innerHTML = `<p class="note">${esc(e.message)}</p>`;
+  } finally {
+    btn.disabled = false; btn.textContent = 'Собрать SVG';
+    ready();
+  }
+};
+</script>
+</body>
+</html>
