@@ -155,6 +155,9 @@ def main():
     ap.add_argument("--allow-unknown", action="store_true",
                     help="не останавливаться на слоях без решения. Только для "
                          "разведки: нерешённый слой в SVG не попадёт")
+    ap.add_argument("--source-svg", metavar="ФАЙЛ",
+                    help="кроме результата записать исходник «как есть» в тех же "
+                         "координатах и с тем же viewBox (для наложения в режиме «Проверка»)")
     ap.add_argument("--fragments", action="store_true",
                     help="только перечислить чертежи на листе, в JSON, и выйти")
     ap.add_argument("--gap", type=float, default=5000.0,
@@ -424,6 +427,13 @@ def main():
         sys.exit("выход совпадает с входом — это уничтожило бы исходный чертёж")
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(svg, encoding="utf-8")
+    if args.source_svg:
+        # Наложение — вспомогательный режим: сбой в нём не должен отнимать результат.
+        try:
+            n_src = исходник(ents, x0, y0, w, h, pathlib.Path(args.source_svg))
+            print(f"SOURCE {n_src}")
+        except Exception as e:
+            print(f"SOURCE_ERROR {type(e).__name__}: {e}"[:300])
 
     print(f"{out}  {len(svg)/1024:.0f} КБ")
     print("FRAGMENTS " + json.dumps(
@@ -455,6 +465,63 @@ def main():
         print("\nсверка по слоям (в модели → нарисовано):")
         for l in sorted(stat_in, key=lambda k: -stat_in[k]):
             print(f"  {l:<34} {stat_in[l]:>6} → {stat_out.get(l, 0):>6}")
+
+
+ОФОРМЛЕНИЕ_РАМКОЙ = DROP_TYPES  # текст и размеры исходника показываются рамкой
+
+
+def исходник(ents, x0, y0, w, h, путь):
+    """Исходный чертёж без чистки: все слои, все типы, в координатах результата.
+
+    Нужен режиму «Проверка»: исходник и результат рисуются друг на друге, и видно,
+    что осталось, что убрано и не появилось ли лишнего. Преобразование то же, что в
+    d_attr результата: x − x0, y0 − y, округление до целого мм. Текст и размеры
+    рисовать как буквы нечем, они показаны рамкой по своему габариту."""
+    from ezdxf.bbox import extents
+    losses = Losses()
+    линии, рамки = [], []
+
+    def d_of(loops):
+        parts = []
+        for pts, closed in loops:
+            seg, prev = [f"M {round(pts[0].x - x0)},{round(y0 - pts[0].y)}"], None
+            for v in pts[1:]:
+                xy = (round(v.x - x0), round(y0 - v.y))
+                if xy != prev:
+                    seg.append(f"L {xy[0]},{xy[1]}")
+                prev = xy
+            if len(seg) < 2:
+                continue
+            if closed:
+                seg.append("Z")
+            parts.append(" ".join(seg))
+        return " ".join(parts)
+
+    for e in ents:
+        if e.dxftype() in ОФОРМЛЕНИЕ_РАМКОЙ:
+            try:
+                b = extents([e], fast=True)
+            except Exception:
+                continue
+            if not b.has_data:
+                continue
+            pts = [(b.extmin.x, b.extmin.y), (b.extmax.x, b.extmin.y),
+                   (b.extmax.x, b.extmax.y), (b.extmin.x, b.extmax.y)]
+            from ezdxf.math import Vec3
+            рамки.append(d_of([([Vec3(x, y) for x, y in pts], True)]))
+            continue
+        d = d_of(geometry(e, losses))
+        if d:
+            линии.append(d)
+    svg = (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {round(w)} {round(h)}" '
+           f'role="img" aria-label="Исходник">\n'
+           f'<g class="src" fill="none" stroke="#000" stroke-width="1">\n'
+           + "\n".join(f'  <path d="{d}"/>' for d in линии)
+           + '\n</g>\n<g class="src-txt" fill="none" stroke="#000" stroke-width="1">\n'
+           + "\n".join(f'  <path d="{d}"/>' for d in рамки) + "\n</g>\n</svg>\n")
+    путь.parent.mkdir(parents=True, exist_ok=True)
+    путь.write_text(svg, encoding="utf-8")
+    return len(линии) + len(рамки)
 
 
 def контуры(ents, losses, layers):
