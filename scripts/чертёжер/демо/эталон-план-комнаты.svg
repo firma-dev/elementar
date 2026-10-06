@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="66.00mm" height="51.00mm" viewBox="0 0 6600 5100" role="img" aria-label="План">
 <g id="plan">
   <g class="c-floor" fill="#D6D6D6" stroke="none">
-    <path d="M 300,4800 L 300,300 L 6300,300 L 6300,4800 L 2960,4800 L 1500,4800 L 300,4800 Z"/>
+    <path d="M 300,4800 L 300,300 L 6300,300 L 6300,4800 L 2960,4800 L 1440,4800 L 300,4800 Z"/>
   </g>
   <g class="c-fixture" fill="#FFFFFF" stroke="#575756" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
     <path d="M 5200,1100 L 5580,1100 L 5580,900 L 5200,900 L 5200,1100 Z"/>
