@@ -1,440 +1,899 @@
 <!doctype html>
-<html lang="ru">
+<html lang="ru" data-theme="light">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>элементар · чертёжер</title>
+<title>Чертёжер · элементар</title>
+<script>
+  // Тема — свойство устройства (DESIGN §3.3): берётся из localStorage до первого
+  // кадра. По умолчанию светлая, системная тёмная не подхватывается (Д-035).
+  try { if (localStorage.getItem('e.theme') === 'dark') document.documentElement.dataset.theme = 'dark'; } catch (e) {}
+</script>
 <style>
-/* Чертёжер в языке прототипа «элементар ос» (elementaros.ru/prototip2).
+/* Чертёжер на дизайн-системе элементара: @elementar/ui (packages/ui/src/styles/
+   tokens.css, tokens.ts). Значения семантического слоя перенесены сюда как есть,
+   имена те же (--e-*), чтобы сверка с источником была построчной. Компоненты
+   страницы пользуются только семантикой.
 
-   Приёмы и палитра сняты оттуда как есть: всё моноширинным капсом, ноль
-   радиусов, чёрные тени со смещением, нумерованные метки разделов чёрной
-   плашкой, жёлтая плашка для главного, цветная полоса сверху у карточек.
+   Исключение одно — палитра «Проверки» (--ck-*): линии чертежа лежат на белом
+   листе в обеих темах, и для «убрано / добавлено» нужны яркие красный и синий.
+   Они взяты из палитры элементара прототипного слоя (apps/finanser/src/tokens.css:
+   --el__color-red-500, --el__color-blue-500, серые --el__color-gray-500/950). */
 
-   Палитра здесь своя, прототипа, а не семантический слой Элементара: у
-   прототипа вивидный жёлтый и нейтральный чёрный, которых в токенах нет.
-   Если чертёжер когда-нибудь поедет внутрь корпуса, сводить это к токенам
-   должен designer — за ним и токены, и решение. */
+@font-face { font-family: 'Basis Grotesque Pro'; src: url(fonts/basis-400.cyrillic.woff2) format('woff2');
+  font-weight: 400; font-display: swap; unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: 'Basis Grotesque Pro'; src: url(fonts/basis-400.latin.woff2) format('woff2');
+  font-weight: 400; font-display: swap; unicode-range: U+0000-00FF, U+2000-206F, U+2190-21BB, U+2212; }
+@font-face { font-family: 'Basis Grotesque Pro'; src: url(fonts/basis-500.cyrillic.woff2) format('woff2');
+  font-weight: 500; font-display: swap; unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: 'Basis Grotesque Pro'; src: url(fonts/basis-500.latin.woff2) format('woff2');
+  font-weight: 500; font-display: swap; unicode-range: U+0000-00FF, U+2000-206F, U+2190-21BB, U+2212; }
+@font-face { font-family: 'Basis Grotesque Pro'; src: url(fonts/basis-700.cyrillic.woff2) format('woff2');
+  font-weight: 700; font-display: swap; unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: 'Basis Grotesque Pro'; src: url(fonts/basis-700.latin.woff2) format('woff2');
+  font-weight: 700; font-display: swap; unicode-range: U+0000-00FF, U+2000-206F, U+2190-21BB, U+2212; }
+@font-face { font-family: 'OCR A Becker'; src: url(fonts/ocr-400.cyrillic.woff2) format('woff2');
+  font-weight: 400; font-display: swap; size-adjust: 93.4%; unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: 'OCR A Becker'; src: url(fonts/ocr-400.latin.woff2) format('woff2');
+  font-weight: 400; font-display: swap; size-adjust: 93.4%; unicode-range: U+0000-00FF, U+2000-206F, U+2190-21BB, U+2212; }
 
-@font-face {
-  font-family: 'OCR A Becker';
-  src: url(/fonts/ocr-400.cyrillic.woff2) format('woff2');
-  font-weight: 400 700; font-style: normal; font-display: swap; size-adjust: 92%;
-  unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+/* ── токены: светлая (по умолчанию) ── */
+:root, [data-theme='light'] {
+  --e-bg: #fcfbf9; --e-bg-sunken: #f1eee9; --e-surface: #ffffff; --e-surface-hover: #f7f5f2;
+  --e-surface-active: #f1eee9;
+  --e-fg: #221f1b; --e-fg-2: #4c453c; --e-fg-3: #756c60; --e-fg-muted: #8b8374;
+  --e-line: #dad5cc; --e-line-soft: #e8e4dd; --e-line-control: #8b8374; --e-line-focus: #33507a;
+  --e-solid: #221f1b; --e-solid-hover: #332e28; --e-solid-active: #14120f; --e-solid-fg: #fcfbf9;
+  --e-accent: #33507a; --e-accent-tint: #eaf0f8; --e-accent-fg: #fcfbf9;
+  --e-success: #3e7a56; --e-success-tint: #e8f1eb;
+  --e-warning: #8a6520; --e-warning-tint: #f6efdf;
+  --e-danger: #9b3a31; --e-danger-tint: #f7e9e7;
+  --e-shadow-1: 1px 1px 0 rgb(34 31 27 / 0.20); --e-shadow-2: 2px 2px 0 rgb(34 31 27 / 0.24);
+  --e-shadow-3: 4px 4px 0 rgb(34 31 27 / 0.28);
+  color-scheme: light;
 }
-@font-face {
-  font-family: 'OCR A Becker';
-  src: url(/fonts/ocr-400.latin.woff2) format('woff2');
-  font-weight: 400 700; font-style: normal; font-display: swap; size-adjust: 92%;
-  unicode-range: U+0000-00FF, U+2000-206F, U+2190-21BB, U+2212;
+/* ── токены: тёмная, только явным выбором ── */
+[data-theme='dark'] {
+  --e-bg: #131417; --e-bg-sunken: #0e0f11; --e-surface: #191b1f; --e-surface-hover: #202329;
+  --e-surface-active: #2a2e35;
+  --e-fg: #f2f4f7; --e-fg-2: #c7ccd4; --e-fg-3: #a2a9b4; --e-fg-muted: #8a929e;
+  --e-line: #2a2e35; --e-line-soft: #202329; --e-line-control: #666d78; --e-line-focus: #a8bee0;
+  --e-solid: #f2f4f7; --e-solid-hover: #ffffff; --e-solid-active: #e2e5ea; --e-solid-fg: #0e0f11;
+  --e-accent: #a8bee0; --e-accent-tint: #232b36; --e-accent-fg: #0e0f11;
+  --e-success: #86c39c; --e-success-tint: #1e2a23;
+  --e-warning: #e0be72; --e-warning-tint: #2a2620;
+  --e-danger: #ec9e96; --e-danger-tint: #2b2020;
+  --e-shadow-1: 1px 1px 0 rgb(0 0 0 / 0.55); --e-shadow-2: 2px 2px 0 rgb(0 0 0 / 0.60);
+  --e-shadow-3: 4px 4px 0 rgb(0 0 0 / 0.66);
+  color-scheme: dark;
 }
-
 :root {
-  --w: #fff;
-  --g100: rgb(238, 240, 242); --g200: rgb(220, 221, 223); --g400: rgb(153, 156, 160);
-  --g600: rgb(85, 88, 92); --g900: rgb(18, 18, 20); --g950: rgb(5, 5, 5);
-  --blue: rgb(0, 100, 240); --green: rgb(30, 170, 60);
-  --red: rgb(253, 47, 75); --yellow: rgb(255, 225, 0);
-  --text: var(--g950); --cap: var(--g600); --bg: var(--w); --surface: var(--g100);
-  --sh-s: 2px 2px 0 var(--text); --sh-m: 3px 3px 0 var(--text); --sh-l: 5px 5px 0 var(--text);
+  --e-font-sans: 'Basis Grotesque Pro', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --e-font-num: 'OCR A Becker', ui-monospace, 'SF Mono', 'Cascadia Mono', 'Roboto Mono', monospace;
+  --e-size-2xs: .6875rem; --e-size-xs: .75rem; --e-size-sm: .875rem; --e-size-md: 1rem;
+  --e-size-lg: 1.125rem; --e-size-xl: 1.375rem; --e-size-2xl: 1.75rem;
+  --e-leading-tight: 1.15; --e-leading-snug: 1.3; --e-leading-normal: 1.5;
+  --e-tracking-caps: .07em;
+  --e-space-1: 2px; --e-space-2: 4px; --e-space-3: 6px; --e-space-4: 8px; --e-space-5: 12px;
+  --e-space-6: 16px; --e-space-7: 20px; --e-space-8: 24px; --e-space-9: 32px; --e-space-10: 40px;
+  --e-radius-xs: 4px; --e-radius-sm: 6px; --e-radius-md: 10px; --e-radius-lg: 14px;
+  --e-control-h-sm: 32px; --e-control-h-md: 44px; --e-control-h-lg: 52px; --e-topbar-h: 52px;
+  --e-dur-fast: 130ms; --e-dur-base: 200ms; --e-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --e-z-sticky: 10; --e-z-scrim: 40;
+
+  /* «Проверка»: линии на белом листе, одинаково в обеих темах */
+  --ck-sheet: #ffffff;
+  --ck-src: rgb(115 120 125);   /* DWG — исходник */
+  --ck-our: rgb(5 5 5);         /* SVG — результат */
+  --ck-del: rgb(253 47 75);     /* только в DWG — убрано */
+  --ck-add: rgb(0 100 240);     /* только в SVG — добавлено */
+}
+@media (prefers-reduced-motion: reduce) {
+  :root { --e-dur-fast: 1ms; --e-dur-base: 1ms; }
+  *, *::before, *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important;
+                           transition-duration: 1ms !important; scroll-behavior: auto !important; }
+}
+@media (prefers-contrast: more) {
+  :root, [data-theme='light'], [data-theme='dark'] { --e-line: var(--e-fg-3); --e-line-control: var(--e-fg-3); }
 }
 
+/* ── основа ── */
 *, *::before, *::after { box-sizing: border-box; }
-html { font-size: clamp(15px, 12px + .55vw, 22px); }
+html, body { height: 100%; }
 body {
-  margin: 0; background: var(--bg); color: var(--text);
-  font-family: 'OCR A Becker', ui-monospace, 'SF Mono', monospace;
-  line-height: 1.5; text-transform: uppercase; letter-spacing: .02em;
-  -webkit-font-smoothing: antialiased; padding: 0 1rem 4rem;
+  margin: 0; overflow: hidden; background: var(--e-bg); color: var(--e-fg);
+  font: var(--e-size-md)/var(--e-leading-normal) var(--e-font-sans);
+  -webkit-font-smoothing: antialiased; font-synthesis: none;
 }
-.page { max-width: 60rem; margin: 0 auto; }
-h1, h2, p, ul { margin: 0; }
+h1, h2, h3, p, ol, ul, dl, dd { margin: 0; padding: 0; }
+button, input { font: inherit; color: inherit; }
+.num { font-family: var(--e-font-num); font-variant-numeric: tabular-nums lining-nums; letter-spacing: 0; }
+:focus { outline: none; }
+:focus-visible { outline: 2px solid var(--e-line-focus); outline-offset: 2px; }
+.skip { position: absolute; left: var(--e-space-4); top: -100px; z-index: var(--e-z-scrim);
+        background: var(--e-solid); color: var(--e-solid-fg); padding: var(--e-space-4) var(--e-space-5);
+        border-radius: var(--e-radius-sm); text-decoration: none; }
+.skip:focus-visible { top: var(--e-space-4); }
+[hidden] { display: none !important; }
 
-.head {
-  display: flex; justify-content: space-between; align-items: center; gap: 1rem;
-  padding: 1rem 0 .7rem; border-bottom: 2px solid var(--text);
+/* ── каркас: всё в один экран ── */
+.app { display: grid; grid-template-rows: var(--e-topbar-h) minmax(0, 1fr); height: 100vh; height: 100dvh; }
+.top {
+  display: flex; align-items: center; gap: var(--e-space-5); padding: 0 var(--e-space-6); min-width: 0;
+  border-bottom: 1px solid var(--e-line); background: var(--e-surface);
 }
-.mark { display: flex; align-items: center; gap: .6em; }
-.cap { font-size: .85em; letter-spacing: .14em; color: var(--cap); }
-.logo {
-  display: block; flex: none; block-size: 1.05em; inline-size: calc(1.05em * 563 / 370);
-  background: currentColor;
-  mask: url(/elementar.svg) no-repeat center/contain;
-  -webkit-mask: url(/elementar.svg) no-repeat center/contain;
+.brand { display: flex; align-items: center; gap: var(--e-space-4); font-weight: 500; font-size: var(--e-size-lg); flex: none; }
+.logo { display: block; flex: none; block-size: 18px; inline-size: calc(18px * 563 / 370);
+        background: currentColor; mask: url(elementar.svg) no-repeat center/contain;
+        -webkit-mask: url(elementar.svg) no-repeat center/contain; }
+.brand .sep { color: var(--e-fg-3); font-weight: 400; }
+.badge { flex: none; font-size: var(--e-size-xs); letter-spacing: var(--e-tracking-caps); text-transform: uppercase;
+         color: var(--e-warning); background: var(--e-warning-tint); padding: 1px var(--e-space-3);
+         border-radius: var(--e-radius-xs); }
+.top .lead { color: var(--e-fg-3); font-size: var(--e-size-sm); margin-left: var(--e-space-2);
+             white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.top .sp { flex: 1; }
+.top .btn { flex: none; }
+
+.work { display: grid; grid-template-columns: clamp(272px, 24vw, 340px) minmax(0, 1fr); min-height: 0; }
+
+/* ── левая колонка: шаги ── */
+.side {
+  display: flex; flex-direction: column; gap: var(--e-space-6); padding: var(--e-space-6);
+  border-right: 1px solid var(--e-line); background: var(--e-bg); overflow-y: auto; min-height: 0;
+}
+.step h2 {
+  display: flex; align-items: center; gap: var(--e-space-4); margin-bottom: var(--e-space-4);
+  font-size: var(--e-size-sm); font-weight: 500; color: var(--e-fg-2);
+}
+.step h2 .n {
+  display: inline-grid; place-items: center; inline-size: 22px; block-size: 22px; border-radius: var(--e-radius-xs);
+  background: var(--e-bg-sunken); border: 1px solid var(--e-line); font-size: var(--e-size-xs); color: var(--e-fg);
+}
+.step.done h2 .n { background: var(--e-solid); color: var(--e-solid-fg); border-color: var(--e-solid); }
+
+.filecard {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0 var(--e-space-5); align-items: center;
+  padding: var(--e-space-5); border: 1px solid var(--e-line); border-radius: var(--e-radius-md);
+  background: var(--e-surface); box-shadow: var(--e-shadow-1);
+}
+.filecard .ic { grid-row: span 2; inline-size: 28px; block-size: 36px; color: var(--e-fg-3); }
+.filecard .nm { font-weight: 500; overflow-wrap: anywhere; line-height: var(--e-leading-snug); }
+.filecard .meta { font-size: var(--e-size-sm); color: var(--e-fg-3); }
+.filecard.empty .nm { font-weight: 400; color: var(--e-fg-3); }
+.linkbtn { appearance: none; background: none; border: 0; padding: 0; color: var(--e-accent);
+           text-decoration: underline; text-underline-offset: 2px; cursor: pointer; font-size: var(--e-size-sm); }
+.err {
+  margin-top: var(--e-space-4); padding: var(--e-space-4) var(--e-space-5); border-radius: var(--e-radius-sm);
+  background: var(--e-danger-tint); color: var(--e-danger); font-size: var(--e-size-sm); line-height: var(--e-leading-snug);
 }
 
-.hero { padding: 1.4rem 0 0; display: flex; flex-wrap: wrap; align-items: flex-end;
-        gap: .4rem 1.6rem; }
-.hero h1 { font-size: 2.4em; line-height: 1.05; font-weight: 400; letter-spacing: .04em; }
-.hero .sub { font-size: 1.05em; max-width: 30em; line-height: 1.35; flex: 1 1 18em; }
-
-/* Жёлтая плашка — самое важное на экране. */
-.plate {
-  display: inline-block; background: var(--yellow); color: var(--g950);
-  border: 1px solid var(--g950); box-shadow: var(--sh-m);
-  padding: .35em .8em; font-size: .85em; max-width: 34em; line-height: 1.4;
+.styles { display: grid; gap: var(--e-space-4); }
+.style {
+  appearance: none; display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: var(--e-space-5); align-items: center;
+  text-align: start; padding: var(--e-space-4); border: 1px solid var(--e-line); border-radius: var(--e-radius-md);
+  background: var(--e-surface); cursor: pointer; min-height: var(--e-control-h-lg);
 }
+.style:hover { background: var(--e-surface-hover); }
+.style[aria-checked='true'] { border-color: var(--e-fg); box-shadow: inset 0 0 0 1px var(--e-fg); }
+.style .thumb { display: block; inline-size: 64px; block-size: 48px; border-radius: var(--e-radius-xs);
+                border: 1px solid var(--e-line); background: #fff; }
+.style b { display: block; font-weight: 500; }
+.style .sw { display: flex; gap: 3px; margin-top: var(--e-space-2); }
+.style .sw i { inline-size: 14px; block-size: 14px; border-radius: 3px; border: 1px solid rgb(0 0 0 / .15); }
+.style small { display: block; font-size: var(--e-size-xs); color: var(--e-fg-3); }
 
-section { margin-top: 1.5rem; }
-/* Загрузка помещается в один экран: слева файл, справа стиль и режим. Ниже
-   появляется результат, и вот он уже может быть длиннее экрана. */
-.grid { display: grid; grid-template-columns: 1.35fr 1fr; gap: 0 2rem; align-items: start; }
-@media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
-.slabel {
-  display: flex; gap: .8em; align-items: baseline;
-  border-bottom: 2px solid var(--text); padding-bottom: .35em;
+.btn {
+  appearance: none; display: inline-flex; align-items: center; justify-content: center; gap: var(--e-space-4);
+  min-block-size: var(--e-control-h-md); padding: 0 var(--e-space-6); border-radius: var(--e-radius-sm);
+  border: 1px solid var(--e-line-control); background: var(--e-surface); color: var(--e-fg);
+  font-weight: 500; cursor: pointer; text-decoration: none; white-space: nowrap;
+  transition: background-color var(--e-dur-fast) var(--e-ease-standard), translate var(--e-dur-fast) var(--e-ease-standard);
 }
-.slabel .n { background: var(--text); color: var(--bg); padding: .05em .5em; font-size: .9em; }
-.slabel h2 { font-size: 1.5em; font-weight: 400; letter-spacing: .1em; }
+.btn:hover:not(:disabled) { background: var(--e-surface-hover); }
+.btn:active:not(:disabled) { background: var(--e-surface-active); }
+.btn.primary { background: var(--e-solid); color: var(--e-solid-fg); border-color: var(--e-solid); box-shadow: var(--e-shadow-2); }
+.btn.primary:hover:not(:disabled) { background: var(--e-solid-hover); }
+.btn.primary:active:not(:disabled) { background: var(--e-solid-active); box-shadow: none; translate: 2px 2px; }
+.btn.primary:focus-visible { outline-offset: 3px; }
+.btn:disabled { cursor: default; background: var(--e-bg-sunken); color: var(--e-fg-3); border-color: var(--e-line); box-shadow: none; }
+.btn.wide { inline-size: 100%; min-block-size: var(--e-control-h-lg); font-size: var(--e-size-lg); }
+.btn.sm { min-block-size: var(--e-control-h-sm); padding: 0 var(--e-space-5); font-size: var(--e-size-sm); }
+.btn svg { inline-size: 18px; block-size: 18px; flex: none; }
+.hint { margin-top: var(--e-space-4); font-size: var(--e-size-sm); color: var(--e-fg-3); min-height: 1.5em; }
 
-/* Приёмник файла. */
-.drop {
-  border: 1px dashed var(--g400); box-shadow: var(--sh-s); background: var(--bg);
-  padding: 3.4em 1em; margin-top: 1rem; text-align: center; cursor: pointer;
-  color: var(--cap); font-size: 1.05em; line-height: 1.4;
+.sum .row { display: flex; justify-content: space-between; gap: var(--e-space-5); align-items: baseline;
+            padding: var(--e-space-3) 0; border-bottom: 1px solid var(--e-line-soft); font-size: var(--e-size-sm); }
+.sum .row dt { color: var(--e-fg-2); }
+.sum .row dd { font-size: var(--e-size-md); text-align: end; white-space: nowrap; }
+.sum .row dd small { font-size: var(--e-size-xs); color: var(--e-fg-3); font-family: var(--e-font-sans); }
+.note { margin-top: var(--e-space-4); padding: var(--e-space-4) var(--e-space-5); border-radius: var(--e-radius-sm);
+        font-size: var(--e-size-sm); line-height: var(--e-leading-snug); background: var(--e-bg-sunken); color: var(--e-fg-2); }
+.note.warn { background: var(--e-warning-tint); color: var(--e-fg); box-shadow: inset 3px 0 0 var(--e-warning); }
+
+/* ── сцена ── */
+.stage { display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; min-height: 0; min-width: 0;
+         padding: var(--e-space-5) var(--e-space-6) var(--e-space-4); gap: var(--e-space-4); background: var(--e-bg-sunken); }
+.stage:focus { outline: none; }
+.bar { display: flex; align-items: center; gap: var(--e-space-5); flex-wrap: wrap; }
+.bar .sp { flex: 1; }
+.tabs { display: inline-flex; padding: 3px; gap: 3px; border-radius: var(--e-radius-md); background: var(--e-surface);
+        border: 1px solid var(--e-line); }
+.tab { appearance: none; border: 0; background: none; cursor: pointer; padding: 0 var(--e-space-6);
+       min-block-size: 38px; border-radius: var(--e-radius-sm); font-weight: 500; color: var(--e-fg-2); }
+.tab:hover { background: var(--e-surface-hover); color: var(--e-fg); }
+.tab[aria-selected='true'] { background: var(--e-solid); color: var(--e-solid-fg); }
+.dlsize { font-size: var(--e-size-sm); color: var(--e-fg-3); }
+
+.ckbar { display: grid; gap: var(--e-space-4); padding: var(--e-space-4) var(--e-space-5);
+         border: 1px solid var(--e-line); border-radius: var(--e-radius-md); background: var(--e-surface); }
+.ckrow { display: flex; flex-wrap: wrap; align-items: center; gap: var(--e-space-4) var(--e-space-6); }
+.seg { display: inline-flex; border: 1px solid var(--e-line-control); border-radius: var(--e-radius-sm); overflow: hidden; }
+.seg button { appearance: none; border: 0; background: var(--e-surface); cursor: pointer; padding: 0 var(--e-space-5);
+              min-block-size: var(--e-control-h-sm); font-weight: 500; font-size: var(--e-size-sm); }
+.seg button + button { border-left: 1px solid var(--e-line-control); }
+.seg button:hover { background: var(--e-surface-hover); }
+.seg button[aria-pressed='true'] { background: var(--e-solid); color: var(--e-solid-fg); }
+.seg button:focus-visible { outline-offset: -4px; outline-color: var(--e-accent); box-shadow: inset 0 0 0 2px var(--e-surface); }
+.tog { display: inline-flex; align-items: center; gap: var(--e-space-3); font-size: var(--e-size-sm); cursor: pointer; }
+.tog input { inline-size: 16px; block-size: 16px; accent-color: var(--e-accent); margin: 0; }
+.lg { display: inline-flex; align-items: center; gap: var(--e-space-3); font-size: var(--e-size-sm); color: var(--e-fg-2); }
+.lg i, .ptag i { display: inline-block; inline-size: 22px; block-size: 4px; border-radius: 2px; flex: none; }
+.lg i.src, .ptag i.src { background: var(--ck-src); }
+.lg i.our, .ptag i.our { background: var(--ck-our); box-shadow: 0 0 0 1px var(--e-line-control); }
+.lg i.del { background: var(--ck-del); } .lg i.add { background: var(--ck-add); }
+.lg b { font-weight: 500; color: var(--e-fg); }
+.verdict { font-size: var(--e-size-sm); line-height: var(--e-leading-snug); }
+.verdict strong { font-weight: 500; }
+.verdict.ok strong { color: var(--e-success); }
+.verdict.bad strong { color: var(--e-danger); }
+.verdict .parts { color: var(--e-fg-2); }
+.zoom { display: inline-flex; gap: var(--e-space-2); margin-left: auto; }
+.zoom .btn { min-inline-size: var(--e-control-h-sm); padding: 0 var(--e-space-4); }
+
+/* Поле чертежа */
+.view { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--e-space-4); min-height: 0; }
+.view[data-mode='side'][data-tab='check'] { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.view:focus-visible { outline-offset: 3px; border-radius: var(--e-radius-md); }
+.pane { position: relative; overflow: hidden; min-height: 0; border-radius: var(--e-radius-md); background: var(--ck-sheet);
+        border: 1px solid var(--e-line); box-shadow: var(--e-shadow-1); cursor: grab; touch-action: none; user-select: none; }
+.pane.drag { cursor: grabbing; }
+.lay { position: absolute; inset: 0; pointer-events: none; mix-blend-mode: multiply; }
+.lay svg { display: block; width: 100%; height: 100%; }
+.diff { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; opacity: 0;
+        transition: opacity var(--e-dur-fast) var(--e-ease-standard); }
+.diff.on { opacity: 1; }
+.ptag { position: absolute; left: var(--e-space-4); top: var(--e-space-4); display: inline-flex; align-items: center;
+        gap: var(--e-space-3); padding: var(--e-space-2) var(--e-space-4); border-radius: var(--e-radius-sm);
+        background: rgb(255 255 255 / .94); color: #221f1b; border: 1px solid #dad5cc; font-size: var(--e-size-sm);
+        font-weight: 500; pointer-events: none; }
+.ptag i.our { box-shadow: none; }
+
+#paneB { display: none; }
+.view[data-mode='side'][data-tab='check'] #paneB { display: block; }
+.view[data-tab='result'] .ptag, .view[data-tab='result'] .lay.src, .view[data-tab='result'] .diff { display: none; }
+.view[data-tab='check'][data-mode='src'] #paneA .lay.our,
+.view[data-tab='check'][data-mode='our'] #paneA .lay.src,
+.view[data-tab='check'][data-mode='side'] #paneA .lay.our { display: none; }
+.view[data-tab='check']:not([data-mode='both']) .diff { display: none; }
+
+/* Исходник: серые линии, текст и размеры — пунктирной рамкой своего габарита */
+.view[data-tab='check'] .lay.src svg g { fill: none !important; stroke: var(--ck-src) !important; stroke-width: 1px !important; }
+.view[data-tab='check'] .lay.src svg g.src-txt { stroke-dasharray: 3 2; }
+.view[data-tab='check'] .lay svg path { vector-effect: non-scaling-stroke; }
+/* Результат: по умолчанию контуром, без заливки */
+.view[data-tab='check']:not(.fill) .lay.our svg g { fill: none !important; stroke: var(--ck-our) !important; stroke-width: 1.25px !important; }
+.view[data-tab='check'].fill .lay.our { opacity: .75; }
+.view[data-tab='check'].fill .lay.our svg path { vector-effect: none; }
+
+/* Пустая сцена — большая зона загрузки */
+.dropzone {
+  position: relative; display: grid; place-content: center; justify-items: center; gap: var(--e-space-5);
+  text-align: center; padding: var(--e-space-8); min-height: 0; grid-row: 1 / 4;
+  border: 2px dashed var(--e-line-control); border-radius: var(--e-radius-lg); background: var(--e-surface);
+  transition: background-color var(--e-dur-fast) var(--e-ease-standard), border-color var(--e-dur-fast) var(--e-ease-standard);
 }
-.drop:hover, .drop.over { background: var(--surface); color: var(--text); }
-.drop.has { border: 1px solid var(--text); border-top: 6px solid var(--yellow);
-            color: var(--text); text-align: start; padding: .8em .9em; }
-.drop .name { display: block; font-size: 1.25em; overflow-wrap: anywhere; }
-.drop .size { display: block; margin-top: .35em; font-size: .85em;
-              letter-spacing: .12em; color: var(--cap); }
+body.over .dropzone, body.over .view .pane { border-color: var(--e-accent); background-color: var(--e-accent-tint); }
+.dropzone .big { inline-size: 56px; block-size: 56px; color: var(--e-fg-3); }
+.dropzone h3 { font-size: var(--e-size-2xl); font-weight: 500; line-height: var(--e-leading-tight); overflow-wrap: anywhere; }
+.dropzone p { color: var(--e-fg-2); max-width: 34em; }
+.dropzone .fine { font-size: var(--e-size-sm); color: var(--e-fg-3); }
 
-/* Переключатели: те же карточки, только нажимаются. */
-.chips { display: flex; gap: .6rem; flex-wrap: wrap; margin-top: 1rem; }
-.chip {
-  appearance: none; cursor: pointer; font: inherit; text-transform: inherit;
-  letter-spacing: inherit; border: 1px solid var(--text); border-radius: 0;
-  background: var(--bg); color: var(--text); box-shadow: var(--sh-s);
-  padding: .5em .9em; font-size: .95em;
-}
-.chip:hover { background: var(--surface); }
-.chip:active { box-shadow: none; translate: 2px 2px; }
-.chip[aria-pressed="true"] { background: var(--text); color: var(--bg); box-shadow: none; }
+/* Прогресс */
+.progress, .problem { display: grid; place-content: center; justify-items: start; gap: var(--e-space-6); padding: var(--e-space-8);
+            border: 1px solid var(--e-line); border-radius: var(--e-radius-lg); background: var(--e-surface); grid-row: 1 / 4; }
+.progress h3, .problem h3 { font-size: var(--e-size-xl); font-weight: 500; }
+.stages { list-style: none; display: grid; gap: var(--e-space-5); }
+.stages li { display: grid; grid-template-columns: 28px auto; align-items: center; gap: var(--e-space-5);
+             font-size: var(--e-size-lg); color: var(--e-fg-3); }
+.stages li .dot { inline-size: 24px; block-size: 24px; border-radius: 50%; border: 2px solid var(--e-line-control);
+                  display: grid; place-items: center; }
+.stages li.now { color: var(--e-fg); font-weight: 500; }
+.stages li.now .dot { border-color: var(--e-accent); border-top-color: transparent; animation: spin 900ms linear infinite; }
+.stages li.ok { color: var(--e-fg-2); }
+.stages li.ok .dot { border-color: var(--e-success); background: var(--e-success); }
+.stages li.ok .dot::after { content: ''; inline-size: 9px; block-size: 5px; border: 2px solid var(--e-surface);
+                            border-top: 0; border-right: 0; rotate: -45deg; translate: 0 -1px; }
+@keyframes spin { to { rotate: 360deg; } }
+@media (prefers-reduced-motion: reduce) { .stages li.now .dot { animation: none; border-top-color: var(--e-accent); border-style: dotted; } }
+.elapsed { font-size: var(--e-size-sm); color: var(--e-fg-3); }
 
-/* Единственное действие. */
-.cta {
-  display: block; width: 100%; margin-top: 1.6rem; cursor: pointer;
-  font: inherit; text-transform: inherit; letter-spacing: .1em; font-size: 1.2em;
-  padding: .7em 1em; text-align: center; text-decoration: none;
-  background: var(--text); color: var(--bg);
-  border: 1px solid var(--text); border-radius: 0; box-shadow: var(--sh-l);
-}
-.cta:hover:not(:disabled) { translate: -1px -1px; }
-.cta:active:not(:disabled) { translate: 5px 5px; box-shadow: none; }
-.cta:disabled { background: var(--surface); color: var(--g400);
-                border-color: var(--g200); box-shadow: none; cursor: default; }
-.cta.dl { margin-top: 1.1rem; font-size: 1.05em; background: var(--yellow);
-          color: var(--g950); border-color: var(--g950); box-shadow: var(--sh-m); }
+/* Ошибка и незнакомые слои */
+.problem h3 { color: var(--e-danger); }
+.problem p { max-width: 38em; }
+.ask { overflow-y: auto; min-height: 0; padding: var(--e-space-6); border: 1px solid var(--e-line); grid-row: 1 / 4;
+       border-radius: var(--e-radius-lg); background: var(--e-surface); }
+.ask > p { max-width: 46em; margin-bottom: var(--e-space-6); }
+.ask b { font-weight: 500; }
+.ask .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--e-space-6); }
+.lcard { border: 1px solid var(--e-line); border-radius: var(--e-radius-md); padding: var(--e-space-5); background: var(--e-bg); }
+.lcard b { overflow-wrap: anywhere; }
+.lcard .meta { font-size: var(--e-size-sm); color: var(--e-fg-3); }
+.lcard .pic { margin: var(--e-space-4) 0; border: 1px solid var(--e-line); border-radius: var(--e-radius-sm); background: #fff; }
+.lcard .pic svg { display: block; width: 100%; height: auto; max-height: 160px; }
+.lcard .seg { display: flex; } .lcard .seg button { flex: 1; padding: 0 var(--e-space-3); }
+.lcard.done { opacity: .5; }
 
-:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
-
-/* Карточки: полоса сверху задаёт смысл. */
-.card {
-  border: 1px solid var(--text); border-top: 6px solid var(--text);
-  box-shadow: var(--sh-m); padding: .8em .9em; background: var(--bg);
-  margin-top: 1.3rem; min-width: 0;
-}
-.card.r { border-top-color: var(--red); }
-.card.g { border-top-color: var(--green); }
-.card.y { border-top-color: var(--yellow); }
-.card b { display: block; font-weight: 400; font-size: 1.25em; }
-.card p { margin-top: .5em; font-size: .95em; line-height: 1.4; overflow-wrap: anywhere; }
-.card .tag { display: block; margin-top: .7em; font-size: .8em;
-             letter-spacing: .12em; color: var(--cap); }
-.card.done { opacity: .45; }
-
-.note { border-left: 5px solid var(--red); padding: .5em .9em; margin-top: 1.3rem;
-        font-size: 1.05em; max-width: 40em; line-height: 1.4; }
-.note.b { border-color: var(--blue); }
-.note.y { border-color: var(--yellow); }
-.note.g { border-color: var(--green); }
-
-.pic { margin-top: .9em; border: 1px solid var(--text); background: var(--surface); }
-.pic svg { display: block; width: 100%; height: auto; max-height: 15rem; }
-
-details.more { margin-top: 1em; border-top: 1px solid var(--g200); padding-top: .7em; }
-details.more summary { cursor: pointer; font-size: .8em; letter-spacing: .12em;
-                       color: var(--cap); }
-.report { margin-top: .7em; white-space: pre-wrap; text-transform: none;
-          font-size: .78em; line-height: 1.5; color: var(--cap); }
-
-.preview { margin-top: 1.3rem; border: 1px solid var(--text); box-shadow: var(--sh-m);
-           background: var(--bg); }
-.preview svg { display: block; width: 100%; height: auto; max-height: 60svh; }
-
-/* Режим «Проверка»: исходник и результат в одних координатах, друг на друге.
-   Красный — исходник, синий — результат, где совпало — тёмное (multiply). Цвета
-   перебивают атрибуты SVG, так что файл для скачивания остаётся как был. */
-.ov { margin-top: 1.3rem; }
-.ovbar { display: flex; flex-wrap: wrap; gap: .6rem 1.2rem; align-items: center;
-         border: 1px solid var(--text); box-shadow: var(--sh-s); padding: .6em .8em;
-         font-size: .85em; background: var(--bg); }
-.ovbar label { display: flex; align-items: center; gap: .5em; cursor: pointer; }
-.ovbar input[type=range] { width: 9rem; accent-color: var(--blue); }
-.ovbar .chip { font-size: .9em; padding: .25em .7em; }
-.lg { display: inline-block; width: .9em; height: .9em; border: 1px solid var(--text);
-      vertical-align: -.1em; margin-right: .3em; }
-.lg.s { background: #e5003a; } .lg.o { background: #0064f0; } .lg.b { background: #1b0a22; }
-.ovview { position: relative; overflow: hidden; height: calc(100svh - 11rem); min-height: 20rem;
-          margin-top: .8rem; border: 1px solid var(--text); box-shadow: var(--sh-m);
-          background: #fff; cursor: grab; touch-action: none; user-select: none; }
-.ovview.drag { cursor: grabbing; }
-.ovl { position: absolute; inset: 0; mix-blend-mode: multiply; pointer-events: none; }
-.ovl svg { display: block; width: 100%; height: 100%; }
-.ovl svg path { vector-effect: non-scaling-stroke; }
-.ovl.src svg g { fill: none !important; stroke: #e5003a !important; stroke-width: 1px !important; }
-.ovl.src svg g.src-txt { stroke-dasharray: 3 2; }
-.ovl.our svg g { fill: none !important; stroke: #0064f0 !important; stroke-width: 1px !important; }
-.ovl.our svg g[class$="-fill"], .ovl.our svg g.c-floor {
-  fill: rgba(0, 100, 240, .14) !important; stroke: none !important; }
-.ovl.our svg g.c-wall-fill, .ovl.our svg g.c-slab-fill { fill: rgba(0, 100, 240, .30) !important; }
-.ovhint { margin-top: .5em; font-size: .75em; color: var(--cap); letter-spacing: .08em; }
+.foot { font-size: var(--e-size-xs); color: var(--e-fg-3); display: flex; gap: var(--e-space-6); flex-wrap: wrap; min-height: 1.6em; align-items: center; }
+kbd { font-family: var(--e-font-sans); font-size: var(--e-size-xs); padding: 0 var(--e-space-3); border-radius: var(--e-radius-xs);
+      border: 1px solid var(--e-line-control); background: var(--e-surface); color: var(--e-fg-2); }
 
 input[type=file] { display: none; }
-[hidden] { display: none !important; }
 </style>
 </head>
 <body>
-<div class="page">
-
-  <header class="head">
-    <span class="mark"><span class="logo" aria-hidden="true"></span><span>элементар</span></span>
-    <span class="cap">чертёжер · dwg → svg</span>
+<a class="skip" href="#stage">К чертежу</a>
+<div class="app">
+  <header class="top">
+    <span class="brand"><span class="logo" aria-hidden="true"></span><span>элементар</span><span class="sep">/</span><span>Чертёжер</span></span>
+    <span class="badge">бета</span>
+    <span class="lead">DWG → чистый SVG. Чертёж обрабатывается на этом компьютере и никуда не отправляется.</span>
+    <span class="sp"></span>
+    <button class="btn sm" id="theme" aria-pressed="false">Тёмная тема</button>
   </header>
 
-  <div class="hero">
-    <h1>чертёжер</h1>
-    <p class="sub">Превращает DWG в SVG со стилизацией под объект.</p>
-    <p class="plate">Beta v0.1 · возможны ошибки</p>
+  <div class="work">
+    <aside class="side" aria-label="Настройки">
+      <section class="step" id="s1">
+        <h2><span class="n num">1</span>Чертёж</h2>
+        <div class="filecard empty" id="filecard">
+          <svg class="ic" viewBox="0 0 32 40" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 1h18l8 8v30H3z"/><path d="M21 1v8h8"/><path d="M8 30h16M8 25h10M8 20h16"/></svg>
+          <span class="nm" id="fname">Файл не выбран</span>
+          <span class="meta" id="fmeta"><button class="linkbtn" id="pick2">Выбрать файл</button></span>
+        </div>
+        <p class="err" id="ferr" role="alert" hidden></p>
+        <input type="file" id="file" accept=".dwg,.dxf">
+      </section>
+
+      <section class="step" id="s2">
+        <h2><span class="n num">2</span>Стиль</h2>
+        <div class="styles" id="styles" role="radiogroup" aria-label="Стиль чертежа"></div>
+      </section>
+
+      <section class="step" id="s3">
+        <button class="btn primary wide" id="go" disabled>Собрать SVG</button>
+        <p class="hint" id="gohint" aria-live="polite">Сначала выберите чертёж.</p>
+      </section>
+
+      <section class="step" id="s4" hidden>
+        <h2><span class="n num">3</span>Итог</h2>
+        <dl class="sum" id="sum"></dl>
+        <div id="notes"></div>
+      </section>
+    </aside>
+
+    <main class="stage" id="stage" tabindex="-1">
+      <div class="bar" id="bar" hidden>
+        <div class="tabs" role="tablist" aria-label="Что показать">
+          <button class="tab" role="tab" id="tabResult" aria-selected="true" aria-controls="view">Результат</button>
+          <button class="tab" role="tab" id="tabCheck" aria-selected="false" aria-controls="view" tabindex="-1">Проверка: DWG и SVG</button>
+        </div>
+        <span class="sp"></span>
+        <span class="dlsize" id="dlsize"></span>
+        <a class="btn primary" id="dl" href="#" download>
+          <svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M10 3v10M5.5 8.5 10 13l4.5-4.5M4 16.5h12"/></svg>
+          Скачать SVG</a>
+      </div>
+
+      <div class="ckbar" id="ckbar" hidden>
+        <div class="ckrow">
+          <div class="seg" role="group" aria-label="Что показать на листе">
+            <button data-mode="src" aria-pressed="false">DWG</button>
+            <button data-mode="our" aria-pressed="false">SVG</button>
+            <button data-mode="both" aria-pressed="true">Оба</button>
+            <button data-mode="side" aria-pressed="false">Рядом</button>
+          </div>
+          <label class="tog"><input type="checkbox" id="ckdiff" checked> Подсветить отличия</label>
+          <label class="tog"><input type="checkbox" id="ckfill"> Заливка результата</label>
+          <div class="zoom">
+            <button class="btn sm" data-zoom="out" aria-label="Уменьшить">−</button>
+            <button class="btn sm" data-zoom="in" aria-label="Увеличить">+</button>
+            <button class="btn sm" data-zoom="fit">Вписать</button>
+          </div>
+        </div>
+        <div class="ckrow">
+          <span class="lg"><i class="src"></i><b>DWG</b> — исходник</span>
+          <span class="lg"><i class="our"></i><b>SVG</b> — результат</span>
+          <span class="lg" data-diff-legend><i class="del"></i>только в DWG — убрано</span>
+          <span class="lg" data-diff-legend><i class="add"></i>только в SVG — добавлено: пол, швы, номера</span>
+        </div>
+        <p class="verdict" id="verdict"></p>
+      </div>
+
+      <div class="view" id="view" data-tab="result" data-mode="both" hidden aria-label="Чертёж: масштаб и сдвиг с клавиатуры" tabindex="0">
+        <div class="pane" id="paneA"></div>
+        <div class="pane" id="paneB"></div>
+      </div>
+
+      <div class="dropzone" id="drop" role="region" aria-label="Загрузка чертежа">
+        <svg class="big" viewBox="0 0 56 56" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4h22l10 10v38H12z"/><path d="M34 4v10h10"/><path d="M28 42V22M20 30l8-8 8 8"/></svg>
+        <h3 id="dropTitle">Перетащите DWG или DXF</h3>
+        <p id="dropText">в это окно — или выберите файл на компьютере.</p>
+        <button class="btn primary" id="pick">Выбрать файл</button>
+        <p class="fine">Чертёж из AutoCAD или Revit, до <span class="num">200</span> МБ. Файл остаётся на этом компьютере.</p>
+      </div>
+
+      <div class="progress" id="progress" hidden>
+        <h3>Собираю чертёж</h3>
+        <ol class="stages" id="stages"></ol>
+        <p class="elapsed">Прошло <span class="num" id="elapsed">0,0</span> с</p>
+      </div>
+
+      <div class="problem" id="problem" hidden role="alert">
+        <h3>Не получилось</h3>
+        <p id="problemText"></p>
+        <button class="btn" id="problemPick">Выбрать другой файл</button>
+      </div>
+
+      <div class="ask" id="ask" hidden></div>
+
+      <p class="foot" id="foot"></p>
+    </main>
   </div>
-
-  <div class="grid">
-  <section>
-    <div class="slabel"><span class="n">01</span><h2>чертёж</h2></div>
-    <div class="drop" id="drop" role="button" tabindex="0">
-      Перетащите DWG или DXF, либо нажмите, чтобы выбрать
-    </div>
-    <input type="file" id="file" accept=".dwg,.dxf">
-  </section>
-
-  <div>
-  <section>
-    <div class="slabel"><span class="n">02</span><h2>стиль</h2></div>
-    <div class="chips" id="styles"></div>
-  </section>
-
-  <section>
-    <div class="slabel"><span class="n">03</span><h2>режим</h2></div>
-    <div class="chips" id="modes">
-      <button class="chip" aria-pressed="true" data-m="convert">Конвертация</button>
-      <button class="chip" aria-pressed="false" data-m="check">Проверка: исходник и результат в наложении</button>
-    </div>
-  </section>
-  </div>
-  </div>
-
-  <button class="cta" id="go" disabled>Собрать SVG</button>
-
-  <div id="out"></div>
 </div>
 
 <script>
 const $ = s => document.querySelector(s);
-let file = null, style = null, svg = null, осталось = 0, mode = 'convert';
+const $$ = s => [...document.querySelectorAll(s)];
+const esc = s => String(s).replace(/[<>&"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
+const fmt = n => Number(n).toLocaleString('ru-RU');
+const sec = t => t.toFixed(1).replace('.', ',');
+const human = n => n >= 1048576 ? (n / 1048576).toFixed(1).replace('.', ',') + ' МБ'
+                                 : Math.max(1, Math.round(n / 1024)) + ' КБ';
+const N = v => `<span class="num">${fmt(v)}</span>`;
+const plural = (n, a, b, c) => { const m = n % 100, k = n % 10;
+  return (m > 10 && m < 20) ? c : k === 1 ? a : (k > 1 && k < 5) ? b : c; };
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-const esc = s => String(s).replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
-const human = n => n > 1048576 ? (n / 1048576).toFixed(1) + ' МБ' : Math.round(n / 1024) + ' КБ';
-const ready = () => { $('#go').disabled = !(file && style); };
+const S = { file: null, style: null, busy: false, res: null, tab: 'result', mode: 'both', dlurl: null, srcIn: null, ourIn: null };
 
-fetch('/styles').then(r => r.json()).then(list => {
-  $('#styles').innerHTML = list.map(s =>
-    `<button class="chip" aria-pressed="false" data-s="${esc(s)}">${esc(s)}</button>`).join('');
-  document.querySelectorAll('#styles .chip').forEach(b => b.onclick = () => {
-    document.querySelectorAll('#styles .chip').forEach(x => x.setAttribute('aria-pressed', 'false'));
-    b.setAttribute('aria-pressed', 'true');
-    style = b.dataset.s; ready();
-  });
-  if (list.length === 1) document.querySelector('#styles .chip').click();
-});
-
-document.querySelectorAll('#modes .chip').forEach(b => b.onclick = () => {
-  document.querySelectorAll('#modes .chip').forEach(x => x.setAttribute('aria-pressed', 'false'));
-  b.setAttribute('aria-pressed', 'true');
-  mode = b.dataset.m;
-});
-
-// Наложение: оба слоя — в одном viewBox, поэтому лежат друг на друге без сдвига.
-// Зум и перенос общие: двигается не слой, а стопка из двух.
-function наложение(srcSvg, ourSvg) {
-  const box = $('#ovbox');
-  box.innerHTML =
-    `<div class="ovbar">
-       <label>результат, прозрачность <input type="range" id="ovop" min="0" max="100" value="100"></label>
-       <label><input type="checkbox" id="ovs" checked> <span class="lg s"></span>исходник</label>
-       <label><input type="checkbox" id="ovo" checked> <span class="lg o"></span>результат</label>
-       <button class="chip" id="ovfit">Вписать</button>
-       <button class="chip" id="ovz1">+</button><button class="chip" id="ovz2">−</button>
-     </div>
-     <p class="ovhint"><span class="lg s"></span>красный — есть в исходнике, в результат не вошло
-       · <span class="lg o"></span>синий — есть только в результате (заливка пола считается, а не берётся)
-       · <span class="lg b"></span>тёмный — совпало. Рамка пунктиром — текст и размеры исходника.
-       Колесо — масштаб, перетаскивание — сдвиг, оба слоя двигаются вместе.</p>
-     <div class="ovview" id="ovview">
-       <div class="ovl src">${srcSvg}</div><div class="ovl our" id="ovour">${ourSvg}</div>
-     </div>`;
-  box.scrollIntoView({ block: 'start' });   // наложение — то, за чем пришли: сразу на экран
-  const view = $('#ovview');
-  const svgs = [...view.querySelectorAll('svg')];
-  svgs.forEach(v => v.setAttribute('preserveAspectRatio', 'none'));
-  const vb = (ourSvg.match(/viewBox="0 0 (\d+) (\d+)"/) || [0, 1, 1]);
-  const W = +vb[1], H = +vb[2];
-  // Масштаб — это сам viewBox обоих SVG, а не CSS-transform: только так линии
-  // остаются тонкими при увеличении (vector-effect не видит transform снаружи).
-  let sc = 1, ox = 0, oy = 0, fit = 1;
-  const apply = () => {
-    const vw = view.clientWidth, vh = view.clientHeight;
-    const t = `${ox} ${oy} ${vw / sc} ${vh / sc}`;
-    svgs.forEach(v => v.setAttribute('viewBox', t));
-  };
-  const вписать = () => {
-    const vw = view.clientWidth, vh = view.clientHeight;
-    fit = sc = Math.min(vw / W, vh / H);
-    ox = -(vw / sc - W) / 2; oy = -(vh / sc - H) / 2; apply();
-  };
-  const зум = (f, cx, cy) => {
-    const n = Math.min(fit * 120, Math.max(fit * .5, sc * f));
-    // точка под курсором остаётся на месте
-    ox += cx / sc - cx / n; oy += cy / sc - cy / n; sc = n; apply();
-  };
-  вписать();
-  addEventListener('resize', вписать);
-  view.addEventListener('wheel', e => {
-    e.preventDefault();
-    const r = view.getBoundingClientRect();
-    зум(Math.exp(-e.deltaY * 0.0015), e.clientX - r.left, e.clientY - r.top);
-  }, { passive: false });
-  let p = null;
-  view.addEventListener('pointerdown', e => { p = { x: e.clientX, y: e.clientY, ox, oy };
-    view.setPointerCapture(e.pointerId); view.classList.add('drag'); });
-  view.addEventListener('pointermove', e => { if (!p) return;
-    ox = p.ox - (e.clientX - p.x) / sc; oy = p.oy - (e.clientY - p.y) / sc; apply(); });
-  const стоп = () => { p = null; view.classList.remove('drag'); };
-  view.addEventListener('pointerup', стоп); view.addEventListener('pointercancel', стоп);
-  $('#ovfit').onclick = вписать;
-  $('#ovz1').onclick = () => зум(1.6, view.clientWidth / 2, view.clientHeight / 2);
-  $('#ovz2').onclick = () => зум(1 / 1.6, view.clientWidth / 2, view.clientHeight / 2);
-  $('#ovop').oninput = e => { $('#ovour').style.opacity = e.target.value / 100; };
-  $('#ovs').onchange = e => { document.querySelector('.ovl.src').style.visibility = e.target.checked ? '' : 'hidden'; };
-  $('#ovo').onchange = e => { $('#ovour').style.visibility = e.target.checked ? '' : 'hidden'; };
-}
-
-// Выбор чертежа на листе в бете снят: кнопки работали криво. Конвертор берёт
-// самый крупный чертёж сам, остальные считаются в «другой чертёж на листе»
-// внутри разбора — молча ничего не теряется. Вернуть выбор — отдельная задача.
-
-// Незнакомый слой — вопрос, а не тупик: показываем, что в нём лежит, и спрашиваем.
-// Три ответа — ровно те решения, которые есть у конвертора.
-function спросить(слои, картинки) {
-  осталось = слои.length;
-  $('#out').innerHTML =
-    `<p class="note">Этих слоёв я не знаю, поэтому чертёж не собран. Их геометрия
-      пропала бы молча — так однажды исчезли все перегородки дома.</p>` +
-    слои.map(u => `
-      <div class="card r" data-layer="${esc(u.layer)}">
-        <b>${esc(u.layer)}</b>
-        <span class="tag">${u.objects} объектов</span>
-        <div class="pic">${картинки[u.layer] || 'картинку построить не удалось'}</div>
-        <div class="chips">
-          <button class="chip" data-d="стена">Стена</button>
-          <button class="chip" data-d="второстепенное">Второстепенное</button>
-          <button class="chip" data-d="оформление">Оформление</button>
-        </div>
-      </div>`).join('');
-  document.querySelectorAll('[data-layer] .chip').forEach(b => b.onclick = async () => {
-    const карточка = b.closest('[data-layer]');
-    if (карточка.classList.contains('done')) return;
-    const r = await fetch('/decide', {
-      method: 'POST',
-      body: JSON.stringify({ layer: карточка.dataset.layer, decision: b.dataset.d })
-    });
-    if (!r.ok) { b.textContent = 'не вышло'; return; }
-    карточка.classList.add('done');
-    b.setAttribute('aria-pressed', 'true');
-    if (--осталось === 0) $('#go').click();   // все слои разобраны — собираем
-  });
-}
-
-function take(f) {
-  if (!f) return;
-  file = f; $('#out').innerHTML = '';
-  $('#drop').className = 'drop has';
-  $('#drop').innerHTML = `<span class="name">${esc(f.name)}</span>` +
-                         `<span class="size">${human(f.size)}</span>`;
-  ready();
-}
-$('#drop').onclick = () => $('#file').click();
-$('#drop').onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') $('#file').click(); };
-$('#file').onchange = e => take(e.target.files[0]);
-['dragenter', 'dragover'].forEach(t => $('#drop').addEventListener(t, e => {
-  e.preventDefault(); $('#drop').classList.add('over');
-}));
-['dragleave', 'drop'].forEach(t => $('#drop').addEventListener(t, e => {
-  e.preventDefault(); $('#drop').classList.remove('over');
-}));
-$('#drop').addEventListener('drop', e => take(e.dataTransfer.files[0]));
-
-$('#go').onclick = async () => {
-  const btn = $('#go');
-  btn.disabled = true; btn.textContent = 'Разбираю чертёж…';
-  $('#out').innerHTML = '';
-  try {
-    const r = await fetch('/convert', {
-      method: 'POST', body: file,
-      headers: {
-        'X-Name': encodeURIComponent(file.name),
-        'X-Style': encodeURIComponent(style),
-        'X-Overlay': mode === 'check' ? '1' : '0',
-      }
-    });
-    const d = await r.json();
-    if (r.status === 422 && d.unknown) { спросить(d.unknown, d.previews || {}); return; }
-    if (!r.ok) throw new Error(d.error || 'не получилось');
-    svg = d.svg;
-    const blob = new Blob([svg], { type: 'image/svg+xml' });
-    const url = URL.createObjectURL(blob);
-    const name = file.name.replace(/\.(dwg|dxf)$/i, '') + '.svg';
-    // Человеку показываем размер листа и предупреждения — то, что меняет его
-    // действия. Разбор по классам и баланс объектов нужны мне и гейту, а не ему.
-    const s = d.summary || {};
-    $('#out').innerHTML =
-      (s.warnings || []).map(w => `<p class="note">${esc(w)}</p>`).join('') +
-      `<div class="card g">
-         <b>Готово</b>
-         <span class="tag">${human(blob.size)}${s.sheet ? ' · лист ' + esc(s.sheet) : ''}` +
-           `${s.real ? ' · чертёж ' + esc(s.real) : ''}</span>
-         <a class="cta dl" href="${url}" download="${esc(name)}">Скачать ${esc(name)}</a>
-         <details class="more"><summary>Подробности разбора</summary>
-           <pre class="report">${esc(d.report.trim())}</pre></details>
-       </div>
-       ${mode === 'check' && d.source && d.source.svg
-          ? '<div class="ov" id="ovbox"></div>' : ''}
-       ${mode === 'check' && !(d.source && d.source.svg)
-          ? `<p class="note">Наложение не построилось: ${esc((d.source && d.source.error) || 'исходник не нарисовался')}.
-             Результат собран и скачивается как обычно.</p>` : ''}
-       ${mode === 'check' && d.source && d.source.svg ? '' : `<div class="preview">${svg}</div>`}`;
-    if (mode === 'check' && d.source && d.source.svg) {
-      try { наложение(d.source.svg, svg); }
-      catch (e) { $('#ovbox').innerHTML = `<p class="note">Наложение не построилось: ${esc(e.message)}</p>`
-                                         + `<div class="preview">${svg}</div>`; }
-    }
-  } catch (e) {
-    $('#out').innerHTML = `<p class="note">${esc(e.message)}</p>`;
-  } finally {
-    btn.disabled = false; btn.textContent = 'Собрать SVG';
-    ready();
-  }
+/* ── тема ── */
+const themeBtn = $('#theme');
+const syncTheme = () => { const d = document.documentElement.dataset.theme === 'dark';
+  themeBtn.setAttribute('aria-pressed', String(d)); themeBtn.textContent = d ? 'Светлая тема' : 'Тёмная тема'; };
+themeBtn.onclick = () => {
+  const d = document.documentElement.dataset.theme !== 'dark';
+  document.documentElement.dataset.theme = d ? 'dark' : 'light';
+  try { localStorage.setItem('e.theme', d ? 'dark' : 'light'); } catch (e) {}
+  syncTheme();
 };
+syncTheme();
+
+/* ── экраны сцены: виден ровно один ── */
+function show(which) {
+  for (const id of ['drop', 'progress', 'problem', 'ask', 'view']) $('#' + id).hidden = id !== which;
+  const has = which === 'view';
+  $('#bar').hidden = !has;
+  $('#ckbar').hidden = !(has && S.tab === 'check');
+  foot();
+}
+function foot() {
+  const f = $('#foot');
+  if (!$('#view').hidden && S.tab === 'check')
+    f.innerHTML = '<span><kbd>Пробел</kbd> — DWG и SVG по очереди</span><span>колесо, <kbd>+</kbd> <kbd>−</kbd> — масштаб</span>' +
+                  '<span>перетаскивание, стрелки — сдвиг</span><span><kbd>0</kbd> — вписать</span>';
+  else if (!$('#view').hidden)
+    f.innerHTML = '<span>колесо, <kbd>+</kbd> <kbd>−</kbd> — масштаб</span><span>перетаскивание, стрелки — сдвиг</span><span><kbd>0</kbd> — вписать</span>';
+  else f.innerHTML = '';
+}
+
+/* ── шаг 2: стили с образцом ── */
+function образец(p) {
+  const f = p.floor || '#ddd', w = p.wall || '#333', d = p.door || '#666', g = p.generic || '#999', fx = p.fixture || '#fff';
+  return `<svg class="thumb" viewBox="0 0 64 48" aria-hidden="true">
+    <rect x="6" y="6" width="52" height="36" fill="${esc(f)}"/>
+    <rect x="38" y="24" width="13" height="10" fill="${esc(fx)}" stroke="${esc(g)}" stroke-width="1"/>
+    <path d="M6 6h52v36H6z M30 6v12 M30 30v12" fill="none" stroke="${esc(w)}" stroke-width="3.5"/>
+    <path d="M30 18a12 12 0 0 1 12 12 M30 18v12" fill="none" stroke="${esc(d)}" stroke-width="1.2"/></svg>`;
+}
+const имяСтиля = s => s.charAt(0).toUpperCase() + s.slice(1);
+fetch('styles').then(r => r.json()).then(list => {
+  $('#styles').innerHTML = list.map(s => {
+    const p = s.palette || {};
+    const sw = [p.floor, p.wall, p.door, p.generic].filter(Boolean).map(c => `<i style="background:${esc(c)}"></i>`).join('');
+    return `<button class="style" role="radio" aria-checked="false" data-s="${esc(s.name)}">${образец(p)}
+      <span><b>${esc(имяСтиля(s.name))}</b><span class="sw" aria-hidden="true">${sw}</span></span></button>`;
+  }).join('');
+  $$('#styles .style').forEach(b => b.onclick = () => выбратьСтиль(b));
+  const first = $('#styles .style');
+  if (first) выбратьСтиль(first, true);
+}).catch(() => { $('#styles').innerHTML = '<p class="err">Стили не загрузились. Обновите страницу.</p>'; });
+
+function выбратьСтиль(b, тихо) {
+  $$('#styles .style').forEach(x => { x.setAttribute('aria-checked', 'false'); x.tabIndex = -1; });
+  b.setAttribute('aria-checked', 'true'); b.tabIndex = 0;
+  const было = S.style; S.style = b.dataset.s;
+  ready();
+  if (!тихо && S.res && было !== S.style) $('#gohint').textContent = 'Стиль изменён — соберите заново.';
+}
+$('#styles').addEventListener('keydown', e => {
+  const all = $$('#styles .style'); const i = all.indexOf(document.activeElement);
+  const k = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[e.key];
+  if (i < 0 || !k) return;
+  e.preventDefault(); const n = all[(i + k + all.length) % all.length]; n.focus(); выбратьСтиль(n);
+});
+
+/* ── шаг 1: файл ── */
+function ready() {
+  const go = $('#go');
+  go.disabled = !(S.file && S.style) || S.busy;
+  go.classList.toggle('primary', !S.res);
+  go.textContent = S.busy ? 'Собираю…' : S.res ? 'Собрать заново' : 'Собрать SVG';
+  if (!S.res) $('#gohint').textContent = S.busy ? '' : !S.file ? 'Сначала выберите чертёж.'
+    : !S.style ? 'Выберите стиль.' : 'Всё готово — можно собирать.';
+  $('#s1').classList.toggle('done', !!S.file);
+  $('#s2').classList.toggle('done', !!S.style);
+}
+function ошибкаФайла(t) { const e = $('#ferr'); e.textContent = t || ''; e.hidden = !t; }
+function take(f) {
+  if (!f || S.busy) return;
+  const ext = (f.name.match(/\.[^.]+$/) || [''])[0].toLowerCase();
+  if (ext !== '.dwg' && ext !== '.dxf') { ошибкаФайла(`«${f.name}» — не чертёж. Нужен файл DWG или DXF.`); return; }
+  if (f.size === 0) { ошибкаФайла(`«${f.name}» пустой. Выберите другой файл.`); return; }
+  if (f.size > 200 * 1048576) { ошибкаФайла(`«${f.name}» больше 200 МБ. Сохраните нужный лист отдельно и загрузите его.`); return; }
+  ошибкаФайла('');
+  S.file = f; S.res = null;
+  $('#filecard').classList.remove('empty');
+  $('#fname').textContent = f.name;
+  $('#fmeta').innerHTML = `${ext.slice(1).toUpperCase()}, <span class="num">${human(f.size)}</span> · <button class="linkbtn" id="pick2">Заменить</button>`;
+  $('#pick2').onclick = pick;
+  $('#s4').hidden = true;
+  $('#dropTitle').textContent = f.name;
+  $('#dropText').innerHTML = `${ext.slice(1).toUpperCase()}, <span class="num">${human(f.size)}</span>. Файл выбран — нажмите «Собрать SVG» слева.`;
+  $('#pick').textContent = 'Выбрать другой файл';
+  $('#pick').classList.remove('primary');
+  show('drop');
+  ready();
+  $('#go').focus();
+}
+const pick = () => { if (!S.busy) $('#file').click(); };
+$('#pick').onclick = pick; $('#pick2').onclick = pick; $('#problemPick').onclick = pick;
+$('#file').onchange = e => { take(e.target.files[0]); e.target.value = ''; };
+// Перетаскивание принимается всем окном: зона загрузки — вся сцена.
+let глубина = 0;
+addEventListener('dragenter', e => { e.preventDefault(); глубина++; document.body.classList.add('over'); });
+addEventListener('dragover', e => { e.preventDefault(); });
+addEventListener('dragleave', () => { if (--глубина <= 0) { глубина = 0; document.body.classList.remove('over'); } });
+addEventListener('drop', e => { e.preventDefault(); глубина = 0; document.body.classList.remove('over');
+  if (e.dataTransfer && e.dataTransfer.files[0]) take(e.dataTransfer.files[0]); });
+
+/* ── сборка и стадии ──
+   Сервер отдаёт результат одним ответом, поэтому стадии идут по времени запроса
+   (оценка от размера файла), а последняя держится до настоящего ответа и
+   закрывается только им. Процентов нет: их нечем подтвердить. */
+function стадии(dwg, size) {
+  const mb = size / 1048576;
+  const всего = dwg ? 1.2 + 2.2 * mb : 0.8 + 0.4 * mb;
+  const границы = [dwg ? .12 : .06, .4, .7].map(x => x * всего);
+  const имена = [dwg ? 'Читаю DWG' : 'Читаю DXF', 'Убираю оформление', 'Строю пол', 'Рисую'];
+  $('#stages').innerHTML = имена.map(n => `<li><span class="dot" aria-hidden="true"></span><span>${n}</span></li>`).join('');
+  const li = $$('#stages li'); const t0 = performance.now();
+  const тик = () => {
+    const t = (performance.now() - t0) / 1000;
+    const k = границы.filter(g => t >= g).length;
+    li.forEach((x, i) => { x.className = i < k ? 'ok' : i === k ? 'now' : '';
+                           if (i === k) x.setAttribute('aria-current', 'step'); else x.removeAttribute('aria-current'); });
+    $('#elapsed').textContent = sec(t);
+  };
+  тик(); const таймер = setInterval(тик, 100);
+  return () => { clearInterval(таймер); li.forEach(x => { x.className = 'ok'; x.removeAttribute('aria-current'); });
+                 return (performance.now() - t0) / 1000; };
+}
+
+$('#go').onclick = собрать;
+async function собрать() {
+  if (!S.file || !S.style || S.busy) return;
+  S.busy = true; S.res = null; ready();
+  $('#s4').hidden = true;
+  show('progress');
+  const стоп = стадии(/\.dwg$/i.test(S.file.name), S.file.size);
+  let d = null, r = null;
+  try {
+    r = await fetch('convert', {
+      method: 'POST', body: S.file,
+      headers: { 'X-Name': encodeURIComponent(S.file.name), 'X-Style': encodeURIComponent(S.style), 'X-Overlay': '1' },
+    });
+    d = await r.json().catch(() => ({}));
+  } catch (e) {
+    d = { error: 'Чертёжер не отвечает: похоже, окно терминала, где он запущен, закрыто. Запустите его снова и обновите страницу.' };
+  }
+  const t = стоп();
+  S.busy = false;
+  if (r && r.status === 422 && d.unknown) { ready(); спросить(d.unknown, d.previews || {}); return; }
+  if (!r || !r.ok) { ready(); беда(d.error || 'Чертёж не собрался. Попробуйте ещё раз или выберите другой файл.'); return; }
+  // короткая пауза: последняя стадия должна быть видна закрытой
+  await new Promise(ok => setTimeout(ok, reduced ? 0 : 250));
+  S.res = d; ready();
+  $('#gohint').innerHTML = `Собрано за <span class="num">${sec((d.timing && d.timing.total) || t)}</span> с.`;
+  результат(d);
+}
+function беда(t) { $('#problemText').textContent = t; show('problem'); $('#problemPick').focus(); }
+
+/* ── итог ── */
+function результат(d) {
+  if (S.dlurl) URL.revokeObjectURL(S.dlurl);
+  const blob = new Blob([d.svg], { type: 'image/svg+xml' });
+  S.dlurl = URL.createObjectURL(blob);
+  const a = $('#dl'); a.href = S.dlurl; a.download = S.file.name.replace(/\.(dwg|dxf)$/i, '') + '.svg';
+  $('#dlsize').innerHTML = `SVG, <span class="num">${human(blob.size)}</span>`;
+
+  const g = d.digest || {}, s = d.summary || {};
+  const rows = [];
+  rows.push(['Убрано объектов', g.removed != null ? N(g.removed) : '—']);
+  rows.push(['Помещений залито', g.rooms ? `${N(g.rooms.filled)} <small>из</small> ${N(g.rooms.total)}`
+                                         : '<small>марок помещений нет</small>']);
+  rows.push(['Номеров перенесено', g.numbers != null ? N(g.numbers) : '<small>нет</small>']);
+  if (s.sheet) {
+    const m = s.sheet.match(/(\d+) × (\d+) мм, 1:(\d+)/);
+    rows.push(['Лист', m ? `${N(+m[1])} <small>×</small> ${N(+m[2])} <small>мм,</small> <span class="num">1:${m[3]}</span>` : esc(s.sheet)]);
+  }
+  $('#sum').innerHTML = rows.map(([k, v]) => `<div class="row"><dt>${k}</dt><dd>${v}</dd></div>`).join('');
+  const notes = [];
+  if (g.rooms && g.rooms.filled < g.rooms.total) {
+    const n = g.rooms.total - g.rooms.filled;
+    notes.push(`<p class="note warn">${N(n)} ${plural(n, 'помещение', 'помещения', 'помещений')} без заливки пола — посмотрите на «Проверке».</p>`);
+  }
+  if ((g.lost || []).length)
+    notes.push(`<p class="note warn">Не вошло в результат: ${g.lost.map(([k, n]) => `${esc(k)} — ${N(n)}`).join(', ')}.</p>`);
+  for (const w of s.warnings || []) notes.push(`<p class="note warn">${esc(w.charAt(0).toUpperCase() + w.slice(1))}</p>`);
+  if (g.drawings_on_sheet > 1)
+    notes.push(`<p class="note">На листе ${N(g.drawings_on_sheet)} ${plural(g.drawings_on_sheet, 'чертёж', 'чертежа', 'чертежей')} — собран самый крупный.</p>`);
+  $('#notes').innerHTML = notes.join('');
+  $('#s4').hidden = false;
+
+  вердикт(g, d.source);
+  постройСлои(d);
+  вкладка('result');
+  $('#dl').focus();
+}
+
+function вердикт(g, src) {
+  const v = $('#verdict');
+  if (!src || !src.svg) { v.className = 'verdict bad';
+    v.innerHTML = '<strong>Исходник для сравнения не нарисовался.</strong> Результат собран и скачивается как обычно.'; return; }
+  const parts = (g.removed_groups || []).map(([k, n]) => `${k} ${N(n)}`).join(', ');
+  const ещё = g.other_drawings ? ` Ещё ${N(g.other_drawings)} — другие чертежи на этом листе, в результат не взяты.` : '';
+  const r = g.removed || 0;
+  if (!(g.lost || []).length) {
+    v.className = 'verdict ok';
+    v.innerHTML = `<strong>Геометрия совпала полностью, убрано только оформление: ${N(r)} ${plural(r, 'объект', 'объекта', 'объектов')}.</strong>
+      <span class="parts">${parts ? 'Из них ' + parts + '.' : ''}${ещё}</span>`;
+  } else {
+    const lost = g.lost.reduce((a, [, n]) => a + n, 0);
+    v.className = 'verdict bad';
+    v.innerHTML = `<strong>Убрано ${N(r)} ${plural(r, 'объект', 'объекта', 'объектов')} оформления, и ещё ${N(lost)} не вошло в результат: ${g.lost.map(([k, n]) => `${esc(k)} ${N(n)}`).join(', ')}.</strong>
+      <span class="parts">${parts ? 'Оформление: ' + parts + '.' : ''}${ещё}</span>`;
+  }
+}
+
+/* ── просмотр: общий масштаб и сдвиг для всех слоёв и обеих половин ──
+   Масштаб — это сам viewBox, а не CSS-transform: только так линии «Проверки»
+   остаются тонкими при увеличении (vector-effect не видит transform снаружи). */
+const V = { W: 1, H: 1, sc: 1, ox: 0, oy: 0, fit: 1 };
+const view = $('#view'), paneA = $('#paneA'), paneB = $('#paneB');
+const внутри = svg => svg.replace(/^[\s\S]*?<svg[^>]*>/, '').replace(/<\/svg>\s*$/, '');
+
+function постройСлои(d) {
+  const src = d.source && d.source.svg ? d.source.svg : '';
+  paneA.innerHTML = `<div class="lay src">${src}</div><div class="lay our">${d.svg}</div><canvas class="diff" aria-hidden="true"></canvas>
+    <span class="ptag" aria-hidden="true"></span>`;
+  paneB.innerHTML = `<div class="lay our">${d.svg}</div><span class="ptag" aria-hidden="true"><i class="our"></i>SVG — результат</span>`;
+  $$('#view svg').forEach(v => { v.removeAttribute('width'); v.removeAttribute('height');
+                                 v.setAttribute('preserveAspectRatio', 'none'); v.setAttribute('aria-hidden', 'true'); });
+  const vb = d.svg.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/) || [0, 1, 1];
+  V.W = +vb[1]; V.H = +vb[2];
+  S.srcIn = src ? внутри(src) : null; S.ourIn = внутри(d.svg);
+}
+const видимые = () => S.tab === 'check' && S.mode === 'side' ? [paneA, paneB] : [paneA];
+function apply() {
+  for (const p of видимые()) {
+    const w = p.clientWidth, h = p.clientHeight;
+    if (!w || !h) continue;
+    const t = `${V.ox} ${V.oy} ${w / V.sc} ${h / V.sc}`;
+    p.querySelectorAll('svg').forEach(v => v.setAttribute('viewBox', t));
+  }
+  отличия();
+}
+function вписать() {
+  const w = paneA.clientWidth, h = paneA.clientHeight;
+  if (!w || !h) return;
+  V.fit = V.sc = Math.min(w / V.W, h / V.H) * .96;
+  V.ox = -(w / V.sc - V.W) / 2; V.oy = -(h / V.sc - V.H) / 2; apply();
+}
+function зум(f, cx, cy) {
+  const n = Math.min(V.fit * 200, Math.max(V.fit * .5, V.sc * f));
+  V.ox += cx / V.sc - cx / n; V.oy += cy / V.sc - cy / n; V.sc = n; apply();
+}
+for (const p of [paneA, paneB]) {
+  p.addEventListener('wheel', e => { e.preventDefault(); const r = p.getBoundingClientRect();
+    зум(Math.exp(-e.deltaY * .0015), e.clientX - r.left, e.clientY - r.top); }, { passive: false });
+  let st = null;
+  p.addEventListener('pointerdown', e => { st = { x: e.clientX, y: e.clientY, ox: V.ox, oy: V.oy };
+    p.setPointerCapture(e.pointerId); p.classList.add('drag'); });
+  p.addEventListener('pointermove', e => { if (!st) return;
+    V.ox = st.ox - (e.clientX - st.x) / V.sc; V.oy = st.oy - (e.clientY - st.y) / V.sc; apply(); });
+  const стоп = () => { st = null; p.classList.remove('drag'); };
+  p.addEventListener('pointerup', стоп); p.addEventListener('pointercancel', стоп);
+}
+new ResizeObserver(() => { if (!view.hidden) вписать(); }).observe(view);
+$$('[data-zoom]').forEach(b => b.onclick = () => {
+  if (b.dataset.zoom === 'fit') return вписать();
+  зум(b.dataset.zoom === 'in' ? 1.6 : 1 / 1.6, paneA.clientWidth / 2, paneA.clientHeight / 2);
+});
+view.addEventListener('keydown', e => {
+  const step = 60 / V.sc, k = e.key, cx = paneA.clientWidth / 2, cy = paneA.clientHeight / 2;
+  if (k === '+' || k === '=') зум(1.4, cx, cy);
+  else if (k === '-' || k === '−') зум(1 / 1.4, cx, cy);
+  else if (k === '0') вписать();
+  else if (k === 'ArrowLeft') { V.ox -= step; apply(); }
+  else if (k === 'ArrowRight') { V.ox += step; apply(); }
+  else if (k === 'ArrowUp') { V.oy -= step; apply(); }
+  else if (k === 'ArrowDown') { V.oy += step; apply(); }
+  else return;
+  e.preventDefault();
+});
+
+/* ── вкладки и режимы проверки ── */
+function вкладка(t) {
+  S.tab = t;
+  for (const [id, имя] of [['#tabResult', 'result'], ['#tabCheck', 'check']]) {
+    $(id).setAttribute('aria-selected', String(t === имя)); $(id).tabIndex = t === имя ? 0 : -1; }
+  view.dataset.tab = t;
+  show('view');
+  режим(S.mode);
+}
+$('#tabResult').onclick = () => вкладка('result');
+$('#tabCheck').onclick = () => вкладка('check');
+$('.tabs').addEventListener('keydown', e => {
+  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+  e.preventDefault(); const t = S.tab === 'result' ? 'check' : 'result';
+  вкладка(t); $(t === 'result' ? '#tabResult' : '#tabCheck').focus();
+});
+
+const ТЕГ = {
+  src: '<i class="src"></i>DWG — исходник',
+  our: '<i class="our"></i>SVG — результат',
+  both: '<i class="src"></i>DWG и <i class="our"></i>SVG друг на друге',
+  side: '<i class="src"></i>DWG — исходник',
+};
+function режим(m) {
+  const перестройка = S.mode === 'side' || m === 'side';
+  S.mode = m; view.dataset.mode = m;
+  $$('.seg [data-mode]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === m)));
+  const tag = paneA.querySelector('.ptag'); if (tag) tag.innerHTML = ТЕГ[m];
+  $$('[data-diff-legend]').forEach(x => x.hidden = !(m === 'both' && $('#ckdiff').checked));
+  if (перестройка) requestAnimationFrame(вписать); else apply();
+}
+$$('.seg [data-mode]').forEach(b => b.onclick = () => режим(b.dataset.mode));
+$('#ckfill').onchange = e => view.classList.toggle('fill', e.target.checked);
+$('#ckdiff').onchange = () => режим(S.mode);
+
+// Мигалка: пробел показывает DWG и SVG по очереди на одном месте листа.
+addEventListener('keydown', e => {
+  if (e.code !== 'Space' || S.tab !== 'check' || view.hidden) return;
+  const t = e.target;
+  if (t.matches && t.matches('input, textarea, select, a, [role=radio], [role=tab], .seg button, .zoom button, #theme, #go, .linkbtn')) return;
+  e.preventDefault();
+  режим(S.mode === 'src' ? 'our' : 'src');
+});
+
+/* ── отличия: растровое сравнение двух слоёв на текущем виде ──
+   Оба слоя рисуются одинаковой тонкой линией в невидимый холст, совпадение
+   ищется с допуском в 2 пикселя экрана. Что есть только в DWG — красным, что
+   только в SVG — синим. Пересчёт — когда зум и сдвиг остановились. */
+let отлТаймер = null, отлНомер = 0;
+function отличия() {
+  const c = paneA.querySelector('canvas.diff');
+  if (!c) return;
+  c.classList.remove('on'); clearTimeout(отлТаймер); отлНомер++;
+  if (S.tab !== 'check' || S.mode !== 'both' || !$('#ckdiff').checked || !S.srcIn) return;
+  const номер = отлНомер;
+  отлТаймер = setTimeout(() => посчитать(c, номер), 180);
+}
+async function растр(inner, vb, w, h) {
+  const s = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="${vb}" preserveAspectRatio="none">` +
+            `<style>g,path{fill:none!important;stroke:#000!important;stroke-width:1px!important;stroke-dasharray:none!important}` +
+            `path{vector-effect:non-scaling-stroke}</style>${inner}</svg>`;
+  const url = URL.createObjectURL(new Blob([s], { type: 'image/svg+xml' }));
+  try {
+    const img = new Image();
+    await new Promise((ok, no) => { img.onload = ok; img.onerror = no; img.src = url; });
+    const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+    const ctx = cv.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(img, 0, 0, w, h);
+    const px = ctx.getImageData(0, 0, w, h).data, m = new Uint8Array(w * h);
+    for (let i = 0; i < m.length; i++) m[i] = px[i * 4 + 3] > 32 ? 1 : 0;
+    return m;
+  } finally { URL.revokeObjectURL(url); }
+}
+function раздуть(m, w, h, r) {
+  const t = new Uint8Array(m.length), o = new Uint8Array(m.length);
+  for (let y = 0; y < h; y++) { const row = y * w;
+    for (let x = 0; x < w; x++) { if (!m[row + x]) continue;
+      for (let k = Math.max(0, x - r), e = Math.min(w - 1, x + r); k <= e; k++) t[row + k] = 1; } }
+  for (let x = 0; x < w; x++)
+    for (let y = 0; y < h; y++) { if (!t[y * w + x]) continue;
+      for (let k = Math.max(0, y - r), e = Math.min(h - 1, y + r); k <= e; k++) o[k * w + x] = 1; }
+  return o;
+}
+async function посчитать(c, номер) {
+  const w = Math.round(paneA.clientWidth), h = Math.round(paneA.clientHeight);
+  if (!w || !h) return;
+  const vb = `${V.ox} ${V.oy} ${w / V.sc} ${h / V.sc}`;
+  let a, b;
+  try { [a, b] = await Promise.all([растр(S.srcIn, vb, w, h), растр(S.ourIn, vb, w, h)]); }
+  catch (e) {
+    const cb = $('#ckdiff'); cb.checked = false; cb.disabled = true;
+    cb.parentElement.title = 'В этом браузере подсветка отличий недоступна'; режим(S.mode); return; }
+  if (номер !== отлНомер) return;
+  const da = раздуть(a, w, h, 2), db = раздуть(b, w, h, 2);
+  const del = new Uint8Array(w * h), add = new Uint8Array(w * h);
+  let nd = 0, na = 0;
+  for (let i = 0; i < del.length; i++) {
+    if (a[i] && !db[i]) { del[i] = 1; nd++; } else if (b[i] && !da[i]) { add[i] = 1; na++; } }
+  const D = раздуть(del, w, h, 1), A = раздуть(add, w, h, 1);
+  c.width = w; c.height = h;
+  const ctx = c.getContext('2d'), img = ctx.createImageData(w, h), p = img.data;
+  for (let i = 0; i < D.length; i++) {
+    if (D[i]) { p[i * 4] = 253; p[i * 4 + 1] = 47; p[i * 4 + 2] = 75; p[i * 4 + 3] = 255; }
+    else if (A[i]) { p[i * 4] = 0; p[i * 4 + 1] = 100; p[i * 4 + 2] = 240; p[i * 4 + 3] = 255; }
+  }
+  ctx.putImageData(img, 0, 0);
+  c.dataset.del = nd; c.dataset.add = na;
+  c.classList.add('on');
+}
+
+/* ── незнакомые слои: вопрос, а не тупик ──
+   Три ответа — ровно те решения, которые есть у конвертора. Решение пишется в
+   настройку слоёв, и после последнего ответа чертёж собирается сам. */
+function спросить(слои, картинки) {
+  let осталось = слои.length;
+  const один = слои.length === 1;
+  $('#ask').innerHTML = `<p><b>${N(слои.length)} ${plural(слои.length, 'слой', 'слоя', 'слоёв')} мне ${один ? 'незнаком' : 'незнакомы'}, поэтому чертёж пока не собран.</b>
+      Посмотрите, что в ${один ? 'нём' : 'них'} лежит, и скажите, что это. Без ответа геометрия пропала бы молча —
+      так однажды исчезли все перегородки дома.</p>
+    <div class="cards">` + слои.map(u => `
+      <div class="lcard" data-layer="${esc(u.layer)}">
+        <b>${esc(u.layer)}</b> <span class="meta">· ${N(u.objects)} ${plural(u.objects, 'объект', 'объекта', 'объектов')}</span>
+        <div class="pic">${картинки[u.layer] || '<p class="note">Картинку построить не удалось.</p>'}</div>
+        <div class="seg" role="group" aria-label="Что это за слой">
+          <button data-d="стена" aria-pressed="false">Стена</button>
+          <button data-d="второстепенное" aria-pressed="false">Второстепенное</button>
+          <button data-d="оформление" aria-pressed="false">Оформление</button>
+        </div>
+      </div>`).join('') + '</div>';
+  show('ask');
+  $$('#ask [data-layer] button').forEach(b => b.onclick = async () => {
+    const к = b.closest('[data-layer]');
+    if (к.classList.contains('done')) return;
+    const r = await fetch('decide', { method: 'POST', body: JSON.stringify({ layer: к.dataset.layer, decision: b.dataset.d }) })
+      .catch(() => null);
+    if (!r || !r.ok) { b.textContent = 'Не записалось'; return; }
+    к.classList.add('done'); b.setAttribute('aria-pressed', 'true');
+    if (--осталось === 0) собрать();
+  });
+}
+ready();
 </script>
 </body>
 </html>
