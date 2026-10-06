@@ -76,7 +76,7 @@ def без_путей(текст: str) -> str:
     return re.sub(r"/[^\s'\"]*чертёжер-[^/\s'\"]+/", "", текст)
 
 
-def convert(raw: bytes, name: str, style: str, fragment: str = "0"):
+def convert(raw: bytes, name: str, style: str, fragment: str = "0", overlay: bool = False):
     """DWG или DXF на входе → SVG и текст отчёта. Всё во временном каталоге,
     который стирается сразу: чужой чертёж не остаётся на диске."""
     with tempfile.TemporaryDirectory(prefix="чертёжер-") as td:
@@ -111,15 +111,20 @@ def convert(raw: bytes, name: str, style: str, fragment: str = "0"):
         out = d / "out.svg"
         try:
             r = subprocess.run([sys.executable, str(HERE / "dxf2svg.py"), str(dxf), str(out),
-                                "--style", style, "--fragment", fragment],
+                                    "--style", style, "--fragment", fragment]
+                               + (["--source-svg", str(d / "src.svg")] if overlay else []),
                                capture_output=True, text=True, errors="replace",
                                timeout=ТАЙМАУТ_РАЗБОРА)
         except subprocess.TimeoutExpired:
             raise Понятная(f"разбор чертежа не уложился в {ТАЙМАУТ_РАЗБОРА // 60} мин и остановлен. "
                            "Чертёж слишком большой для этого режима.")
-        frags, unknown, lines = [], [], []
+        frags, unknown, lines, src_err = [], [], [], None
         for line in (r.stdout or "").splitlines():
-            if line.startswith("FRAGMENTS "):
+            if line.startswith("SOURCE_ERROR "):
+                src_err = line[13:]
+            elif line.startswith("SOURCE "):
+                continue
+            elif line.startswith("FRAGMENTS "):
                 frags = json.loads(line[10:])
             elif line.startswith("UNKNOWN "):
                 unknown = json.loads(line[8:])
@@ -155,7 +160,15 @@ def convert(raw: bytes, name: str, style: str, fragment: str = "0"):
         # Первая строка — путь во временный каталог: он ничего не значит для
         # человека и уходит вместе с каталогом сразу после ответа.
         отчёт = "\n".join(lines[1:] if lines else [])
-        return out.read_text(encoding="utf-8"), отчёт, frags, unknown
+        исх = None
+        if overlay:
+            f = d / "src.svg"
+            if f.exists():
+                исх = f.read_text(encoding="utf-8")
+            else:
+                src_err = src_err or "исходник не нарисовался"
+        return (out.read_text(encoding="utf-8"), отчёт, frags, unknown,
+                {"svg": исх, "error": src_err} if overlay else None)
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -213,7 +226,8 @@ class Handler(BaseHTTPRequestHandler):
         fragment = unquote(self.headers.get("X-Fragment", "0"))
         raw = self.rfile.read(n)
         try:
-            svg, report, frags, unknown = convert(raw, name, style, fragment)
+            svg, report, frags, unknown, source = convert(
+                raw, name, style, fragment, self.headers.get("X-Overlay") == "1")
         except Unknown as u:
             return self._send(422, json.dumps(
                 {"unknown": u.layers, "report": u.report, "previews": u.previews},
@@ -224,7 +238,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(500, json.dumps({"error": str(e)}, ensure_ascii=False).encode())
         self._send(200, json.dumps({"svg": svg, "report": report, "fragments": frags,
                                     "summary": кратко(report),
-                                    "unknown": unknown, "fragment": fragment},
+                                    "unknown": unknown, "fragment": fragment,
+                                    "source": source},
                                    ensure_ascii=False).encode("utf-8"))
 
     РЕШЕНИЯ = {"стена": "wall", "второстепенное": "generic", "оформление": "drop"}
