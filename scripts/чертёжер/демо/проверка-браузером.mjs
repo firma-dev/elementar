@@ -38,10 +38,15 @@ for (const [имя, движок] of [['chromium', chromium], ['webkit', webkit]
     await стр.evaluate(() => document.fonts.ready);
     await стр.setInputFiles('#file', path.join(каталог, демо + '.dxf'));
     await стр.waitForSelector('#drop.has');
-    const ответ = стр.waitForResponse((r) => r.url().endsWith('/convert'));
+    const готово = стр.waitForResponse((x) => x.url().endsWith('/convert'));
     await стр.click('#go');
-    const р = await ответ;
-    const тело = await р.json();
+    const р = await готово;
+    let тело = {};
+    if (р.status() === 200) {
+      await стр.waitForSelector('a.cta.dl');
+      // сверяем то, что человек получит по кнопке «Скачать», а не промежуточный ответ
+      тело.svg = await стр.evaluate(async () => (await fetch(document.querySelector('a.cta.dl').href)).text());
+    } else { тело = await р.json().catch(() => ({})); }
     if (р.status() !== 200) { ошибка(`${демо}: статус ${р.status()} ${JSON.stringify(тело).slice(0, 200)}`); await ctx.close(); continue; }
     await стр.waitForSelector('.preview svg');
     // размер превью измеряется после загрузки: svg встроен, но шрифты и вёрстка должны осесть
