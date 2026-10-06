@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="25.20mm" height="24.00mm" viewBox="0 0 2520 2400" role="img" aria-label="План">
+<g id="plan">
+  <g class="c-slab-fill" fill="#D6D6D6" stroke="none">
+    <path d="M 300,1100 L 1800,1100 L 1800,900 L 300,900 L 300,1100 Z"/>
+  </g>
+  <g class="c-slab" fill="none" stroke="#9D9D9C" stroke-width="10" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 300,1100 L 1800,1100 L 1800,900 L 300,900 L 300,1100 Z"/>
+  </g>
+  <g class="c-generic" fill="none" stroke="#9D9D9C" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 2100,2100 L 2220,2100 L 2220,300 L 2100,300 L 2100,2100 Z"/>
+    <path d="M 2178,1900 L 2177,1907 L 2173,1913 L 2167,1917 L 2160,1918 L 2153,1917 L 2147,1913 L 2143,1907 L 2142,1900 L 2143,1893 L 2147,1887 L 2153,1883 L 2160,1882 L 2167,1883 L 2173,1887 L 2177,1893 L 2178,1900 Z"/>
+    <path d="M 2100,1900 L 2220,1900"/>
+    <path d="M 2178,1500 L 2177,1507 L 2173,1513 L 2167,1517 L 2160,1518 L 2153,1517 L 2147,1513 L 2143,1507 L 2142,1500 L 2143,1493 L 2147,1487 L 2153,1483 L 2160,1482 L 2167,1483 L 2173,1487 L 2177,1493 L 2178,1500 Z"/>
+    <path d="M 2100,1500 L 2220,1500"/>
+    <path d="M 2178,1100 L 2177,1107 L 2173,1113 L 2167,1117 L 2160,1118 L 2153,1117 L 2147,1113 L 2143,1107 L 2142,1100 L 2143,1093 L 2147,1087 L 2153,1083 L 2160,1082 L 2167,1083 L 2173,1087 L 2177,1093 L 2178,1100 Z"/>
+    <path d="M 2100,1100 L 2220,1100"/>
+    <path d="M 2178,700 L 2177,707 L 2173,713 L 2167,717 L 2160,718 L 2153,717 L 2147,713 L 2143,707 L 2142,700 L 2143,693 L 2147,687 L 2153,683 L 2160,682 L 2167,683 L 2173,687 L 2177,693 L 2178,700 Z"/>
+    <path d="M 2100,700 L 2220,700"/>
+    <path d="M 400,1060 L 2000,1060"/>
+    <path d="M 400,940 L 2000,940"/>
+  </g>
+  <g class="c-wall-fill" fill="#363636" stroke="none">
+    <path d="M 1800,2100 L 2100,2100 L 2100,300 L 1800,300 L 1800,2100 Z"/>
+  </g>
+  <g class="c-wall" fill="none" stroke="#363636" stroke-width="16" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 1800,2100 L 2100,2100 L 2100,300 L 1800,300 L 1800,2100 Z"/>
+  </g>
+</g>
+</svg>

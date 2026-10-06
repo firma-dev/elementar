@@ -4,7 +4,9 @@
 Локальный сервер на стандартной библиотеке. Слушает только 127.0.0.1: чертёж
 никуда не уезжает, вся обработка на этой машине.
 
-  .venv/bin/python app.py        и открыть http://127.0.0.1:8765
+  .venv/bin/python app.py                  и открыть http://127.0.0.1:8765
+  .venv/bin/python app.py --no-open        то же, не открывая браузер сам
+  .venv/bin/python app.py --port 8766      другой порт, если 8765 занят
 """
 from __future__ import annotations
 
@@ -27,6 +29,13 @@ MAX_BYTES = 200 * 1024 * 1024
 # Расхождение — предупреждение: dwg2dxf заметно расходится по поведению между
 # релизами на свежих DWG, и знать об этом надо до того, как чертёж уедет в макет.
 DWG2DXF_ОЖИДАЕТСЯ = "dwg2dxf 0.14"
+# Предел ожидания, секунды. Без него зависший dwg2dxf держит запрос вечно.
+ТАЙМАУТ_DWG = 600
+ТАЙМАУТ_РАЗБОРА = 1800
+
+
+class Понятная(Exception):
+    """Ошибка по вине файла или его размера: текст написан для человека, статус 422."""
 
 
 class Unknown(Exception):
@@ -62,32 +71,52 @@ def styles():
     return sorted(p.stem for p in (HERE / "styles").glob("*.json"))
 
 
+def без_путей(текст: str) -> str:
+    """Путь временного каталога человеку ни к чему и только пугает."""
+    return re.sub(r"/[^\s'\"]*чертёжер-[^/\s'\"]+/", "", текст)
+
+
 def convert(raw: bytes, name: str, style: str, fragment: str = "0"):
     """DWG или DXF на входе → SVG и текст отчёта. Всё во временном каталоге,
     который стирается сразу: чужой чертёж не остаётся на диске."""
     with tempfile.TemporaryDirectory(prefix="чертёжер-") as td:
         d = pathlib.Path(td)
         suffix = pathlib.Path(name).suffix.lower()
-        src = d / ("in" + (suffix if suffix in (".dwg", ".dxf") else ".dwg"))
+        if suffix not in (".dwg", ".dxf"):
+            raise Понятная(f"«{name}»: нужен файл DWG или DXF, а не «{suffix or 'без расширения'}»")
+        src = d / ("in" + suffix)
         src.write_bytes(raw)
 
         if src.suffix == ".dwg":
             if not shutil.which("dwg2dxf"):
                 raise RuntimeError("не установлен dwg2dxf. Поставьте: brew install libredwg")
             dxf = d / "in.dxf"
-            r = subprocess.run(["dwg2dxf", "-o", str(dxf), str(src)],
-                               capture_output=True, text=True, errors="replace", timeout=600)
+            try:
+                r = subprocess.run(["dwg2dxf", "-o", str(dxf), str(src)],
+                                   capture_output=True, text=True, errors="replace",
+                                   timeout=ТАЙМАУТ_DWG)
+            except subprocess.TimeoutExpired:
+                raise Понятная(f"dwg2dxf не уложился в {ТАЙМАУТ_DWG // 60} мин и остановлен. "
+                               "Файл слишком тяжёлый для этого режима: сохраните его из "
+                               "AutoCAD/Revit как DXF и загрузите DXF.")
             if not dxf.exists() or dxf.stat().st_size == 0:
-                tail = "\n".join((r.stderr or "").strip().splitlines()[-4:])
-                raise RuntimeError("Это не похоже на DWG: dwg2dxf не смог его прочитать."
-                                   + (f"\n{tail}" if tail else ""))
+                # Первая строка ошибки на мусоре печатает сами байты файла — их не показываем.
+                tail = "\n".join(l for l in (r.stderr or "").strip().splitlines()[-4:]
+                                 if l.isprintable() and "magic" not in l)
+                raise Понятная("Это не похоже на DWG: dwg2dxf не смог его прочитать."
+                               + (f"\n{без_путей(tail)}" if tail else ""))
         else:
             dxf = src
 
         out = d / "out.svg"
-        r = subprocess.run([sys.executable, str(HERE / "dxf2svg.py"), str(dxf), str(out),
-                            "--style", style, "--fragment", fragment],
-                           capture_output=True, text=True, errors="replace", timeout=1800)
+        try:
+            r = subprocess.run([sys.executable, str(HERE / "dxf2svg.py"), str(dxf), str(out),
+                                "--style", style, "--fragment", fragment],
+                               capture_output=True, text=True, errors="replace",
+                               timeout=ТАЙМАУТ_РАЗБОРА)
+        except subprocess.TimeoutExpired:
+            raise Понятная(f"разбор чертежа не уложился в {ТАЙМАУТ_РАЗБОРА // 60} мин и остановлен. "
+                           "Чертёж слишком большой для этого режима.")
         frags, unknown, lines = [], [], []
         for line in (r.stdout or "").splitlines():
             if line.startswith("FRAGMENTS "):
@@ -114,7 +143,15 @@ def convert(raw: bytes, name: str, style: str, fragment: str = "0"):
                 except Exception:
                     pass
                 raise Unknown(unknown, "\n".join(lines), картинки)
-            raise RuntimeError((r.stderr or r.stdout or "неизвестная ошибка")[-1500:])
+            текст = (r.stderr or "").strip()
+            if "Traceback (most recent call last)" in текст:
+                # Сбой самой программы, а не файла: человеку — последняя строка,
+                # полный текст остаётся в консоли, где запущен app.py.
+                print(текст, file=sys.stderr)
+                raise RuntimeError("внутренняя ошибка разбора: "
+                                   + (текст.splitlines()[-1] if текст else "без текста")[:300])
+            raise Понятная(без_путей((текст or (r.stdout or "").strip()
+                                       or "разбор остановился без объяснения")[-1500:]))
         # Первая строка — путь во временный каталог: он ничего не значит для
         # человека и уходит вместе с каталогом сразу после ответа.
         отчёт = "\n".join(lines[1:] if lines else [])
@@ -181,6 +218,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(422, json.dumps(
                 {"unknown": u.layers, "report": u.report, "previews": u.previews},
                 ensure_ascii=False).encode("utf-8"))
+        except Понятная as e:
+            return self._send(422, json.dumps({"error": str(e)}, ensure_ascii=False).encode())
         except Exception as e:
             return self._send(500, json.dumps({"error": str(e)}, ensure_ascii=False).encode())
         self._send(200, json.dumps({"svg": svg, "report": report, "fragments": frags,
@@ -216,8 +255,23 @@ class Handler(BaseHTTPRequestHandler):
                                           ensure_ascii=False).encode())
 
 
+def порт(argv) -> int:
+    """Порт по умолчанию 8765; --port N меняет его (например, если 8765 уже занят
+    другой копией чертёжера). Слушает по-прежнему только 127.0.0.1."""
+    if "--port" not in argv:
+        return PORT
+    try:
+        n = int(argv[argv.index("--port") + 1])
+        if not 1024 <= n <= 65535:
+            raise ValueError
+        return n
+    except (IndexError, ValueError):
+        sys.exit("--port: нужен номер порта от 1024 до 65535, например --port 8766")
+
+
 def main():
     open_browser = "--no-open" not in sys.argv
+    pt = порт(sys.argv)
     missing = [m for m in ("ezdxf", "shapely") if not _has(m)]
     if missing:
         sys.exit(f"не хватает пакетов: {', '.join(missing)}\n"
@@ -232,8 +286,14 @@ def main():
         if have and have != DWG2DXF_ОЖИДАЕТСЯ:
             print(f"ВНИМАНИЕ: dwg2dxf «{have}», а проверялось на "
                   f"«{DWG2DXF_ОЖИДАЕТСЯ}». Результат может отличаться.")
-    srv = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
-    url = f"http://127.0.0.1:{PORT}"
+    try:
+        srv = ThreadingHTTPServer(("127.0.0.1", pt), Handler)
+    except OSError as e:
+        sys.exit(f"порт {pt} не открылся: {e.strerror}. Возможно, чертёжер уже запущен "
+                 f"(в другом окне терминала или из другой копии). Остановите его "
+                 f"(Ctrl+C в том окне) или запустите с другим портом: "
+                 f"app.py --port {pt + 1}")
+    url = f"http://127.0.0.1:{pt}"
     print(f"чертёжер: {url}   (Ctrl+C чтобы остановить)")
     print(f"стили: {', '.join(styles())}")
     if open_browser:

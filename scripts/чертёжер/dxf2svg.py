@@ -203,8 +203,18 @@ def main():
                  + ", ".join(missing))
 
     losses = Losses()
-    doc = ezdxf.readfile(args.dxf)
+    try:
+        doc = ezdxf.readfile(args.dxf)
+    except (ezdxf.DXFError, UnicodeDecodeError, OSError) as e:
+        sys.exit(f"файл не читается как DXF (повреждён, обрезан или не DXF): {e}")
     ents = list(flatten(doc.modelspace(), losses))
+    if not ents:
+        листы = [f"{n} ({len(doc.layouts.get(n))})" for n in doc.layouts.names()
+                 if n != "Model" and len(doc.layouts.get(n))]
+        sys.exit("в модели чертежа нет ни одного объекта, рисовать нечего."
+                 + (f" Содержимое лежит только на листах: {', '.join(листы)} — "
+                    "чертёжер читает пространство модели, листы (paper space) не берёт."
+                    if листы else ""))
 
     strict_check = []
     kept, stat_in = [], Counter()
@@ -265,8 +275,9 @@ def main():
         stat_out[layer] += 1
 
     if not xs:
-        sys.exit("после фильтрации не осталось конструктива — проверьте layers.json, "
-                 "bbox_classes и --crop")
+        sys.exit("после фильтрации не осталось конструктива (стен, окон, дверей, лестниц): "
+                 "все слои чертежа выброшены как оформление или отсечены --crop. "
+                 "Проверьте layers.json и bbox_classes")
 
     # На одном листе часто лежит несколько чертежей: план и узел, два этажа, план
     # и фрагмент. Оформление от них отсеять нельзя — это настоящая геометрия.
