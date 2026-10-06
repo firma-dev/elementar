@@ -342,6 +342,59 @@ def синтетика_заливки_и_цифр(td):
         из.append(f"зал без цифр: прогон упал — {e.strip()[:160]}")
     elif 'class="c-numbers"' in (td / "без-цифр.svg").read_text(encoding="utf-8"):
         из.append("--numbers нет: цифры всё равно нарисованы")
+
+    # 9. Площадь, размеры, отметки — по видам; легенда за планом и марка — нет.
+    # Слово Виктора 06.10: «чтобы переносились цифры площадей и длины высоты».
+    # Размер с override-текстом даёт свой текст, без него — измерение; отметка
+    # ±0,000 и высота h=1200 — отметки; «EI60» и легенда в 15 м под планом — нет.
+    d, f = чертёж(td, "виды")
+    for l in ("Окна", "Марки помещений", "Размеры", "Отметки", "Аннотация"):
+        d.layers.add(l)
+    d.dimstyles.new("М", dxfattribs={"dimtxt": 250, "dimasz": 100, "dimdec": 0})
+    m = d.modelspace()
+    зал(m)
+    m.add_mtext("24,5 м²", dxfattribs={"layer": "Марки помещений", "char_height": 250,
+                                       "insert": (3000, 5000)})
+    m.add_linear_dim(base=(0, -1500), p1=(0, 0), p2=(12000, 0), dimstyle="М",
+                     dxfattribs={"layer": "Размеры"}).render()
+    m.add_linear_dim(base=(-1500, 0), p1=(0, 0), p2=(0, 10000), angle=90, dimstyle="М",
+                     text="<> мм", dxfattribs={"layer": "Размеры"}).render()
+    m.add_text("%%p0,000", dxfattribs={"layer": "Отметки", "height": 250,
+                                       "insert": (6000, 3000)})
+    m.add_text("h=1200", dxfattribs={"layer": "Аннотация", "height": 200,
+                                     "insert": (6000, 8000)})
+    m.add_text("EI60", dxfattribs={"layer": "Аннотация", "height": 200,
+                                   "insert": (8000, 8000)})
+    m.add_text("77,77 м²", dxfattribs={"layer": "Аннотация", "height": 250,
+                                       "insert": (2000, -15000)})
+    d.saveas(f)
+    c, o, e = прогон(f, td / "виды.svg")
+    из += баланс(o, "виды цифр")
+    if c:
+        из.append(f"виды цифр: прогон упал — {e.strip()[:160]}")
+    else:
+        m_ = re.search(r"цифры: (\d+) меток[^\n]*", o)
+        строка = m_.group(0) if m_ else ""
+        ждём = {"площади": 1, "размеры": 2, "отметки": 2}
+        for вид, n in ждём.items():
+            if not re.search(rf"{вид} {n}\b", строка):
+                из.append(f"виды цифр: ждём {вид} {n}, в отчёте «{строка[:160]}»")
+        if not m_ or int(m_.group(1)) != 5:
+            из.append(f"виды цифр: ждём 5 меток (площадь, 2 размера, 2 отметки), "
+                      f"в отчёте «{строка[:160]}» — марка или легенда доехали, "
+                      "или число потерялось")
+        svg = (td / "виды.svg").read_text(encoding="utf-8")
+        if группа(svg, "numbers").count("<path") != 5:
+            из.append("виды цифр: в c-numbers не 5 меток")
+        if 'class="c-dims"' in svg:
+            из.append("виды цифр: размерные линии нарисованы без --dim-lines")
+        c, o, e = прогон(f, td / "виды-линии.svg", "--dim-lines")
+        if c or 'class="c-dims"' not in (td / "виды-линии.svg").read_text(encoding="utf-8"):
+            из.append(f"--dim-lines: размерные линии не нарисованы {e.strip()[:120]}")
+        c, o, e = прогон(f, td / "виды-пом.svg", "--numbers", "помещения,площади")
+        m_ = re.search(r"цифры: (\d+) меток", o)
+        if c or not m_ or int(m_.group(1)) != 1:
+            из.append("--numbers помещения,площади: размеры и отметки не отключились")
     return из
 
 
