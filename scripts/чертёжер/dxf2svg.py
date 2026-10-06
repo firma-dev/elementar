@@ -21,6 +21,8 @@ import ezdxf
 from ezdxf import path as ezpath
 
 HERE = pathlib.Path(__file__).parent
+sys.path.insert(0, str(HERE))
+import цифры  # noqa: E402
 
 # Оформление выбрасывается независимо от слоя: подписи попадаются и в конструктивных слоях.
 DROP_TYPES = {
@@ -92,6 +94,9 @@ def flatten(container, losses, depth=0):
     """Разворачивает вставки блоков. Геометрия Revit лежит внутри них."""
     for e in container:
         if e.dxftype() == "INSERT":
+            # Атрибуты вставки — номер и площадь в блоке-марке помещения —
+            # virtual_entities не отдаёт, они висят на самой вставке.
+            yield from e.attribs
             if depth >= MAX_DEPTH:
                 losses.insert_deep[e.dxf.get("layer", "")] += 1
                 continue
@@ -168,6 +173,9 @@ def main():
                     help="только перечислить чертежи на листе, в JSON, и выйти")
     ap.add_argument("--gap", type=float, default=5000.0,
                     help="зазор, по которому лист делится на отдельные чертежи, мм")
+    ap.add_argument("--numbers", default="помещения",
+                    help="какие цифры оставить на чертеже, через запятую, из "
+                         "numbers в layers.json (помещения, оси, отметки) или «нет»")
     ap.add_argument("--style", default="бадаевский",
                     help="имя файла в styles/ без расширения")
     ap.add_argument("--floor-min", type=float, default=50.0,
@@ -197,7 +205,10 @@ def main():
     if not sf.exists():
         have = ", ".join(sorted(p.stem for p in (HERE / "styles").glob("*.json"))) or "ни одного"
         sys.exit(f"стиль «{args.style}» не найден. Есть: {have}")
-    sty = json.loads(sf.read_text(encoding="utf-8"))["classes"]
+    стиль = json.loads(sf.read_text(encoding="utf-8"))
+    sty = стиль["classes"]
+    # Цифры — своим классом; стиль без него получает тёмно-серый по умолчанию.
+    sty.setdefault("numbers", {"fill": "#575756", "stroke": None, "width": 0})
     drop_layers = set(cfg["drop"])
     class_of = cfg["class"]
     fill_classes = set(cfg["fill_classes"])
@@ -210,6 +221,14 @@ def main():
     if missing:
         sys.exit("в style.json нет классов, а без них группа зальётся чёрным: "
                  + ", ".join(missing))
+
+    виды = [] if args.numbers.strip().lower() in ("нет", "none", "") else \
+        [v.strip() for v in args.numbers.split(",") if v.strip()]
+    нет_вида = [v for v in виды if v not in cfg.get("numbers", {})]
+    if нет_вида:
+        sys.exit(f"--numbers: нет вида {', '.join(нет_вида)}. Есть: "
+                 + ", ".join(cfg.get("numbers", {})) + " или «нет»")
+    слой_цифр = {l: v for v in виды for l in cfg["numbers"][v]}
 
     losses = Losses()
     try:
@@ -228,9 +247,15 @@ def main():
     strict_check = []
     kept, stat_in = [], Counter()
     unknown = Counter()
+    кандидаты = []
     for e in ents:
         layer = e.dxf.get("layer", "")
         stat_in[layer] += 1
+        # Цифры берутся раньше отсева по слою: марки помещений лежат на слое
+        # оформления, а нужны из него только они.
+        if e.dxftype() in цифры.ТИПЫ and layer in слой_цифр:
+            кандидаты.append((e, layer))
+            continue
         if layer in drop_layers:
             losses.by_layer[layer] += 1
             continue
@@ -297,12 +322,13 @@ def main():
                            "objects": f["n"]} for i, f in enumerate(frags)],
                          ensure_ascii=False))
         return
+    fbox = None
     if args.fragment != "all" and len(frags) > 1:
         try:
             pick = frags[int(args.fragment)]
         except (ValueError, IndexError):
             sys.exit(f"нет чертежа №{args.fragment}: на листе их {len(frags)}")
-        fx0, fy0, fx1, fy1 = pick["box"]
+        fx0, fy0, fx1, fy1 = fbox = pick["box"]
         keep = []
         for c, e, ls in prepared:
             if any(fx0 <= v.x <= fx1 and fy0 <= v.y <= fy1
@@ -359,13 +385,52 @@ def main():
             parts.append(" ".join(seg))
         return " ".join(parts)
 
-    floor_d, floor_note = [], ""
+    floor_d, floor_note, пол = [], "", None
     if not args.no_floor:
-        floor_d, floor_note = build_floor(cfg, prepared, args, xs, ys, x0, y0)
+        # GEOS на вырожденных обрезках (отрезок нулевой длины в шве) шлёт numpy
+        # предупреждение «divide by zero» — результат при этом верный, проверяется
+        # is_valid внутри. Предупреждение глушится, чтобы не пугать в консоли.
+        import numpy as np
+        with np.errstate(divide="ignore", invalid="ignore"):
+            floor_d, floor_note, пол = build_floor(cfg, prepared, args, xs, ys, x0, y0)
+
+    # Цифры: номера и площади помещений (и что ещё выбрано --numbers) — кривыми.
+    метки_d, метки, нарисовано_цифр, шрифт_прим, шрифт = [], [], 0, "", None
+    if кандидаты:
+        шрифт, шрифт_прим = цифры.шрифт_стиля(стиль)
+    for м in цифры.собрать(кандидаты):
+        def в(корзина):
+            for e in м.куски:
+                getattr(losses, корзина)[м.layer] += 1
+        текст = цифры.чистить(м.текст) if м.h > 0 else None
+        if not текст or шрифт is None:
+            в("by_type")
+            continue
+        if args.crop and not (args.crop[0] <= м.x <= args.crop[2]
+                              and args.crop[1] <= м.y <= args.crop[3]):
+            в("cropped")
+            continue
+        if fbox and not (fbox[0] <= м.x <= fbox[2] and fbox[1] <= м.y <= fbox[3]):
+            в("by_fragment")
+            continue
+        try:
+            d, bb = шрифт.контур(м, текст, x0, y0)
+        except Exception:
+            в("geometry_error")
+            continue
+        # Метка, вылезающая за лист, не рисуется: иначе verify отбракует весь файл.
+        if not d or not (minx <= bb[0] and bb[2] <= maxx and miny <= bb[1] and bb[3] <= maxy):
+            в("outside")
+            continue
+        метки_d.append(d)
+        метки.append((слой_цифр[м.layer], текст, (bb[0] + bb[2]) / 2, (bb[1] + bb[3]) / 2))
+        нарисовано_цифр += len(м.куски)
 
     groups = defaultdict(list)
     if floor_d:
         groups["floor"] = floor_d
+    if метки_d:
+        groups["numbers"] = метки_d
     for cls, e, loops in prepared:
         if cls in fill_classes and e.dxftype() == "HATCH":
             groups[f"{cls}-fill"].append(d_attr(loops))
@@ -395,7 +460,7 @@ def main():
         return " " + " ".join(a)
 
     order = ["floor", "slab-fill", "slab", "generic", "stair", "fixture", "fixture-open",
-             "window", "door", "wall-fill", "wall"]
+             "window", "door", "wall-fill", "wall", "numbers"]
     body = []
     for name in order + [k for k in groups if k not in order]:
         ds = [d for d in groups.get(name, []) if d]
@@ -417,7 +482,7 @@ def main():
     )
     # Баланс: каждый объект после разворота вставок обязан попасть ровно в одну
     # корзину. Не сошлось — ошибка самой программы, и файл отдавать нельзя.
-    drawn = len(prepared)
+    drawn = len(prepared) + нарисовано_цифр
     balance = drawn + losses.total(Losses.ENTITY)
     if balance != len(ents):
         sys.exit(f"баланс объектов не сошёлся: на входе {len(ents)}, "
@@ -456,6 +521,22 @@ def main():
           f"лист {pw:.0f} × {ph:.0f} мм в масштабе 1:{args.scale:.0f}")
     if floor_note:
         print(floor_note)
+    if кандидаты:
+        print(f"цифры: {len(метки)} меток"
+              + (f", шрифт {шрифт.имя}" if шрифт else "")
+              + "".join(f", {v} {sum(1 for m in метки if m[0] == v)}" for v in виды)
+              + (f"\n  ВНИМАНИЕ: {шрифт_прим}" if шрифт_прим else ""))
+    # Сверка заливки по маркам помещений: марка стоит внутри помещения, значит
+    # помещение без заливки видно по марке вне пола. Это и есть «залито / всего».
+    if пол is not None and any(m[0] == "помещения" for m in метки):
+        from shapely.geometry import Point
+        from shapely.prepared import prep
+        пп = prep(пол)
+        комн = [m for m in метки if m[0] == "помещения"]
+        мимо = [m for m in комн if not пп.contains(Point(m[2], m[3]))]
+        print(f"ПОМЕЩЕНИЯ: марок {len(комн)}, на заливке {len(комн) - len(мимо)}")
+        for _, т, x, y in мимо:
+            print(f"  без заливки: {т} ({x:.0f}, {y:.0f})")
     for name in sorted(groups):
         print(f"  {name:<14} {len(groups[name]):>6} контуров")
     print("\n".join(losses.report(drawn)))
@@ -793,7 +874,10 @@ def build_floor(cfg, prepared, args, xs, ys, x0, y0):
     if op > 0:
         foot = unary_union([p.buffer(-op, **J).buffer(op, **J) for p in polys(foot)]) \
             if polys(foot) else foot
-    foot = unary_union(polys(foot)).intersection(box(min(xs), min(ys), max(xs), max(ys)))
+    foot = unary_union(polys(foot))
+    if not foot.is_valid:
+        foot = foot.buffer(0)
+    foot = foot.intersection(box(min(xs), min(ys), max(xs), max(ys)))
 
     d = []
     for g in polys(foot):
@@ -813,7 +897,7 @@ def build_floor(cfg, prepared, args, xs, ys, x0, y0):
     if крупный >= args.floor_min:
         note += (f"\n  ВНИМАНИЕ: кусок стен на {крупный:.0f} м² остался без пола. "
                  f"Если это отдельный корпус, поднимите --bridge")
-    return d, note
+    return d, note, foot
 
 
 if __name__ == "__main__":
