@@ -1,4 +1,4 @@
-"""Цифры на чертеже: номера и площади помещений, переведённые в кривые.
+"""Цифры на чертеже: номера и площади помещений, размеры, отметки — кривыми.
 
 Текст в выдаче запрещён (verify: ни <text>, ни шрифтов), поэтому цифры рисуются
 контурами глифов. Так SVG открывается где угодно — в Illustrator, InDesign,
@@ -9,6 +9,10 @@
 MTEXT подряд на одной строке (буква — отдельным куском со сменой шрифта). Куски
 склеиваются по строке и расстоянию, из текста остаются только слова с цифрами
 и единица площади при них. Подписи без цифр («САНУЗЕЛ») — оформление.
+
+Каждая метка получает вид по содержанию и слою (см. вид()): помещения, площади,
+размеры, отметки, оси, прочие. Текст с цифрами, который ни под один вид не подошёл
+(марки EI60, «3 (1042-2.3)», номера разрезов), — оформление, как и раньше.
 """
 from __future__ import annotations
 
@@ -29,12 +33,35 @@ import re
     "C:/Windows/Fonts/arial.ttf",
 )
 
-ЕДИНИЦЫ = {"м²": "м²", "м2": "м²", "m²": "м²", "m2": "м²", "кв.м": "м²", "кв.м.": "м²"}
+ЕДИНИЦЫ = {"м²": "м²", "м2": "м²", "m²": "м²", "m2": "м²", "кв.м": "м²", "кв.м.": "м²",
+           "мм": "мм", "см": "см", "м": "м"}
+
+# Порядок важности: при наложении меток друг на друга остаётся более важная.
+ВИДЫ = ("помещения", "площади", "отметки", "размеры", "прочие", "оси")
+
+_Ч = r"\d+(?:[.,]\d+)?"
+# Отметка: ±0,000, +3,300, -4,860, 132,490 — три знака после запятой.
+ОТМЕТКА = re.compile(r"(?:(?:верх|низ|отм\.?)\s*)?(?:[+\-−±]\s*)?\d{1,3}[.,]\d{3}(?:\s*м)?",
+                     re.I)
+# Высота: h=1200, H = 3,0 м, 900(h), Нпот=3000.
+ВЫСОТА = re.compile(r"(?:[hHНн](?:\s*пот\.?)?\s*=\s*" + _Ч + r"(?:\s*(?:мм|м))?"
+                    r"|" + _Ч + r"\s*\(h\))")
+ПЛОЩАДЬ = re.compile(r"\d{1,5}(?:[.,]\d{1,2})?\s*м²")
+ПЛОЩАДЬ_БЕЗ_ЕДИНИЦЫ = re.compile(r"\d{1,5},\d{1,2}")
+# Прочие числа при геометрии: уклон 0,5%, d=110 мм, Ø110, проём 1000х600 и
+# 700х900(h), голое число 700.
+_ЕД = r"(?:\s*(?:мм|см|м))?"
+ПРОЧЕЕ = re.compile(r"(?:[+\-−]?" + _Ч + r"\s*%|[dDØ⌀]\s*=?\s*" + _Ч + _ЕД
+                    + r"|" + _Ч + r"\s*[хx×]\s*" + _Ч + r"(?:\s*\(h\))?" + _ЕД
+                    + r"|" + _Ч + _ЕД + r")")
 
 
 def строка(e) -> str:
     from ezdxf.lldxf.encoding import decode_dxf_unicode
-    t = e.plain_text() if e.dxftype() == "MTEXT" else (e.dxf.get("text", "") or "")
+    try:
+        t = e.plain_text()  # MTEXT — без разметки, TEXT — %%p → ±, %%d → °
+    except Exception:
+        t = e.dxf.get("text", "") or ""
     # dwg2dxf оставляет кириллицу экранированной: \U+041A вместо «К».
     return decode_dxf_unicode(t)
 
@@ -90,23 +117,92 @@ def чистить(s: str) -> str | None:
 
 
 class Метка:
-    def __init__(self, e, layer):
-        self.куски = [e]
+    def __init__(self, e, layer, размер=None):
+        self.куски = [размер if размер is not None else e]
         self.layer = layer
+        self.размер = размер is not None
+        self.тег = (e.dxf.get("tag", "") or "") if e.dxftype() == "ATTRIB" else ""
         self.текст = строка(e)
         self.h = высота(e)
         self.рот = поворот(e)
         self.x, self.y, self.гор, self.верт = якорь(e)
 
 
+def текст_размера(dim):
+    """DIMENSION → текстовый объект с числом, как он нарисован в исходнике.
+
+    Число берётся из блока размера: там оно уже округлено и записано так, как
+    его видит человек (с override-текстом, единицами, запятой). Блока нет —
+    собираем сами из override или измерения, на средней точке текста."""
+    try:
+        for v in dim.virtual_entities():
+            if v.dxftype() in ("MTEXT", "TEXT") and re.search(r"\d", строка(v)):
+                return v
+    except Exception:
+        pass
+    import ezdxf
+    try:
+        мера = float(dim.dxf.get("actual_measurement", None) or dim.get_measurement())
+    except Exception:
+        return None
+    число = f"{мера:.0f}"
+    override = dim.dxf.get("text", "") or ""
+    t = override.replace("<>", число) if "<>" in override else (override or число)
+    if not dim.dxf.hasattr("text_midpoint"):
+        return None
+    d = ezdxf.new()
+    return d.modelspace().add_mtext(t, dxfattribs={
+        "insert": dim.dxf.text_midpoint, "char_height": 250, "attachment_point": 5,
+        "rotation": float(dim.dxf.get("text_rotation", 0) or 0)})
+
+
+def вид(м: Метка, текст: str, слои: dict) -> str | None:
+    """Вид метки по содержанию; слой — только разрешение искать вид на нём.
+    слои: вид → множество слоёв, на которых он ищется."""
+    t = текст.strip()
+    if м.размер:
+        return "размеры"
+    l = м.layer
+
+    def на(v):
+        return l in слои.get(v, ())
+
+    if на("площади") and (ПЛОЩАДЬ.fullmatch(t) or (
+            ПЛОЩАДЬ_БЕЗ_ЕДИНИЦЫ.fullmatch(t)
+            and (на("помещения") or re.search(r"ПЛОЩ|AREA", м.тег, re.I)))):
+        return "площади"
+    if на("оси"):
+        return "оси"
+    if на("помещения"):
+        return "помещения"
+    if на("отметки") and (ОТМЕТКА.fullmatch(t) or ВЫСОТА.fullmatch(t)):
+        return "отметки"
+    if на("размеры") and re.fullmatch(_Ч + r"(?:\s*(?:мм|см|м))?", t):
+        return "размеры"
+    if на("прочие") and ПРОЧЕЕ.fullmatch(t):
+        return "прочие"
+    return None
+
+
 def собрать(ents_with_layers):
     """Склеивает куски одной метки: та же строка, тот же размер и поворот, следующий
     кусок начинается не дальше, чем мог кончиться предыдущий."""
-    метки = []
+    метки, размеры = [], []
     for e, layer in ents_with_layers:
+        if e.dxftype() == "DIMENSION":
+            т = текст_размера(e)
+            if т is None:
+                м = Метка.__new__(Метка)
+                м.куски, м.layer, м.размер, м.тег, м.текст, м.h = [e], layer, True, "", "", 0
+                м.рот, м.x, м.y, м.гор, м.верт = 0.0, 0.0, 0.0, 0.0, "base"
+                размеры.append(м)
+            else:
+                размеры.append(Метка(т, layer, размер=e))
+            continue
+        м = Метка(e, layer)
         if e.dxftype() == "ATTRIB" and (int(e.dxf.get("flags", 0) or 0) & 1):
-            continue  # невидимый атрибут
-        метки.append(Метка(e, layer))
+            м.текст = ""  # невидимый атрибут: не рисуется, но в баланс идёт
+        метки.append(м)
     убрать = set()
     # Одна и та же марка, выгруженная дважды в ту же точку, рисуется один раз;
     # второй экземпляр числится в нарисованных вместе с первым.
@@ -165,7 +261,7 @@ def собрать(ents_with_layers):
                 м.u_последний = м.u
                 м.u_конец = м.u + len(м.текст) * 0.75 * h
                 prev = м
-    return [м for м in метки if id(м) not in убрать]
+    return [м for м in метки if id(м) not in убрать] + размеры
 
 
 class Шрифт:
@@ -193,7 +289,8 @@ class Шрифт:
         return w
 
     def контур(self, м: Метка, текст: str, x0, y0):
-        """Метка → (d для <path>, габарит в координатах чертежа). Масштаб — по
+        """Метка → (d для <path>, габарит, рамка строки из 4 точек — для поиска
+        наложений; всё в координатах чертежа). Масштаб — по
         высоте прописной: высота текста в CAD — это высота заглавных."""
         from fontTools.pens.basePen import BasePen
         k = м.h / self.cap
@@ -238,8 +335,11 @@ class Шрифт:
                 self.gs[g].draw(Перо(ox))
             ox += (self.gs[g].width if g else 0.5 * self.upm)
         if not xs:
-            return "", None
-        return " ".join(out), (min(xs), min(ys), max(xs), max(ys))
+            return "", None, None
+        рамка = []
+        for lx, ly in ((dx, dy), (dx + w, dy), (dx + w, dy + м.h), (dx, dy + м.h)):
+            рамка.append((м.x + lx * c - ly * s, м.y + lx * s + ly * c))
+        return " ".join(out), (min(xs), min(ys), max(xs), max(ys)), рамка
 
 
 def шрифт_стиля(стиль: dict):
