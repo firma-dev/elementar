@@ -182,7 +182,24 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def _свой(self) -> bool:
+        """Запрос пришёл со своей страницы, а не из чужой вкладки браузера.
+
+        Сервер слушает только 127.0.0.1, но любая открытая в браузере страница
+        может послать запрос на этот адрес (CSRF) или подменить имя хоста (DNS
+        rebinding). Поэтому имя хоста обязано быть 127.0.0.1 или localhost с нашим
+        портом, а Origin, если он есть, — тем же адресом. curl и скрипты Origin не
+        шлют, им это не мешает."""
+        pt = self.server.server_address[1]
+        ok = {f"127.0.0.1:{pt}", f"localhost:{pt}"}
+        if (self.headers.get("Host") or "") not in ok:
+            return False
+        o = self.headers.get("Origin")
+        return o is None or o in {f"http://{h}" for h in ok}
+
     def do_GET(self):
+        if not self._свой():
+            return self._send(403, b"{}")
         if self.path in ("/", "/index.html"):
             html = (HERE / "ui.html").read_bytes()
             return self._send(200, html, "text/html; charset=utf-8")
@@ -210,6 +227,8 @@ class Handler(BaseHTTPRequestHandler):
         self._send(404, b"{}")
 
     def do_POST(self):
+        if not self._свой():
+            return self._send(403, json.dumps({"error": "запрос не со страницы чертёжера"}).encode())
         if self.path == "/decide":
             return self.решить()
         if self.path != "/convert":
