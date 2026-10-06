@@ -161,6 +161,7 @@ for (const [имя, движок] of [['chromium', chromium], ['webkit', webkit]
     const после = await стр.evaluate(() => document.documentElement.dataset.theme);
     if (до !== 'light' || после !== 'dark') ошибка(`${имя}: тема — по умолчанию «${до}», после кнопки «${после}»`);
     await стр.evaluate(() => document.fonts.ready);
+    await стр.waitForTimeout(400);   // смена темы плавная — снимаем после перехода
     await снимок(стр, `${имя}-1440x900-тёмная`);
     await ctx.close();
   }
