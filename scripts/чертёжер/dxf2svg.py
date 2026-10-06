@@ -31,6 +31,9 @@ DROP_TYPES = {
 # Точность спрямления дуг и сплайнов, мм.
 FLATTEN_MM = 5.0
 MAX_DEPTH = 12
+# Кайма, которую не считать полом: наружный слой отделки, нарисованный линией
+# рядом с телом стены, мм. См. build_floor.
+КАЙМА = 400.0
 
 
 class Losses:
@@ -144,6 +147,9 @@ def main():
     ap.add_argument("--no-floor", action="store_true", help="не считать заливку пола")
     ap.add_argument("--bridge", type=float, default=1500.0,
                     help="мостик для замыкания проёмов при поиске пятна застройки, мм")
+    ap.add_argument("--seam", type=float, default=60.0,
+                    help="толщина шва по линиям окон, витражей и колонн (contour_layers), "
+                         "которым замыкается контур пола, мм")
     ap.add_argument("--opening", type=float, default=700.0,
                     help="размыкание пятна застройки, мм: срезает тонкие языки")
     ap.add_argument("--fragment", default="0",
@@ -667,10 +673,11 @@ def fragments(prepared, bbox_classes, gap):
 
 
 def build_floor(cfg, prepared, args, xs, ys, x0, y0):
-    """Пятно застройки по телам стен. Единственное место, где геометрия
-    вычисляется, а не берётся из чертежа."""
+    """Заливка пола по телам стен. Единственное место, где геометрия вычисляется,
+    а не берётся из чертежа: заливок помещений в выгрузках Revit нет (проверено на
+    К2_1, К2_2, АР4.1 л.1–3 — ни одной сплошной штриховки помещения)."""
     try:
-        from shapely.geometry import Polygon, box
+        from shapely.geometry import LineString, Polygon, box
         from shapely.ops import unary_union
     except ImportError:
         sys.exit("для заливки пола нужна shapely: .venv/bin/pip install shapely\n"
@@ -680,25 +687,55 @@ def build_floor(cfg, prepared, args, xs, ys, x0, y0):
     if not foot_layers:
         sys.exit("в layers.json нет footprint_layers — по чему считать пятно пола")
     foot_layers = set(foot_layers)
+    шов_слои = set(cfg.get("contour_layers", []))
 
-    wp = []
+    тела, швы_окон, швы_стен = [], [], []
     for cls, e, loops in prepared:
-        if e.dxf.get("layer", "") not in foot_layers or e.dxftype() != "HATCH":
-            continue
-        for pts, _ in loops:
-            if len(pts) < 4:
+        layer = e.dxf.get("layer", "")
+        if e.dxftype() == "HATCH":
+            if layer not in foot_layers:
                 continue
-            g = Polygon([(v.x, v.y) for v in pts])
-            if not g.is_valid:
-                g = g.buffer(0)
-            if g.geom_type == "Polygon" and g.area > 1e4:
-                wp.append(g)
-    if not wp:
+            for pts, _ in loops:
+                if len(pts) < 4:
+                    continue
+                g = Polygon([(v.x, v.y) for v in pts])
+                if not g.is_valid:
+                    g = g.buffer(0)
+                if g.geom_type == "Polygon" and g.area > 1e4:
+                    тела.append(g)
+            continue
+        # Контур наружной стены прерывается не только дверными проёмами. Окна,
+        # витражи и простенки между пилонами — тоже граница помещения, но тела
+        # стены там нет, и мостик зазор шире двух мостиков не перекрывает: внешний
+        # контур уходил внутрь зала, и зал оставался белым (л.3: верхний правый
+        # зал и комната справа — окна между пилонами, нижний правый зал — витраж).
+        # Поэтому линии окон прошиваются в контур тонким швом — по самой линии окна.
+        # Линии самих стен — отдельно: часть стен нарисована только контуром, без
+        # штриховки (л.3, нижний правый зал: лёгкая стена под витражом).
+        if layer in шов_слои:
+            куда = швы_окон
+        elif layer in foot_layers:
+            куда = швы_стен
+        else:
+            continue
+        for pts, closed in loops:
+            xy = [(v.x, v.y) for v in pts]
+            if closed and xy[0] != xy[-1]:
+                xy.append(xy[0])
+            if len(xy) >= 2:
+                куда.append(LineString(xy))
+
+    def шов(линии):
+        return [unary_union(линии).buffer(args.seam, cap_style=2, join_style=2)] \
+            if линии and args.seam > 0 else []
+
+    if not тела and not швы_окон:
         sys.exit(f"на слоях {sorted(foot_layers)} нет штриховок — пятно пола не по чему "
                  "строить. Проверьте footprint_layers или запустите с --no-floor")
 
     b, op = args.bridge, args.opening
     J = dict(join_style=2, mitre_limit=2.0)
+    R = dict(quad_segs=8)
 
     def polys(g):
         """Любой результат shapely → только полигоны. intersection и buffer умеют
@@ -710,29 +747,49 @@ def build_floor(cfg, prepared, args, xs, ys, x0, y0):
         return [p for p in getattr(g, "geoms", []) if p.geom_type == "Polygon"
                 and not p.is_empty]
 
-    u = unary_union([g.buffer(b, **J) for g in wp]) if b > 0 else unary_union(wp)
-    parts = sorted(polys(u), key=lambda g: -g.area)
-    if not parts:
-        sys.exit(f"тела стен не сложились в область при --bridge {b:.0f}")
+    def замкнуть(маска):
+        """Маска стен → пятно пола. Возвращает (пятно, куски, взятые, брошенные)."""
+        м = unary_union(маска)
+        u = м.buffer(b, **J) if b > 0 else м
+        parts = sorted(polys(u), key=lambda g: -g.area)
+        if not parts:
+            sys.exit(f"тела стен не сложились в область при --bridge {b:.0f}")
+        # Заливаются все связные куски стен, а не только крупнейший: здание бывает
+        # из нескольких корпусов. Совсем мелкие куски — одинокая колонна, обрывок
+        # стены — пропускаются, иначе в пустоте появляется серое пятно.
+        порог = max(args.floor_min * 1e6, parts[0].area * 0.02)
+        берём = [q for q in parts if q.area >= порог] or parts[:1]
+        брошено = [q for q in parts if q not in берём]
+        # Берётся только внешний контур. Дыры раздутого объединения — это комнаты,
+        # а не дворы: отличить внутренний двор от большого зала по геометрии нечем.
+        куски = []
+        for q in берём:
+            f = (Polygon(q.exterior, list(q.interiors)) if args.keep_holes
+                 else Polygon(q.exterior))
+            куски.append(f.buffer(-b, **J) if b > 0 else f)
+        foot = unary_union([x for x in куски if not x.is_empty])
+        # Острые углы (mitre) держат прямые наружные углы здания точно, но на
+        # дугах и стыках дуг сжатие обратно залезает внутрь комнаты выемкой.
+        # Комнаты добираются круглым замыканием: его дыры — это ровно помещения,
+        # замкнутые стенами, и наружу они не выходят по построению.
+        if b > 0 and not args.keep_holes:
+            кр = м.buffer(b, **R).buffer(-b, **R)
+            комнаты = [Polygon(r) for p in polys(кр) for r in p.interiors]
+            if комнаты:
+                рамка = unary_union([Polygon(q.exterior) for q in берём])
+                foot = unary_union([foot] + [k.intersection(рамка) for k in комнаты])
+        return foot, parts, берём, брошено
 
-    # Заливаются все связные куски стен, а не только крупнейший: здание бывает
-    # из нескольких корпусов, и раньше второй оставался белым. Совсем мелкие
-    # куски — одинокая колонна, обрывок стены — пропускаются, иначе в пустоте
-    # появляется серое пятно на ровном месте.
-    порог = max(args.floor_min * 1e6, parts[0].area * 0.02)
-    берём = [q for q in parts if q.area >= порог] or parts[:1]
-    брошено = [q for q in parts if q not in берём]
-
-    # Берётся только внешний контур. Дыры раздутого объединения — это комнаты,
-    # а не дворы: отличить внутренний двор от большого зала по геометрии нечем.
-    # Поэтому здание с атриумом или световым колодцем получит пол и там —
-    # такой двор вырезается вручную или флагом --keep-holes, если дыры настоящие.
-    куски = []
-    for q in берём:
-        f = (Polygon(q.exterior, list(q.interiors)) if args.keep_holes
-             else Polygon(q.exterior))
-        куски.append(f.buffer(-b, **J) if b > 0 else f)
-    foot = unary_union([x for x in куски if not x.is_empty])
+    foot, parts, берём, брошено = замкнуть(тела + шов(швы_окон))
+    if швы_стен:
+        # Линии стен дают и лишнее: наружный слой отделки идёт линией в 100–200 мм
+        # от тела стены, и пол по ней выходит за стену серой каймой. Поэтому из
+        # пятна по линиям стен берётся только то, что шире тонкой каймы.
+        с_линиями, *_ = замкнуть(тела + шов(швы_окон) + шов(швы_стен))
+        прибавка = с_линиями.difference(foot)
+        if not прибавка.is_empty:
+            прибавка = прибавка.buffer(-КАЙМА, **J).buffer(КАЙМА, **J)
+            foot = unary_union([foot] + polys(прибавка))
     if op > 0:
         foot = unary_union([p.buffer(-op, **J).buffer(op, **J) for p in polys(foot)]) \
             if polys(foot) else foot
