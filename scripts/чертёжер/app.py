@@ -143,8 +143,13 @@ def сводка(отчёт: str) -> dict:
     итог["input"] = int(m.group(1)) if m else None
     m = re.search(r"ПОМЕЩЕНИЯ: марок (\d+), на заливке (\d+)", отчёт)
     итог["rooms"] = {"total": int(m.group(1)), "filled": int(m.group(2))} if m else None
-    m = re.search(r"^цифры: (\d+) меток", отчёт, re.M)
+    m = re.search(r"^цифры: (\d+) меток(.*)$", отчёт, re.M)
     итог["numbers"] = int(m.group(1)) if m else None
+    итог["numbers_by_kind"] = ([[в, int(n)] for в, n in re.findall(r", ([а-я]+) (\d+)", m.group(2))
+                               if в in ВИДЫ_ЦИФР] if m else [])
+    h = re.search(r"скрыто наложением (\d+)", m.group(2)) if m else None
+    итог["numbers_hidden"] = int(h.group(1)) if h else 0
+    итог["rooms_numbered"] = dict(итог["numbers_by_kind"]).get("помещения")
     m = re.search(r"заливка пола: (\d+) м²", отчёт)
     итог["floor_m2"] = int(m.group(1)) if m else None
     m = re.search(r"на листе чертежей: (\d+)", отчёт)
@@ -204,8 +209,11 @@ def человечно(текст: str) -> str:
             "чертёжер, — покажите их разработчику.")
 
 
+ВИДЫ_ЦИФР = ("помещения", "площади", "размеры", "отметки", "оси", "прочие")
+
+
 def convert(raw: bytes, name: str, style: str, fragment: str = "0", overlay: bool = False,
-            время: dict | None = None):
+            время: dict | None = None, numbers: str | None = None, dim_lines: bool = False):
     """DWG или DXF на входе → SVG и текст отчёта. Всё во временном каталоге,
     который стирается сразу: чужой чертёж не остаётся на диске."""
     with tempfile.TemporaryDirectory(prefix="чертёжер-") as td:
@@ -248,6 +256,8 @@ def convert(raw: bytes, name: str, style: str, fragment: str = "0", overlay: boo
         try:
             r = subprocess.run([sys.executable, str(HERE / "dxf2svg.py"), str(dxf), str(out),
                                     "--style", style, "--fragment", fragment]
+                               + (["--numbers", numbers] if numbers else [])
+                               + (["--dim-lines"] if dim_lines else [])
                                + (["--source-svg", str(d / "src.svg")] if overlay else []),
                                capture_output=True, text=True, errors="replace",
                                timeout=ТАЙМАУТ_РАЗБОРА)
@@ -386,12 +396,19 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(400, json.dumps({"error": f"Стиля «{style}» нет. Обновите страницу."},
                                               ensure_ascii=False).encode())
         fragment = unquote(self.headers.get("X-Fragment", "0"))
+        # Виды цифр: список через запятую из ВИДЫ_ЦИФР или «нет». Без заголовка —
+        # умолчание конвертора.
+        numbers = unquote(self.headers.get("X-Numbers", "")).strip() or None
+        if numbers and numbers != "нет" and not set(numbers.split(",")) <= set(ВИДЫ_ЦИФР):
+            return self._send(400, json.dumps({"error": "Неизвестный вид цифр. Обновите страницу."},
+                                              ensure_ascii=False).encode())
         raw = self.rfile.read(n)
         время = {}
         t0 = time.monotonic()
         try:
             svg, report, frags, unknown, source = convert(
-                raw, name, style, fragment, self.headers.get("X-Overlay") == "1", время)
+                raw, name, style, fragment, self.headers.get("X-Overlay") == "1", время,
+                numbers, self.headers.get("X-Dim-Lines") == "1")
         except Unknown as u:
             return self._send(422, json.dumps(
                 {"unknown": u.layers, "report": u.report, "previews": u.previews},

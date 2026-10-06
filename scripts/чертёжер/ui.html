@@ -181,6 +181,15 @@ button, input { font: inherit; color: inherit; }
 .style b { display: block; font-weight: 500; }
 .style .sw { display: flex; gap: 3px; margin-top: var(--e-space-2); }
 .style .sw i { inline-size: 14px; block-size: 14px; border-radius: 3px; border: 1px solid rgb(0 0 0 / .15); }
+.nums { border: 0; margin: var(--e-space-5) 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--e-space-3); }
+.nums legend { padding: 0; margin-bottom: var(--e-space-3); font-size: var(--e-size-sm); color: var(--e-fg-2); }
+.chip { display: inline-flex; align-items: center; gap: var(--e-space-2); padding: var(--e-space-1) var(--e-space-4);
+        min-block-size: 28px; border: 1px solid var(--e-line-control); border-radius: var(--e-radius-sm);
+        background: var(--e-surface); font-size: var(--e-size-sm); cursor: pointer; user-select: none; }
+.chip input { inline-size: 14px; block-size: 14px; margin: 0; accent-color: var(--e-accent); }
+.chip:has(input:checked) { background: var(--e-accent-tint); border-color: var(--e-accent); }
+.chip:has(input:focus-visible) { outline: 2px solid var(--e-line-focus); outline-offset: 2px; }
+.chip input:focus-visible { outline: none; }
 .style small { display: block; font-size: var(--e-size-xs); color: var(--e-fg-3); }
 
 .btn {
@@ -215,6 +224,7 @@ button, input { font: inherit; color: inherit; }
 .stage { display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; min-height: 0; min-width: 0;
          padding: var(--e-space-5) var(--e-space-6) var(--e-space-4); gap: var(--e-space-4); background: var(--e-bg-sunken); }
 .stage:focus { outline: none; }
+.stage > .bar { grid-row: 1; } .stage > .ckbar { grid-row: 2; } .stage > .view { grid-row: 3; } .stage > .foot { grid-row: 4; }
 .bar { display: flex; align-items: center; gap: var(--e-space-5); flex-wrap: wrap; }
 .bar .sp { flex: 1; }
 .tabs { display: inline-flex; padding: 3px; gap: 3px; border-radius: var(--e-radius-md); background: var(--e-surface);
@@ -368,6 +378,16 @@ input[type=file] { display: none; }
       <section class="step" id="s2">
         <h2><span class="n num">2</span>Стиль</h2>
         <div class="styles" id="styles" role="radiogroup" aria-label="Стиль чертежа"></div>
+        <fieldset class="nums" id="nums">
+          <legend>Цифры на чертеже</legend>
+          <label class="chip"><input type="checkbox" value="помещения" checked>номера помещений</label>
+          <label class="chip"><input type="checkbox" value="площади" checked>площади</label>
+          <label class="chip"><input type="checkbox" value="размеры" checked>размеры</label>
+          <label class="chip"><input type="checkbox" value="отметки" checked>отметки</label>
+          <label class="chip"><input type="checkbox" value="прочие" checked>прочие</label>
+          <label class="chip"><input type="checkbox" value="оси">оси</label>
+          <label class="chip dl"><input type="checkbox" id="dimlines">размерные линии</label>
+        </fieldset>
       </section>
 
       <section class="step" id="s3">
@@ -601,6 +621,8 @@ function стадии(dwg, size) {
 }
 
 $('#go').onclick = собрать;
+const виды = () => $$('#nums input[value]:checked').map(x => x.value).join(',') || 'нет';
+$('#nums').addEventListener('change', () => { if (S.res) $('#gohint').textContent = 'Настройки изменены — соберите заново.'; });
 async function собрать() {
   if (!S.file || !S.style || S.busy) return;
   S.busy = true; S.res = null; ready();
@@ -611,7 +633,8 @@ async function собрать() {
   try {
     r = await fetch('convert', {
       method: 'POST', body: S.file,
-      headers: { 'X-Name': encodeURIComponent(S.file.name), 'X-Style': encodeURIComponent(S.style), 'X-Overlay': '1' },
+      headers: { 'X-Name': encodeURIComponent(S.file.name), 'X-Style': encodeURIComponent(S.style), 'X-Overlay': '1',
+                 'X-Numbers': encodeURIComponent(виды()), 'X-Dim-Lines': $('#dimlines').checked ? '1' : '0' },
     });
     d = await r.json().catch(() => ({}));
   } catch (e) {
@@ -642,7 +665,10 @@ function результат(d) {
   rows.push(['Убрано объектов', g.removed != null ? N(g.removed) : '—']);
   rows.push(['Помещений залито', g.rooms ? `${N(g.rooms.filled)} <small>из</small> ${N(g.rooms.total)}`
                                          : '<small>марок помещений нет</small>']);
-  rows.push(['Номеров перенесено', g.numbers != null ? N(g.numbers) : '<small>нет</small>']);
+  rows.push(['Номеров помещений', g.rooms_numbered != null ? N(g.rooms_numbered) : '<small>нет</small>']);
+  rows.push(['Цифр перенесено', g.numbers != null
+    ? N(g.numbers) + (g.numbers_hidden ? ` <small>, скрыто наложением</small> ${N(g.numbers_hidden)}` : '')
+    : '<small>нет</small>']);
   if (s.sheet) {
     const m = s.sheet.match(/(\d+) × (\d+) мм, 1:(\d+)/);
     rows.push(['Лист', m ? `${N(+m[1])} <small>×</small> ${N(+m[2])} <small>мм,</small> <span class="num">1:${m[3]}</span>` : esc(s.sheet)]);
