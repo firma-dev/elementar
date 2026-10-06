@@ -42,6 +42,17 @@ MAX_DEPTH = 12
 # Насколько марки осей и отметки (не помещений) могут расширить лист за
 # габарит чертежа, мм. Марки помещений стоят внутри и лист не расширяют.
 ЦИФРЫ_ЗА_ЛИСТОМ = 10000.0
+# Насколько далеко за габаритом конструктива может стоять цифра каждого вида, мм.
+# Номера и площади помещений стоят внутри. Отметки — внутри и у входов снаружи.
+# Размерные цепочки — в нескольких метрах от фасада, марки осей — дальше всех.
+# Легенда и таблицы листа лежат за планом дальше этих полей (на АР4.1 — в 11 м
+# под планом) и так отсекаются: по положению, а не по содержанию — в легенде те
+# же числа, что и на плане.
+ЗАПАС_ЦИФР = {"помещения": 0.0, "площади": 0.0, "отметки": 3000.0, "прочие": 1000.0,
+              "размеры": 8000.0, "оси": ЦИФРЫ_ЗА_ЛИСТОМ}
+# Метка, перекрытая уже поставленной более важной больше чем на эту долю своей
+# площади, не рисуется.
+НАЛОЖЕНИЕ = 0.15
 
 
 class Losses:
@@ -53,7 +64,7 @@ class Losses:
 
     # Корзины объектов: каждый объект после разворота попадает ровно в одну.
     ENTITY = ("by_layer", "by_type", "unknown", "no_geometry", "geometry_error",
-              "cropped", "outside", "by_fragment")
+              "cropped", "outside", "by_fragment", "hidden")
     # Корзины вставок: эти вставки развёрнуты не были и объектов не дали.
     INSERT = ("insert_error", "insert_empty", "insert_deep")
 
@@ -66,6 +77,7 @@ class Losses:
         "cropped": "отсечено кадрированием",
         "outside": "вне габарита конструктива",
         "by_fragment": "другой чертёж на листе",
+        "hidden": "цифры: скрыты наложением на более важную",
         "insert_error": "вставка блока: ошибка разворота",
         "insert_empty": "вставка блока: внутри пусто",
         "insert_deep": "вставка блока: глубже предела вложенности",
@@ -179,9 +191,11 @@ def main():
                     help="только перечислить чертежи на листе, в JSON, и выйти")
     ap.add_argument("--gap", type=float, default=5000.0,
                     help="зазор, по которому лист делится на отдельные чертежи, мм")
-    ap.add_argument("--numbers", default="помещения",
-                    help="какие цифры оставить на чертеже, через запятую, из "
-                         "numbers в layers.json (помещения, оси, отметки) или «нет»")
+    ap.add_argument("--numbers", default="помещения,площади,размеры,отметки,прочие",
+                    help="какие цифры оставить на чертеже, через запятую: помещения, "
+                         "площади, размеры, отметки, оси, прочие — или «нет»")
+    ap.add_argument("--dim-lines", action="store_true",
+                    help="кроме чисел размеров рисовать и сами размерные линии, тонко")
     ap.add_argument("--style", default="бадаевский",
                     help="имя файла в styles/ без расширения")
     ap.add_argument("--floor-min", type=float, default=50.0,
@@ -215,6 +229,7 @@ def main():
     sty = стиль["classes"]
     # Цифры — своим классом; стиль без него получает тёмно-серый по умолчанию.
     sty.setdefault("numbers", {"fill": "#575756", "stroke": None, "width": 0})
+    sty.setdefault("dims", {"fill": None, "stroke": "#9D9D9C", "width": 5})
     drop_layers = set(cfg["drop"])
     class_of = cfg["class"]
     fill_classes = set(cfg["fill_classes"])
@@ -230,11 +245,12 @@ def main():
 
     виды = [] if args.numbers.strip().lower() in ("нет", "none", "") else \
         [v.strip() for v in args.numbers.split(",") if v.strip()]
-    нет_вида = [v for v in виды if v not in cfg.get("numbers", {})]
+    нет_вида = [v for v in виды if v not in цифры.ВИДЫ]
     if нет_вида:
         sys.exit(f"--numbers: нет вида {', '.join(нет_вида)}. Есть: "
-                 + ", ".join(cfg.get("numbers", {})) + " или «нет»")
-    слой_цифр = {l: v for v in виды for l in cfg["numbers"][v]}
+                 + ", ".join(цифры.ВИДЫ) + " или «нет»")
+    слои_вида = {v: set(cfg.get("numbers", {}).get(v, [])) for v in цифры.ВИДЫ}
+    источники = set().union(*слои_вида.values())
 
     losses = Losses()
     try:
@@ -259,7 +275,8 @@ def main():
         stat_in[layer] += 1
         # Цифры берутся раньше отсева по слою: марки помещений лежат на слое
         # оформления, а нужны из него только они.
-        if e.dxftype() in цифры.ТИПЫ and layer in слой_цифр:
+        if виды and ((e.dxftype() in цифры.ТИПЫ and layer in источники)
+                     or e.dxftype() == "DIMENSION"):
             кандидаты.append((e, layer))
             continue
         if layer in drop_layers:
@@ -377,6 +394,8 @@ def main():
     # окончательного листа: марки осей и отметки стоят за контуром здания, и
     # если их заказали, лист расширяется под них, но не дальше ЦИФРЫ_ЗА_ЛИСТОМ.
     взяты, шрифт_прим, шрифт = [], "", None
+    найдено = Counter()
+    размерные_линии = []
     if кандидаты:
         шрифт, шрифт_прим = цифры.шрифт_стиля(стиль)
     for м in цифры.собрать(кандидаты):
@@ -384,21 +403,23 @@ def main():
             for e in м.куски:
                 getattr(losses, корзина)[м.layer] += 1
         текст = цифры.чистить(м.текст) if м.h > 0 else None
-        if not текст or шрифт is None:
+        вид = цифры.вид(м, текст, слои_вида) if текст else None
+        if вид:
+            найдено[вид] += 1
+        if not вид or вид not in виды or шрифт is None:
             в("by_type")
             continue
         if args.crop and not (args.crop[0] <= м.x <= args.crop[2]
                               and args.crop[1] <= м.y <= args.crop[3]):
             в("cropped")
             continue
-        вид = слой_цифр[м.layer]
-        запас = 0.0 if вид == "помещения" else ЦИФРЫ_ЗА_ЛИСТОМ
+        запас = ЗАПАС_ЦИФР[вид]
         if fbox and not (fbox[0] - запас <= м.x <= fbox[2] + запас
                          and fbox[1] - запас <= м.y <= fbox[3] + запас):
             в("by_fragment")
             continue
         try:
-            _, bb = шрифт.контур(м, текст, 0.0, 0.0)
+            _, bb, рамка = шрифт.контур(м, текст, 0.0, 0.0)
         except Exception:
             bb = None
         if bb is None:
@@ -408,10 +429,25 @@ def main():
                 and miny - запас <= bb[1] and bb[3] <= maxy + запас):
             в("outside")
             continue
-        взяты.append((вид, м, текст, bb))
-    for вид, м, текст, bb in взяты:
+        взяты.append((вид, м, текст, bb, рамка))
+
+    # Наложения. Метки ставятся по важности (помещения, площади, отметки,
+    # размеры, прочие, оси); метка, которую уже поставленная перекрывает больше
+    # чем на НАЛОЖЕНИЕ своей площади, не рисуется и идёт в отчёт. Двигать метки
+    # не стали: цифра на чужом месте врёт о том, к чему относится.
+    взяты = снять_наложения(взяты, losses)
+
+    if args.dim_lines:
+        for вид, м, текст, bb, рамка in взяты:
+            if м.размер:
+                размерные_линии += линии_размера(м.куски[0])
+    for вид, м, текст, bb, рамка in взяты:
         minx, miny = min(minx, bb[0] - m), min(miny, bb[1] - m)
         maxx, maxy = max(maxx, bb[2] + m), max(maxy, bb[3] + m)
+    for pts, _ in размерные_линии:
+        for v in pts:
+            minx, miny = min(minx, v.x - m), min(miny, v.y - m)
+            maxx, maxy = max(maxx, v.x + m), max(maxy, v.y + m)
     x0, y0 = minx, maxy
 
     def d_attr(loops):
@@ -450,9 +486,9 @@ def main():
 
     # Цифры кривыми — в координатах уже окончательного листа.
     метки_d, метки, нарисовано_цифр = [], [], 0
-    for вид, м, текст, bb in взяты:
+    for вид, м, текст, bb, _ in взяты:
         try:
-            d, _ = шрифт.контур(м, текст, x0, y0)
+            d, _, _ = шрифт.контур(м, текст, x0, y0)
         except Exception:
             d = ""
         if not d:
@@ -468,6 +504,8 @@ def main():
         groups["floor"] = floor_d
     if метки_d:
         groups["numbers"] = метки_d
+    if размерные_линии:
+        groups["dims"] = [d_attr(размерные_линии)]
     for cls, e, loops in prepared:
         if cls in fill_classes and e.dxftype() == "HATCH":
             groups[f"{cls}-fill"].append(d_attr(loops))
@@ -497,7 +535,7 @@ def main():
         return " " + " ".join(a)
 
     order = ["floor", "slab-fill", "slab", "generic", "stair", "fixture", "fixture-open",
-             "window", "door", "wall-fill", "wall", "numbers"]
+             "window", "door", "wall-fill", "wall", "dims", "numbers"]
     body = []
     for name in order + [k for k in groups if k not in order]:
         ds = [d for d in groups.get(name, []) if d]
@@ -559,9 +597,13 @@ def main():
     if floor_note:
         print(floor_note)
     if кандидаты:
+        скрыто = sum(losses.hidden.values())
         print(f"цифры: {len(метки)} меток"
               + (f", шрифт {шрифт.имя}" if шрифт else "")
               + "".join(f", {v} {sum(1 for m in метки if m[0] == v)}" for v in виды)
+              + (f"; скрыто наложением {скрыто}" if скрыто else "")
+              + "\n  найдено в чертеже: "
+              + (", ".join(f"{v} {найдено[v]}" for v in цифры.ВИДЫ if найдено[v]) or "ничего")
               + (f"\n  ВНИМАНИЕ: {шрифт_прим}" if шрифт_прим else ""))
     # Сверка заливки по маркам помещений: марка стоит внутри помещения, значит
     # помещение без заливки видно по марке вне пола. Это и есть «залито / всего».
@@ -721,6 +763,45 @@ def превью(ents, unknown, class_of, sty, каталог):
         ф.write_text(svg, encoding="utf-8")
         из[слой] = str(ф)
     return из
+
+
+def снять_наложения(взяты, losses):
+    """Оставляет метки без наложений, по важности вида. См. НАЛОЖЕНИЕ."""
+    from shapely.geometry import Polygon
+    порядок = {v: i for i, v in enumerate(цифры.ВИДЫ)}
+    шаг = 3000.0
+    сетка, out = defaultdict(list), []
+    for вид, м, текст, bb, рамка in sorted(взяты, key=lambda t: порядок[t[0]]):
+        p = Polygon(рамка)
+        if not p.is_valid or p.area <= 0:
+            p = p.buffer(0) if p.area > 0 else Polygon(
+                [(bb[0], bb[1]), (bb[2], bb[1]), (bb[2], bb[3]), (bb[0], bb[3])])
+        клетки = [(i, j) for i in range(int(bb[0] // шаг), int(bb[2] // шаг) + 1)
+                  for j in range(int(bb[1] // шаг), int(bb[3] // шаг) + 1)]
+        соседи = {id(q): q for к in клетки for q in сетка[к]}
+        if any(p.intersection(q).area > НАЛОЖЕНИЕ * min(p.area, q.area)
+               for q in соседи.values()):
+            for e in м.куски:
+                losses.hidden[м.layer] += 1
+            continue
+        for к in клетки:
+            сетка[к].append(p)
+        out.append((вид, м, текст, bb, рамка))
+    return out
+
+
+def линии_размера(dim):
+    """Размерная линия, выносные и засечки — без текста, для --dim-lines."""
+    losses = Losses()
+    out = []
+    try:
+        for v in dim.virtual_entities():
+            if v.dxftype() in ("MTEXT", "TEXT"):
+                continue
+            out += geometry(v, losses)
+    except Exception:
+        return []
+    return out
 
 
 def verify(svg, minx, miny, maxx, maxy, drop_layers):
