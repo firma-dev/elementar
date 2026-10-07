@@ -37,32 +37,43 @@
 @font-face { font-family: 'OCR A Becker'; src: url(fonts/ocr-400.latin.woff2) format('woff2');
   font-weight: 400; font-display: swap; size-adjust: 93.4%; unicode-range: U+0000-00FF, U+2000-206F, U+2190-21BB, U+2212; }
 
-/* ── токены: светлая (по умолчанию) ── */
+/* ── цвета: стиль Capital Group ──
+   Палитра снята 07.10.2026 с открытого сайта capitalgroup.ru (вычисленные стили
+   страниц «/» и «/contacts» в браузере без окна): #E5E9EF — фон страниц, #7E8C9E —
+   стальной фон шапки и разделов, #47505E — вторичный текст и кнопки, #322F40 —
+   тёмная кнопка, #15181C — текст, #C5CAD2 — светлые линии, #FFFFFF. Хроматики у
+   сайта нет; статусы (успех, внимание, ошибка) — из семантики элементара. Ступени,
+   которых на сайте нет (#DCE1E8, #56606F, тёмная тема), выведены из этих же тонов,
+   контраст текста посчитан: не ниже 4,8:1 на всех фонах обеих тем. Имена токенов
+   — элементара (--e-*), значения — Capital Group. Логотип и шрифты сайта не взяты. */
+/* ── светлая (по умолчанию) ── */
 :root, [data-theme='light'] {
-  --e-bg: #fcfbf9; --e-bg-sunken: #f1eee9; --e-surface: #ffffff; --e-surface-hover: #f7f5f2;
-  --e-surface-active: #f1eee9;
-  --e-fg: #221f1b; --e-fg-2: #4c453c; --e-fg-3: #756c60; --e-fg-muted: #8b8374;
-  --e-line: #dad5cc; --e-line-soft: #e8e4dd; --e-line-control: #8b8374; --e-line-focus: #33507a;
-  --e-solid: #221f1b; --e-solid-hover: #332e28; --e-solid-active: #14120f; --e-solid-fg: #fcfbf9;
-  --e-accent: #33507a; --e-accent-tint: #eaf0f8; --e-accent-fg: #fcfbf9;
+  --e-bg: #e5e9ef; --e-bg-sunken: #dce1e8; --e-surface: #ffffff; --e-surface-hover: #f2f4f7;
+  --e-surface-active: #e5e9ef;
+  --e-fg: #15181c; --e-fg-2: #47505e; --e-fg-3: #56606f; --e-fg-muted: #7e8c9e;
+  --e-line: #c5cad2; --e-line-soft: #dce1e8; --e-line-control: #7e8c9e; --e-line-focus: #322f40;
+  --e-solid: #322f40; --e-solid-hover: #47505e; --e-solid-active: #15181c; --e-solid-fg: #ffffff;
+  --e-accent: #47505e; --e-accent-tint: #dce3ec; --e-accent-fg: #ffffff;
   --e-success: #3e7a56; --e-success-tint: #e8f1eb;
   --e-warning: #8a6520; --e-warning-tint: #f6efdf;
   --e-danger: #9b3a31; --e-danger-tint: #f7e9e7;
-  --e-shadow-1: 1px 1px 0 rgb(34 31 27 / 0.20); --e-shadow-2: 2px 2px 0 rgb(34 31 27 / 0.24);
-  --e-shadow-3: 4px 4px 0 rgb(34 31 27 / 0.28);
+  --e-top-bg: #47505e; --e-top-fg: #ffffff; --e-top-fg-2: #dfe3e9; --e-top-line: #7e8c9e;
+  --e-shadow-1: 1px 1px 0 rgb(21 24 28 / 0.14); --e-shadow-2: 2px 2px 0 rgb(21 24 28 / 0.22);
+  --e-shadow-3: 4px 4px 0 rgb(21 24 28 / 0.26);
   color-scheme: light;
 }
-/* ── токены: тёмная, только явным выбором ── */
+/* ── тёмная, только явным выбором: те же тона, графит Capital Group ── */
 [data-theme='dark'] {
-  --e-bg: #131417; --e-bg-sunken: #0e0f11; --e-surface: #191b1f; --e-surface-hover: #202329;
-  --e-surface-active: #2a2e35;
-  --e-fg: #f2f4f7; --e-fg-2: #c7ccd4; --e-fg-3: #a2a9b4; --e-fg-muted: #8a929e;
-  --e-line: #2a2e35; --e-line-soft: #202329; --e-line-control: #666d78; --e-line-focus: #a8bee0;
-  --e-solid: #f2f4f7; --e-solid-hover: #ffffff; --e-solid-active: #e2e5ea; --e-solid-fg: #0e0f11;
-  --e-accent: #a8bee0; --e-accent-tint: #232b36; --e-accent-fg: #0e0f11;
+  --e-bg: #1a1d22; --e-bg-sunken: #141619; --e-surface: #23272e; --e-surface-hover: #2b3038;
+  --e-surface-active: #333944;
+  --e-fg: #e5e9ef; --e-fg-2: #c5cad2; --e-fg-3: #a3aebc; --e-fg-muted: #7e8c9e;
+  --e-line: #333944; --e-line-soft: #2b3038; --e-line-control: #7e8c9e; --e-line-focus: #c5cad2;
+  --e-solid: #e5e9ef; --e-solid-hover: #ffffff; --e-solid-active: #c5cad2; --e-solid-fg: #15181c;
+  --e-accent: #c5cad2; --e-accent-tint: #2f3540; --e-accent-fg: #15181c;
   --e-success: #86c39c; --e-success-tint: #1e2a23;
   --e-warning: #e0be72; --e-warning-tint: #2a2620;
   --e-danger: #ec9e96; --e-danger-tint: #2b2020;
+  --e-top-bg: #322f40; --e-top-fg: #ffffff; --e-top-fg-2: #c5cad2; --e-top-line: #47505e;
   --e-shadow-1: 1px 1px 0 rgb(0 0 0 / 0.55); --e-shadow-2: 2px 2px 0 rgb(0 0 0 / 0.60);
   --e-shadow-3: 4px 4px 0 rgb(0 0 0 / 0.66);
   color-scheme: dark;
@@ -81,10 +92,11 @@
   --e-dur-fast: 130ms; --e-dur-base: 200ms; --e-ease-standard: cubic-bezier(0.2, 0, 0, 1);
   --e-z-sticky: 10; --e-z-scrim: 40;
 
-  /* «Проверка»: линии на белом листе, одинаково в обеих темах */
+  /* «Проверка»: на белом листе, одинаково в обеих темах. SVG показывается как
+     есть (своими цветами стиля), поэтому DWG рисуется цветом, которого в стиле
+     нет: зелёным (--el__color-green-600 элементара). */
   --ck-sheet: #ffffff;
-  --ck-src: rgb(115 120 125);   /* DWG — исходник */
-  --ck-our: rgb(5 5 5);         /* SVG — результат */
+  --ck-src: rgb(30 170 60);     /* DWG — исходник */
   --ck-del: rgb(253 47 75);     /* только в DWG — убрано */
   --ck-add: rgb(0 100 240);     /* только в SVG — добавлено */
 }
@@ -120,17 +132,20 @@ button, input { font: inherit; color: inherit; }
 .app { display: grid; grid-template-rows: var(--e-topbar-h) minmax(0, 1fr); height: 100vh; height: 100dvh; }
 .top {
   display: flex; align-items: center; gap: var(--e-space-5); padding: 0 var(--e-space-6); min-width: 0;
-  border-bottom: 1px solid var(--e-line); background: var(--e-surface);
+  border-bottom: 1px solid var(--e-top-line); background: var(--e-top-bg); color: var(--e-top-fg);
 }
+.top :focus-visible { outline-color: var(--e-top-fg); }
+.top .btn { background: transparent; color: var(--e-top-fg); border-color: var(--e-top-fg-2); }
+.top .btn:hover:not(:disabled) { background: rgb(255 255 255 / .12); }
 .brand { display: flex; align-items: center; gap: var(--e-space-4); font-weight: 500; font-size: var(--e-size-lg); flex: none; }
 .logo { display: block; flex: none; block-size: 18px; inline-size: calc(18px * 563 / 370);
         background: currentColor; mask: url(elementar.svg) no-repeat center/contain;
         -webkit-mask: url(elementar.svg) no-repeat center/contain; }
-.brand .sep { color: var(--e-fg-3); font-weight: 400; }
+.brand .sep { color: var(--e-top-fg-2); font-weight: 400; }
 .badge { flex: none; font-size: var(--e-size-xs); letter-spacing: var(--e-tracking-caps); text-transform: uppercase;
-         color: var(--e-warning); background: var(--e-warning-tint); padding: 1px var(--e-space-3);
+         color: var(--e-top-fg); border: 1px solid var(--e-top-fg-2); padding: 1px var(--e-space-3);
          border-radius: var(--e-radius-xs); }
-.top .lead { color: var(--e-fg-3); font-size: var(--e-size-sm); margin-left: var(--e-space-2);
+.top .lead { color: var(--e-top-fg-2); font-size: var(--e-size-sm); margin-left: var(--e-space-2);
              white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .top .sp { flex: 1; }
 .top .btn { flex: none; }
@@ -269,7 +284,8 @@ button, input { font: inherit; color: inherit; }
 .lg { display: inline-flex; align-items: center; gap: var(--e-space-3); font-size: var(--e-size-sm); color: var(--e-fg-2); }
 .lg i, .ptag i { display: inline-block; inline-size: 22px; block-size: 4px; border-radius: 2px; flex: none; }
 .lg i.src, .ptag i.src { background: var(--ck-src); }
-.lg i.our, .ptag i.our { background: var(--ck-our); box-shadow: 0 0 0 1px var(--e-line-control); }
+.lg i.our, .ptag i.our { block-size: 12px; inline-size: 18px; border-radius: 2px;
+  background: linear-gradient(90deg, var(--st-wall, #363636) 0 30%, var(--st-floor, #d6d6d6) 30%); box-shadow: 0 0 0 1px var(--e-line-control); }
 .lg i.del { background: var(--ck-del); } .lg i.add { background: var(--ck-add); }
 .lg b { font-weight: 500; color: var(--e-fg); }
 .verdict { font-size: var(--e-size-sm); line-height: var(--e-leading-snug); }
@@ -292,8 +308,19 @@ button, input { font: inherit; color: inherit; }
 .pane { position: relative; overflow: hidden; min-height: 0; border-radius: var(--e-radius-md); background: var(--ck-sheet);
         border: 1px solid var(--e-line); box-shadow: var(--e-shadow-1); cursor: grab; touch-action: none; user-select: none; }
 .pane.drag { cursor: grabbing; }
-.lay { position: absolute; inset: 0; pointer-events: none; mix-blend-mode: multiply; }
+.lay { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
 .lay svg { display: block; width: 100%; height: 100%; }
+/* Результат — тот же файл, что скачивается: <img> на тот же blob, без единой
+   правки внутри. Масштаб и сдвиг — положением и размером картинки. */
+.lay.our img { position: absolute; display: block; max-width: none; max-height: none; }
+.lay.src { z-index: 2; }
+.lay.our { z-index: 1; }
+.view.under .lay.src { z-index: 1; }
+.view.under .lay.our { z-index: 2; mix-blend-mode: multiply; }
+.diff { z-index: 3; }
+.ptag { z-index: 4; } .zoom { z-index: 5; }
+.range { display: inline-flex; align-items: center; gap: var(--e-space-3); font-size: var(--e-size-sm); }
+.range input { inline-size: 110px; accent-color: var(--e-accent); }
 .diff { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; opacity: 0;
         transition: opacity var(--e-dur-fast) var(--e-ease-standard); }
 .diff.on { opacity: 1; }
@@ -311,14 +338,11 @@ button, input { font: inherit; color: inherit; }
 .view[data-tab='check'][data-mode='side'] #paneA .lay.our { display: none; }
 .view[data-tab='check']:not([data-mode='both']) .diff { display: none; }
 
-/* Исходник: серые линии, текст и размеры — пунктирной рамкой своего габарита */
+/* Исходник (вспомогательный рисунок, не результат): тонкие зелёные линии,
+   текст и размеры — пунктирной рамкой своего габарита */
 .view[data-tab='check'] .lay.src svg g { fill: none !important; stroke: var(--ck-src) !important; stroke-width: 1px !important; }
 .view[data-tab='check'] .lay.src svg g.src-txt { stroke-dasharray: 3 2; }
-.view[data-tab='check'] .lay svg path { vector-effect: non-scaling-stroke; }
-/* Результат: по умолчанию контуром, без заливки */
-.view[data-tab='check']:not(.fill) .lay.our svg g { fill: none !important; stroke: var(--ck-our) !important; stroke-width: 1.25px !important; }
-.view[data-tab='check'].fill .lay.our { opacity: .75; }
-.view[data-tab='check'].fill .lay.our svg path { vector-effect: none; }
+.view[data-tab='check'] .lay.src svg path { vector-effect: non-scaling-stroke; }
 
 /* Пустая сцена — большая зона загрузки */
 .dropzone {
@@ -450,12 +474,16 @@ input[type=file] { display: none; }
             <button data-mode="both" aria-pressed="true">Оба</button>
             <button data-mode="side" aria-pressed="false">Рядом</button>
           </div>
+          <div class="seg" role="group" aria-label="DWG относительно SVG">
+            <button data-order="over" aria-pressed="true">DWG над SVG</button>
+            <button data-order="under" aria-pressed="false">под SVG</button>
+          </div>
+          <label class="range">Прозрачность DWG <input type="range" id="ckop" min="0" max="90" step="5" value="0" aria-valuetext="0 %"></label>
           <label class="tog"><input type="checkbox" id="ckdiff" checked> Подсветить отличия</label>
-          <label class="tog"><input type="checkbox" id="ckfill"> Заливка результата</label>
         </div>
         <div class="ckrow">
-          <span class="lg"><i class="src"></i><b>DWG</b> — исходник</span>
-          <span class="lg"><i class="our"></i><b>SVG</b> — результат</span>
+          <span class="lg"><i class="src"></i><b>DWG</b> — исходник, тонкие линии</span>
+          <span class="lg"><i class="our"></i><b>SVG</b> — результат, как скачается</span>
           <span class="lg" data-diff-legend><i class="del"></i>только в DWG — убрано</span>
           <span class="lg" data-diff-legend><i class="add"></i>только в SVG — добавлено</span>
         </div>
@@ -512,7 +540,7 @@ const plural = (n, a, b, c) => { const m = n % 100, k = n % 10;
   return (m > 10 && m < 20) ? c : k === 1 ? a : (k > 1 && k < 5) ? b : c; };
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-const S = { file: null, style: null, busy: false, res: null, tab: 'result', mode: 'both', dlurl: null, srcIn: null, ourIn: null };
+const S = { palettes: {}, file: null, style: null, busy: false, res: null, tab: 'result', mode: 'both', dlurl: null, srcIn: null, ourIn: null };
 
 /* ── тема ── */
 const themeBtn = $('#theme');
@@ -555,6 +583,7 @@ function образец(p) {
 }
 const имяСтиля = s => s.charAt(0).toUpperCase() + s.slice(1);
 fetch('styles').then(r => r.json()).then(list => {
+  S.palettes = Object.fromEntries(list.map(s => [s.name, s.palette || {}]));
   $('#styles').innerHTML = list.map(s => {
     const p = s.palette || {};
     const sw = [p.floor, p.wall, p.door, p.generic].filter(Boolean).map(c => `<i style="background:${esc(c)}"></i>`).join('');
@@ -718,6 +747,9 @@ function результат(d) {
   $('#notes').innerHTML = notes.join('');
   $('#s4').hidden = false;
 
+  const пал = (S.palettes || {})[S.style] || {};
+  if (пал.wall) document.documentElement.style.setProperty('--st-wall', пал.wall);
+  if (пал.floor) document.documentElement.style.setProperty('--st-floor', пал.floor);
   вердикт(g, d.source);
   постройСлои(d);
   вкладка('result');
@@ -752,11 +784,15 @@ const внутри = svg => svg.replace(/^[\s\S]*?<svg[^>]*>/, '').replace(/<\/s
 
 function постройСлои(d) {
   const src = d.source && d.source.svg ? d.source.svg : '';
-  paneA.innerHTML = `<div class="lay src">${src}</div><div class="lay our">${d.svg}</div><canvas class="diff" aria-hidden="true"></canvas>
+  // Результат — <img> на тот же blob, что у «Скачать SVG»: на экране ровно
+  // скачиваемый файл, байт в байт, со своими заливками, цветами и цифрами.
+  const img = `<img src="${S.dlurl}" alt="Результат: ${esc($('#dl').download)}" draggable="false">`;
+  paneA.innerHTML = `<div class="lay src" aria-hidden="true">${src}</div><div class="lay our">${img}</div><canvas class="diff" aria-hidden="true"></canvas>
     <span class="ptag" aria-hidden="true"></span>`;
-  paneB.innerHTML = `<div class="lay our">${d.svg}</div><span class="ptag" aria-hidden="true"><i class="our"></i>SVG — результат</span>`;
-  $$('#view svg').forEach(v => { v.removeAttribute('width'); v.removeAttribute('height');
-                                 v.setAttribute('preserveAspectRatio', 'none'); v.setAttribute('aria-hidden', 'true'); });
+  paneB.innerHTML = `<div class="lay our">${img}</div><span class="ptag" aria-hidden="true"><i class="our"></i>SVG — результат</span>`;
+  // Вспомогательный исходник — наш рисунок, его можно подгонять под вид.
+  $$('#view .lay.src svg').forEach(v => { v.removeAttribute('width'); v.removeAttribute('height');
+                                          v.setAttribute('preserveAspectRatio', 'none'); });
   const vb = d.svg.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/) || [0, 1, 1];
   V.W = +vb[1]; V.H = +vb[2];
   S.srcIn = src ? внутри(src) : null; S.ourIn = внутри(d.svg);
@@ -767,7 +803,11 @@ function apply() {
     const w = p.clientWidth, h = p.clientHeight;
     if (!w || !h) continue;
     const t = `${V.ox} ${V.oy} ${w / V.sc} ${h / V.sc}`;
-    p.querySelectorAll('svg').forEach(v => v.setAttribute('viewBox', t));
+    p.querySelectorAll('.lay.src svg').forEach(v => v.setAttribute('viewBox', t));
+    p.querySelectorAll('.lay.our img').forEach(i => {
+      i.style.left = (-V.ox * V.sc) + 'px'; i.style.top = (-V.oy * V.sc) + 'px';
+      i.style.width = (V.W * V.sc) + 'px'; i.style.height = (V.H * V.sc) + 'px';
+    });
   }
   отличия();
 }
@@ -842,7 +882,13 @@ function режим(m) {
   if (перестройка) requestAnimationFrame(вписать); else apply();
 }
 $$('.seg [data-mode]').forEach(b => b.onclick = () => режим(b.dataset.mode));
-$('#ckfill').onchange = e => view.classList.toggle('fill', e.target.checked);
+$$('[data-order]').forEach(b => b.onclick = () => {
+  view.classList.toggle('under', b.dataset.order === 'under');
+  $$('[data-order]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+});
+$('#ckop').oninput = e => { const v = +e.target.value;
+  paneA.querySelector('.lay.src') && (paneA.querySelector('.lay.src').style.opacity = 1 - v / 100);
+  e.target.setAttribute('aria-valuetext', v + ' %'); };
 $('#ckdiff').onchange = () => режим(S.mode);
 
 // Мигалка: пробел показывает DWG и SVG по очереди на одном месте листа.
@@ -914,8 +960,9 @@ async function посчитать(c, номер) {
   c.width = w; c.height = h;
   const ctx = c.getContext('2d'), img = ctx.createImageData(w, h), p = img.data;
   for (let i = 0; i < D.length; i++) {
-    if (D[i]) { p[i * 4] = 253; p[i * 4 + 1] = 47; p[i * 4 + 2] = 75; p[i * 4 + 3] = 255; }
-    else if (A[i]) { p[i * 4] = 0; p[i * 4 + 1] = 100; p[i * 4 + 2] = 240; p[i * 4 + 3] = 255; }
+    // синее — полупрозрачный маркер поверх: сам результат под ним остаётся виден
+    if (D[i]) { p[i * 4] = 253; p[i * 4 + 1] = 47; p[i * 4 + 2] = 75; p[i * 4 + 3] = 235; }
+    else if (A[i]) { p[i * 4] = 0; p[i * 4 + 1] = 100; p[i * 4 + 2] = 240; p[i * 4 + 3] = 120; }
   }
   ctx.putImageData(img, 0, 0);
   c.dataset.del = nd; c.dataset.add = na;

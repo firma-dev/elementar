@@ -47,6 +47,30 @@ const плохоеСлово = async (стр, где) => {
   if (м) ошибка(`${где}: на экране техническое «${м[0]}»`);
 };
 
+// Контраст текста (WCAG): у каждого видимого текста — к ближайшему непрозрачному фону.
+const контраст = async (стр, где) => {
+  const плохие = await стр.evaluate(() => {
+    const rgb = (c) => (c.match(/[\d.]+/g) || []).map(Number);
+    const lum = ([r, g, b]) => [r, g, b].map((v) => { v /= 255; return v <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; })
+      .reduce((a, v, i) => a + v * [.2126, .7152, .0722][i], 0);
+    const фон = (e) => { for (let x = e; x; x = x.parentElement) { const c = rgb(getComputedStyle(x).backgroundColor);
+      if (c.length >= 3 && (c[3] === undefined || c[3] > .9)) return c; } return [255, 255, 255]; };
+    const out = [];
+    for (const e of document.querySelectorAll('body *')) {
+      if (!e.offsetParent && getComputedStyle(e).position !== 'fixed') continue;
+      if (e.closest(':disabled, [hidden], .pane, svg')) continue;
+      if (![...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())) continue;
+      const s = getComputedStyle(e); if (s.visibility === 'hidden' || +s.opacity < .5) continue;
+      const a = lum(rgb(s.color)), b = lum(фон(e));
+      const k = (Math.max(a, b) + .05) / (Math.min(a, b) + .05);
+      const крупный = parseFloat(s.fontSize) >= 24 || (parseFloat(s.fontSize) >= 18.66 && +s.fontWeight >= 700);
+      if (k < (крупный ? 3 : 4.5)) out.push(`«${e.textContent.trim().slice(0, 30)}» ${k.toFixed(2)}`);
+    }
+    return out;
+  });
+  if (плохие.length) ошибка(`${где}: контраст текста ниже нормы: ${плохие.slice(0, 6).join('; ')}`);
+};
+
 const мусор = path.join(os.tmpdir(), 'чертёжер-не-чертёж.txt');
 fs.writeFileSync(мусор, 'это не чертёж');
 
@@ -92,7 +116,8 @@ for (const [имя, движок] of [['chromium', chromium], ['webkit', webkit]
         ошибка(`${тег}: статус ${р.status()} ${(await р.text()).slice(0, 200)}`);
         await ctx.close(); continue;
       }
-      await стр.waitForSelector('#view:not([hidden]) #paneA .lay.our svg');
+      await стр.waitForSelector('#view:not([hidden]) #paneA .lay.our img');
+      await стр.waitForFunction(() => { const i = document.querySelector('#paneA .lay.our img'); return i.complete && i.naturalWidth > 0; });
       await стр.waitForFunction(() => document.querySelector('#dl').href.startsWith('blob:'));
       const сек = ((Date.now() - t0) / 1000).toFixed(1);
       // сверяем то, что человек получит по кнопке «Скачать», а не промежуточный ответ
@@ -106,7 +131,13 @@ for (const [имя, движок] of [['chromium', chromium], ['webkit', webkit]
         const эталон = fs.readFileSync(path.join(ЗДЕСЬ, `эталон-${демо}.svg`), 'utf8');
         if (svg !== эталон) ошибка(`${тег}: SVG не совпал с эталоном`);
       } else if (!svg.startsWith('<svg')) ошибка(`${тег}: скачано не SVG`);
-      const бокс = await стр.locator('#paneA .lay.our svg').boundingBox();
+      // на экране — тот же файл, что скачивается: тот же blob, те же байты
+      const экранный = await стр.evaluate(async () => {
+        const i = document.querySelector('#paneA .lay.our img'), b = document.querySelector('#paneB .lay.our img');
+        return { тот: i.src === document.querySelector('#dl').href && b.src === i.src, текст: await (await fetch(i.src)).text() };
+      });
+      if (!экранный.тот || экранный.текст !== svg) ошибка(`${тег}: SVG на экране не тот же файл, что скачивается`);
+      const бокс = await стр.locator('#paneA .lay.our img').boundingBox();
       if (!(бокс && бокс.width > 200 && бокс.height > 150)) ошибка(`${тег}: превью мелкое или пустое`);
       await вЭкран(стр, `${тег} результат`);
       await плохоеСлово(стр, `${тег} результат`);
@@ -118,7 +149,7 @@ for (const [имя, движок] of [['chromium', chromium], ['webkit', webkit]
       await стр.waitForSelector('#ckbar:not([hidden])');
       const виден = (sel) => стр.evaluate((s) => { const e = document.querySelector(s);
         return !!e && getComputedStyle(e).display !== 'none' && e.getBoundingClientRect().width > 0; }, sel);
-      if (!(await виден('#paneA .lay.src svg')) || !(await виден('#paneA .lay.our svg')))
+      if (!(await виден('#paneA .lay.src svg')) || !(await виден('#paneA .lay.our img')))
         ошибка(`${тег}: «Проверка» по умолчанию показывает не оба слоя`);
       const подсветка = await стр.waitForSelector('#paneA canvas.diff.on', { timeout: 20000 }).then(() => true, () => false);
       if (!подсветка) ошибка(`${тег}: подсветка отличий не появилась`);
@@ -127,6 +158,13 @@ for (const [имя, движок] of [['chromium', chromium], ['webkit', webkit]
       const вердикт = (await стр.locator('#verdict').innerText()).replace(/\s+/g, ' ');
       if (!/убрано|Убрано/.test(вердикт)) ошибка(`${тег}: нет счётчика убранного («${вердикт}»)`);
       await вЭкран(стр, `${тег} проверка`);
+      if (w === 1440 && демо === ДЕМО[0]) {
+        await контраст(стр, `${тег} проверка, светлая`);
+        await стр.click('#theme'); await стр.waitForTimeout(400);
+        await контраст(стр, `${тег} проверка, тёмная`);
+        await снимок(стр, `${тег}-4-проверка-тёмная`);
+        await стр.click('#theme'); await стр.waitForTimeout(400);
+      }
       await плохоеСлово(стр, `${тег} проверка`);
       await снимок(стр, `${тег}-4-проверка-оба`);
       // мигалка на пробеле
@@ -159,6 +197,11 @@ for (const [имя, движок] of [['chromium', chromium], ['webkit', webkit]
     const до = await стр.evaluate(() => document.documentElement.dataset.theme);
     await стр.click('#theme');
     const после = await стр.evaluate(() => document.documentElement.dataset.theme);
+    await стр.waitForTimeout(400);
+    await контраст(стр, `${имя} тёмная, пустая`);
+    await стр.click('#theme'); await стр.waitForTimeout(400);
+    await контраст(стр, `${имя} светлая, пустая`);
+    await стр.click('#theme');
     if (до !== 'light' || после !== 'dark') ошибка(`${имя}: тема — по умолчанию «${до}», после кнопки «${после}»`);
     await стр.evaluate(() => document.fonts.ready);
     await стр.waitForTimeout(400);   // смена темы плавная — снимаем после перехода
