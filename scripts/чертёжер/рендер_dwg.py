@@ -50,6 +50,7 @@ def рендер(путь_dxf: str, масштаб: float = 100.0):
 
     doc = ezdxf.readfile(путь_dxf)
     раскодировать(doc)
+    узкий_запасной_шрифт(doc)
     где = doc.modelspace()
     ext = bbox.extents(где, fast=True)
     лист = None
@@ -139,7 +140,7 @@ def раскодировать(doc) -> int:
         тип = e.dxftype()
         try:
             if тип == "MTEXT":
-                новый = буквы(e.text)
+                новый = доли_в_кодах(буквы(e.text))
                 if новый != e.text:
                     e.text, n = новый, n + 1
             elif тип in ("TEXT", "ATTRIB", "ATTDEF", "DIMENSION", "ARC_DIMENSION",
@@ -165,6 +166,74 @@ def раскодировать(doc) -> int:
         except Exception:
             continue  # один странный объект не должен оставлять без рисунка весь лист
     return n
+
+
+# Коды MTEXT с дробным числом без нуля: «\\W.9;» (ширина 0,9), «\\H.5x;», «\\T.1;».
+# AutoCAD их понимает, а разборщик ezdxf — нет: рисует «.9;» буквами. Revit так
+# пишет каждый пробел между словами отдельным MTEXT «\\f…;\\W.9; », и «.9;»
+# ложился на первую букву следующего слова («Кирпична;ладка»). Ноль дописывается.
+# Перед кодом не должно стоять экранирующей «\\» (литеральный обратный слеш).
+_ДОЛЯ = re.compile(r"(?<!\\)((?:\\\\)*)\\([WHTQwhtq])(-?)\.(?=\d)")
+
+
+def доли_в_кодах(t: str) -> str:
+    return _ДОЛЯ.sub(lambda m: f"{m.group(1)}\\{m.group(2)}{m.group(3)}0.", t) if isinstance(t, str) else t
+
+
+ЗАПАСНОЙ_УЗКИЙ = "Arial Narrow"
+
+
+def узкий_запасной_шрифт(doc) -> int:
+    """Чертёжного шрифта файла (GOST Common, ISOCPEUR…) на машине нет — ezdxf
+    берёт вместо него широкий Arial Unicode, и слова, которые Revit расставил
+    каждое отдельным MTEXT по ширине узкого шрифта, наезжают друг на друга
+    («Кирпичнаякладка»). Чертёжные шрифты узкие, поэтому недостающий заменяется
+    узким Arial Narrow — и в стилях текста, и в кодах «\\fСемейство|» внутри
+    MTEXT. Только в памяти; установленные шрифты не трогаются. Нет и Arial
+    Narrow — ничего не меняется. Возвращает число замен."""
+    from ezdxf.fonts import fonts
+    if not fonts.find_best_match(family=ЗАПАСНОЙ_УЗКИЙ):
+        return 0
+    есть = {}
+
+    def установлен(семейство: str) -> bool:
+        if семейство not in есть:
+            ff = fonts.find_best_match(family=семейство)
+            есть[семейство] = bool(ff and ff.family.lower() == семейство.lower())
+        return есть[семейство]
+
+    n = 0
+    for st in doc.styles:
+        файл = (st.dxf.get("font") or "").strip()
+        if not файл.lower().endswith((".ttf", ".otf", ".ttc")):
+            continue  # SHX ezdxf рисует своим запасным, его не трогаем
+        ff = fonts.find_font_face(файл)
+        if ff and ff.filename.lower() == pathlib.Path(файл).name.lower():
+            continue
+        try:
+            семейство = st.get_extended_font_data()[0]
+        except Exception:
+            семейство = ""
+        if семейство and установлен(семейство):
+            continue
+        st.dxf.font = "Arial Narrow.ttf"
+        if hasattr(st, "set_extended_font_data"):
+            st.set_extended_font_data(ЗАПАСНОЙ_УЗКИЙ)
+        n += 1
+
+    def код(m):
+        nonlocal n
+        if установлен(m.group(2)):
+            return m.group(0)
+        n += 1
+        return f"{m.group(1)}\\f{ЗАПАСНОЙ_УЗКИЙ}|"
+    for e in doc.entitydb.values():
+        if e.dxftype() == "MTEXT" and "\\f" in e.text:
+            e.text = _ШРИФТ_В_MTEXT.sub(код, e.text)
+    return n
+
+
+_ШРИФТ_В_MTEXT = re.compile(r"(?<!\\)((?:\\\\)*)\\[fF]([^|;]+)\|")
 
 
 def веса_в_пиксели(текст: str, ширина_мм: float) -> str:

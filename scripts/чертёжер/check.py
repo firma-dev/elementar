@@ -142,6 +142,59 @@ def кириллица_в_dwg(td):
     return из
 
 
+def пробелы_в_dwg(td):
+    """«DWG» рисовал «Кирпична;ладка», «Металлическая⊕естница»: Revit пишет
+    пробел между словами отдельным MTEXT «\\f…;\\W.9; », а ezdxf не понимает
+    дробь без нуля «\\W.9;» и рисует «.9;» буквами поверх следующего слова.
+    Текст с «\\W.9;», «\\H.5x;», пробелом, «\\~», U+00A0 и «\\P» обязан
+    читаться как задуман и рисоваться так же, как с «\\W0.9;», «\\H0.5x;»."""
+    import ezdxf
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("рендер_dwg", HERE / "рендер_dwg.py")
+    рд = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(рд)
+    из = []
+    образцы = (
+        (r"\fGOST Common|b0|i0|c204|p34|;\W.9;\U+041A\U+0438\U+0440 \U+043A\U+043B\U+0430\U+0434\U+043A\U+0430",
+         r"\fGOST Common|b0|i0|c204|p34|;\W0.9;\U+041A\U+0438\U+0440 \U+043A\U+043B\U+0430\U+0434\U+043A\U+0430",
+         "Кир кладка"),
+        (r"\H.5x;\U+043B\U+0435\U+0441\U+0442\~\U+043B\U+0430\Pвторая" + "\u00a0строка",
+         r"\H0.5x;\U+043B\U+0435\U+0441\U+0442\~\U+043B\U+0430\Pвторая" + "\u00a0строка",
+         "лест ла\nвторая\u00a0строка"),  # «\\~» ezdxf читает пробелом
+    )
+    for i, (было, как_надо, читается) in enumerate(образцы):
+        рисунки = []
+        for j, текст in enumerate((было, как_надо)):
+            doc = ezdxf.new()
+            msp = doc.modelspace()
+            msp.add_line((0, 0), (3000, 0))
+            msp.add_mtext(текст, dxfattribs={"char_height": 250, "insert": (0, 1000)})
+            # отдельный «пробел»-MTEXT перед словом, как у Revit
+            msp.add_mtext(r"\fGOST Common|b0|i0|c204|p34|;\W.9; " if j == 0 else
+                          r"\fGOST Common|b0|i0|c204|p34|;\W0.9; ",
+                          dxfattribs={"char_height": 250, "insert": (0, 2000)})
+            msp.add_mtext("слово", dxfattribs={"char_height": 250, "insert": (40, 2000)})
+            f = td / f"пробел-{i}-{j}.dxf"
+            doc.saveas(f)
+            if j == 0:
+                d2 = ezdxf.readfile(f)
+                рд.раскодировать(d2)
+                m = [e for e in d2.modelspace() if e.dxftype() == "MTEXT"]
+                if m[0].plain_text(fast=False) != читается:
+                    из.append(f"«DWG»: текст читается как {m[0].plain_text(fast=False)!r}, а не {читается!r}")
+                if m[1].plain_text(fast=False).strip():
+                    из.append(f"«DWG»: MTEXT-пробел читается как {m[1].plain_text(fast=False)!r} — ляжет на следующее слово")
+            out = td / f"пробел-{i}-{j}.svg"
+            r = subprocess.run([sys.executable, str(HERE / "рендер_dwg.py"), str(f), str(out)],
+                               capture_output=True, text=True)
+            if r.returncode:
+                return из + [f"рендер_dwg.py упал на пробелах: {r.stderr.strip()[-200:]}"]
+            рисунки.append(out.read_text(encoding="utf-8"))
+        if рисунки[0] != рисунки[1]:
+            из.append(f"«DWG»: «\\W.9;»/«\\H.5x;» рисуются не как «\\W0.9;»/«\\H0.5x;» (образец {i + 1})")
+    return из
+
+
 def лист_без_модели(td):
     """АР2.5-К2.С_1 («Содержание тома»): модель пустая, всё на листе. Раньше —
     422 и пустой экран во всех режимах. рендер_dwg.py обязан нарисовать лист и
@@ -577,7 +630,8 @@ def main():
 
     with tempfile.TemporaryDirectory(prefix="чертёжер-гейт-") as td:
         ошибки = (вызовы_на_месте() + проверка_проверки() + синтетика(pathlib.Path(td))
-                  + кириллица_в_dwg(pathlib.Path(td)) + лист_без_модели(pathlib.Path(td)))
+                  + кириллица_в_dwg(pathlib.Path(td)) + пробелы_в_dwg(pathlib.Path(td))
+                  + лист_без_модели(pathlib.Path(td)))
     ошибки += демо()
     ошибки += эталоны()
 
