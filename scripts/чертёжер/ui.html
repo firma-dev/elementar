@@ -981,7 +981,7 @@ function спросить(слои, картинки) {
     <div class="cards">` + слои.map(u => `
       <div class="lcard" data-layer="${esc(u.layer)}">
         <b>${esc(u.layer)}</b> <span class="meta">· ${N(u.objects)} ${plural(u.objects, 'объект', 'объекта', 'объектов')}</span>
-        <div class="pic">${картинки[u.layer] || '<p class="note">Картинку построить не удалось.</p>'}</div>
+        <div class="pic">${картинки[u.layer] || '<p class="note">Картинку этого слоя построить не удалось — решите по имени слоя или откройте чертёж в AutoCAD.</p>'}</div>
         <div class="seg" role="group" aria-label="Что это за слой">
           <button data-d="стена" aria-pressed="false">Стена</button>
           <button data-d="второстепенное" aria-pressed="false">Второстепенное</button>

@@ -293,8 +293,11 @@ def convert(raw: bytes, name: str, style: str, fragment: str = "0", overlay: boo
                 try:
                     for слой, путь in json.loads(r2.stdout.strip().splitlines()[-1]).items():
                         картинки[слой] = pathlib.Path(путь).read_text(encoding="utf-8")
-                except Exception:
-                    pass
+                except Exception as e:
+                    # картинок нет — вопрос всё равно задаётся, а причина остаётся
+                    # в окне терминала
+                    print(f"картинки незнакомых слоёв не построились: {e}\n"
+                          + без_путей((r2.stderr or "")[-1500:]), file=sys.stderr)
                 raise Unknown(unknown, "\n".join(lines), картинки)
             текст = (r.stderr or "").strip()
             if "Traceback (most recent call last)" in текст:

@@ -718,9 +718,14 @@ def превью(ents, unknown, class_of, sty, каталог):
     # каждый контур отдельным объектом: иначе разбиение видит один общий
     # габарит и возвращает один фрагмент на весь лист
     фрагменты = fragments([("wall", None, [l]) for l in фон], {"wall"}, 5000.0)
+    # Стен нет вовсе (чертёж из одних незнакомых слоёв) — кадр по самим этим
+    # слоям, иначе кадр пустой и картинки не будет ни у одного слоя.
+    кадр = фон or контуры(ents, losses, set(unknown))
+    if not кадр:
+        return {}
     fx0, fy0, fx1, fy1 = фрагменты[0]["box"] if фрагменты else (
-        min(v.x for pts, _ in фон for v in pts), min(v.y for pts, _ in фон for v in pts),
-        max(v.x for pts, _ in фон for v in pts), max(v.y for pts, _ in фон for v in pts))
+        min(v.x for pts, _ in кадр for v in pts), min(v.y for pts, _ in кадр for v in pts),
+        max(v.x for pts, _ in кадр for v in pts), max(v.y for pts, _ in кадр for v in pts))
     m = 500.0
     minx, maxx, miny, maxy = fx0 - m, fx1 + m, fy0 - m, fy1 + m
     w, h = maxx - minx, maxy - miny
