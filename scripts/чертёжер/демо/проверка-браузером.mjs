@@ -16,6 +16,38 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import zlib from 'node:zlib';
+
+// PNG снимка → пиксели (8 бит, RGB/RGBA, без чересстрочки — так снимает Playwright).
+function пиксели(png) {
+  let o = 8, w = 0, h = 0, тип = 6; const idat = [];
+  while (o < png.length) {
+    const n = png.readUInt32BE(o), t = png.toString('ascii', o + 4, o + 8), d = png.subarray(o + 8, o + 8 + n);
+    if (t === 'IHDR') { w = d.readUInt32BE(0); h = d.readUInt32BE(4); тип = d[9]; }
+    if (t === 'IDAT') idat.push(d);
+    o += 12 + n;
+  }
+  const bpp = тип === 6 ? 4 : 3, raw = zlib.inflateSync(Buffer.concat(idat)), stride = w * bpp;
+  const out = Buffer.alloc(h * stride);
+  for (let y = 0; y < h; y++) {
+    const f = raw[y * (stride + 1)], src = raw.subarray(y * (stride + 1) + 1, (y + 1) * (stride + 1));
+    for (let x = 0; x < stride; x++) {
+      const a = x >= bpp ? out[y * stride + x - bpp] : 0, b = y ? out[(y - 1) * stride + x] : 0;
+      const c = x >= bpp && y ? out[(y - 1) * stride + x - bpp] : 0;
+      let v = src[x];
+      if (f === 1) v += a; else if (f === 2) v += b; else if (f === 3) v += (a + b) >> 1;
+      else if (f === 4) { const p = a + b - c, pa = Math.abs(p - a), pb = Math.abs(p - b), pc = Math.abs(p - c);
+        v += pa <= pb && pa <= pc ? a : pb <= pc ? b : c; }
+      out[y * stride + x] = v & 255;
+    }
+  }
+  return { w, h, bpp, out };
+}
+// Сколько пикселей цвета линий «Оба» (rgb 30 170 60) на снимке.
+const зелёных = (png) => { const { out, bpp } = пиксели(png); let n = 0;
+  for (let i = 0; i < out.length; i += bpp)
+    if (Math.abs(out[i] - 30) < 14 && Math.abs(out[i + 1] - 170) < 14 && Math.abs(out[i + 2] - 60) < 14) n++;
+  return n; };
 
 const ЗДЕСЬ = path.dirname(fileURLToPath(import.meta.url));
 const [база, каталог, снимки, ...доп] = process.argv.slice(2);
@@ -171,16 +203,35 @@ for (const [имя, движок] of [['chromium', chromium], ['webkit', webkit]
       await стр.locator('#paneA').click({ position: { x: 5, y: 5 } });
       await стр.keyboard.press('Space');
       const м1 = await стр.getAttribute('#view', 'data-mode');
-      if (демо === ДЕМО[0] || !сверять) await снимок(стр, `${тег}-4-проверка-dwg`);
+      // «DWG» — исходник как в AutoCAD: картинка рендера, без зелёных линий «Оба»
+      const рендер = await стр.waitForFunction(() => { const i = document.querySelector('#paneA .lay.dwg img');
+        return i && i.complete && i.naturalWidth > 0; }, null, { timeout: 30000 }).then(() => true, () => false);
+      if (!рендер) ошибка(`${тег}: в «DWG» нет исходника как в AutoCAD`);
+      await стр.waitForTimeout(300);
+      const зелDWG = зелёных(await стр.locator('#paneA').screenshot());
+      if (await стр.evaluate(() => getComputedStyle(document.querySelector('#paneA .lay.src')).display !== 'none'))
+        ошибка(`${тег}: в «DWG» видны зелёные линии вместо исходника`);
+      await снимок(стр, `${тег}-4-проверка-dwg`);
       await стр.keyboard.press('Space');
       const м2 = await стр.getAttribute('#view', 'data-mode');
+      await стр.waitForTimeout(200);
+      const зелSVG = зелёных(await стр.locator('#paneA').screenshot());
+      // Слой зелёных линий в «DWG» и «SVG» не показывается (DOM), а на демо, где
+      // все цвета файла чёрные, зелёного нет и на снимке. В настоящих чертежах
+      // зелёный бывает свой — цвет слоя из файла, его снимок не судит.
+      const линииВидны = await стр.evaluate(() => getComputedStyle(document.querySelector('#paneA .lay.src')).display !== 'none');
+      if (линииВидны) ошибка(`${тег}: в «SVG» видны линии исходника`);
+      if (сверять && (зелDWG > 20 || зелSVG > 20)) ошибка(`${тег}: зелёные линии вне «Оба» (DWG ${зелDWG}, SVG ${зелSVG} пкс)`);
       if (м1 !== 'src' || м2 !== 'our') ошибка(`${тег}: пробел переключает не DWG/SVG (${м1}, ${м2})`);
       await стр.click('.seg [data-mode="side"]');
       await стр.waitForTimeout(150);
       const бА = await стр.locator('#paneA').boundingBox(), бБ = await стр.locator('#paneB').boundingBox();
       if (!(бА && бБ && бБ.x > бА.x + бА.width - 1)) ошибка(`${тег}: «Рядом» не раскладывает две картинки`);
+      const слева = await стр.evaluate(() => [...document.querySelectorAll('#paneA .lay')]
+        .filter((e) => getComputedStyle(e).display !== 'none').map((e) => e.className).join(','));
+      if (слева !== 'lay dwg') ошибка(`${тег}: в «Рядом» слева не исходник как в AutoCAD («${слева}»)`);
       await вЭкран(стр, `${тег} рядом`);
-      if (демо === ДЕМО[0] || !сверять) await снимок(стр, `${тег}-5-рядом`);
+      await снимок(стр, `${тег}-5-рядом`);
       await стр.click('.seg [data-mode="both"]');
       if (w === 1440 && демо === ДЕМО[0]) {
         // переключатель цифр после сборки пересобирает сам, без «Собрать заново»

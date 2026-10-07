@@ -586,6 +586,10 @@ def main():
             print(f"SOURCE_ERROR {type(e).__name__}: {e}"[:300])
 
     print(f"{out}  {len(svg)/1024:.0f} КБ")
+    # Начало координат результата в мм чертежа: x_svg = x − x0, y_svg = y0 − y.
+    # По нему страница кладёт исходник «как в AutoCAD» (рендер_dwg.py) в те же
+    # координаты, что и результат.
+    print(f"ORIGIN {x0:.3f} {y0:.3f}")
     print("FRAGMENTS " + json.dumps(
         [{"n": i, "w": round(f["w"]), "h": round(f["h"]), "objects": f["n"]}
          for i, f in enumerate(frags)], ensure_ascii=False))

@@ -252,6 +252,23 @@ def convert(raw: bytes, name: str, style: str, fragment: str = "0", overlay: boo
             dxf = src
 
         out = d / "out.svg"
+        # Исходник «как в AutoCAD» для «Проверки» рисуется параллельно разбору:
+        # отдельный процесс, его время не складывается с временем разбора.
+        рендер = None
+        if overlay:
+            рендер = subprocess.Popen([sys.executable, str(HERE / "рендер_dwg.py"), str(dxf),
+                                       str(d / "render.svg")],
+                                      stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                      text=True, errors="replace")
+        try:
+            return _разбор(d, dxf, out, style, fragment, numbers, dim_lines, overlay, время, рендер)
+        finally:
+            if рендер and рендер.poll() is None:
+                рендер.kill()
+                рендер.wait()
+
+
+def _разбор(d, dxf, out, style, fragment, numbers, dim_lines, overlay, время, рендер):
         t0 = time.monotonic()
         try:
             r = subprocess.run([sys.executable, str(HERE / "dxf2svg.py"), str(dxf), str(out),
@@ -266,12 +283,14 @@ def convert(raw: bytes, name: str, style: str, fragment: str = "0", overlay: boo
                            "Чертёж слишком большой: разрежьте лист на части и загрузите по одной.")
         if время is not None:
             время["parse"] = round(time.monotonic() - t0, 2)
-        frags, unknown, lines, src_err = [], [], [], None
+        frags, unknown, lines, src_err, origin = [], [], [], None, None
         for line in (r.stdout or "").splitlines():
             if line.startswith("SOURCE_ERROR "):
                 src_err = line[13:]
             elif line.startswith("SOURCE "):
                 continue
+            elif line.startswith("ORIGIN "):
+                origin = [float(v) for v in line.split()[1:3]]
             elif line.startswith("FRAGMENTS "):
                 frags = json.loads(line[10:])
             elif line.startswith("UNKNOWN "):
@@ -320,8 +339,26 @@ def convert(raw: bytes, name: str, style: str, fragment: str = "0", overlay: boo
                 исх = f.read_text(encoding="utf-8")
             else:
                 src_err = src_err or "исходник не нарисовался"
+        как_есть, рамка, ошибка_рендера = None, None, None
+        if рендер:
+            t1 = time.monotonic()
+            try:
+                вывод, хвост = рендер.communicate(timeout=ТАЙМАУТ_РАЗБОРА)
+                m = re.search(r"^RENDER_BOX (\S+) (\S+) (\S+) (\S+)$", вывод or "", re.M)
+                f = d / "render.svg"
+                if m and f.exists() and origin:
+                    как_есть = f.read_text(encoding="utf-8")
+                    рамка = [float(v) for v in m.groups()]
+                else:
+                    ошибка_рендера = "исходник не нарисовался"
+                    print("рендер исходника: " + без_путей((хвост or "")[-800:]), file=sys.stderr)
+            except subprocess.TimeoutExpired:
+                ошибка_рендера = "исходник рисовался слишком долго"
+            if время is not None:
+                время["render_wait"] = round(time.monotonic() - t1, 2)
         return (out.read_text(encoding="utf-8"), отчёт, frags, unknown,
-                {"svg": исх, "error": src_err} if overlay else None)
+                {"svg": исх, "error": src_err, "render": как_есть, "render_box": рамка,
+                 "origin": origin, "render_error": ошибка_рендера} if overlay else None)
 
 
 class Handler(BaseHTTPRequestHandler):

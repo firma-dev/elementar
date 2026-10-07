@@ -332,12 +332,31 @@ button, input { font: inherit; color: inherit; }
         font-weight: 500; pointer-events: none; }
 .ptag i.our { box-shadow: none; }
 
+.lay.dwg img { position: absolute; display: block; max-width: none; max-height: none; }
+.lay.dwg { z-index: 1; background: #fff; }
+.lg i.dwg, .ptag i.dwg { block-size: 12px; inline-size: 18px; border-radius: 2px; box-shadow: 0 0 0 1px var(--e-line-control);
+  background: linear-gradient(90deg, #000 0 34%, #ff0000 34% 67%, #0000ff 67%); }
+.pnote { position: absolute; left: var(--e-space-4); bottom: var(--e-space-4); z-index: 4; max-width: 60%;
+         padding: var(--e-space-2) var(--e-space-4); border-radius: var(--e-radius-sm); font-size: var(--e-size-sm);
+         background: #f6efdf; color: #15181c; border: 1px solid #8a6520; pointer-events: none; }
+
 #paneB { display: none; }
 .view[data-mode='side'][data-tab='check'] #paneB { display: block; }
-.view[data-tab='result'] .ptag, .view[data-tab='result'] .lay.src, .view[data-tab='result'] .diff { display: none; }
+/* Что видно в каком виде. «DWG» и «Рядом» (слева) — исходник как в AutoCAD;
+   зелёные линии исходника — только в «Оба». Если рендер не удался, вместо него
+   показываются линии (.нет-рендера) и об этом говорит плашка. */
+.view[data-tab='result'] .ptag, .view[data-tab='result'] .lay.src, .view[data-tab='result'] .lay.dwg,
+.view[data-tab='result'] .diff, .view[data-tab='result'] .pnote { display: none; }
 .view[data-tab='check'][data-mode='src'] #paneA .lay.our,
+.view[data-tab='check'][data-mode='src'] #paneA .lay.src,
 .view[data-tab='check'][data-mode='our'] #paneA .lay.src,
-.view[data-tab='check'][data-mode='side'] #paneA .lay.our { display: none; }
+.view[data-tab='check'][data-mode='our'] #paneA .lay.dwg,
+.view[data-tab='check'][data-mode='both'] #paneA .lay.dwg,
+.view[data-tab='check'][data-mode='side'] #paneA .lay.our,
+.view[data-tab='check'][data-mode='side'] #paneA .lay.src { display: none; }
+.view.нет-рендера[data-tab='check'][data-mode='src'] #paneA .lay.src,
+.view.нет-рендера[data-tab='check'][data-mode='side'] #paneA .lay.src { display: block; }
+.view:not(.нет-рендера) .pnote, .view[data-mode='our'] .pnote, .view[data-mode='both'] .pnote { display: none; }
 .view[data-tab='check']:not([data-mode='both']) .diff { display: none; }
 
 /* Исходник (вспомогательный рисунок, не результат): тонкие зелёные линии,
@@ -476,16 +495,17 @@ input[type=file] { display: none; }
             <button data-mode="both" aria-pressed="true">Оба</button>
             <button data-mode="side" aria-pressed="false">Рядом</button>
           </div>
-          <div class="seg" role="group" aria-label="DWG относительно SVG">
+          <div class="seg" role="group" aria-label="DWG относительно SVG" data-only-both>
             <button data-order="over" aria-pressed="true">DWG над SVG</button>
             <button data-order="under" aria-pressed="false">под SVG</button>
           </div>
-          <label class="range">Прозрачность DWG <input type="range" id="ckop" min="0" max="90" step="5" value="0" aria-valuetext="0 %"></label>
-          <label class="tog"><input type="checkbox" id="ckdiff" checked> Подсветить отличия</label>
+          <label class="range" data-only-both>Прозрачность DWG <input type="range" id="ckop" min="0" max="90" step="5" value="0" aria-valuetext="0 %"></label>
+          <label class="tog" data-only-both><input type="checkbox" id="ckdiff" checked> Подсветить отличия</label>
         </div>
         <div class="ckrow">
-          <span class="lg"><i class="src"></i><b>DWG</b> — исходник, тонкие линии</span>
-          <span class="lg"><i class="our"></i><b>SVG</b> — результат, как скачается</span>
+          <span class="lg" data-legend="dwg"><i class="dwg"></i><b>DWG</b> — исходник как в AutoCAD: цвета, веса и типы линий из файла</span>
+          <span class="lg" data-legend="src"><i class="src"></i><b>DWG</b> — исходник одним цветом, тонкие линии</span>
+          <span class="lg" data-legend="our"><i class="our"></i><b>SVG</b> — результат, как скачается</span>
           <span class="lg" data-diff-legend><i class="del"></i>только в DWG — убрано</span>
           <span class="lg" data-diff-legend><i class="add"></i>только в SVG — добавлено</span>
         </div>
@@ -801,8 +821,23 @@ function постройСлои(d) {
   // Результат — <img> на тот же blob, что у «Скачать SVG»: на экране ровно
   // скачиваемый файл, байт в байт, со своими заливками, цветами и цифрами.
   const img = `<img src="${S.dlurl}" alt="Результат: ${esc($('#dl').download)}" draggable="false">`;
-  paneA.innerHTML = `<div class="lay src" aria-hidden="true">${src}</div><div class="lay our">${img}</div><canvas class="diff" aria-hidden="true"></canvas>
-    <span class="ptag" aria-hidden="true"></span>`;
+  // Исходник как в AutoCAD (рендер_dwg.py) — тоже картинкой: файл большой, а
+  // картинку браузер двигает и масштабирует без перестройки дерева.
+  const so = d.source || {};
+  if (S.render && S.render.url) URL.revokeObjectURL(S.render.url);
+  S.render = null;
+  if (so.render && so.render_box && so.origin) {
+    const i = so.render.indexOf('</defs>');
+    const vbw = +(so.render.match(/viewBox="0 0 ([\d.]+)/) || [0, 0])[1];
+    if (i > 0 && vbw) S.render = { head: so.render.slice(0, i), body: so.render.slice(i), vbw,
+                                   box: so.render_box, origin: so.origin, px: 0, url: null };
+  }
+  if (S.render) толщиныDWG(1000);
+  view.classList.toggle('нет-рендера', !S.render);
+  const dwg = S.render ? `<img src="${S.render.url}" alt="Исходник как в AutoCAD" draggable="false">` : '';
+  paneA.innerHTML = `<div class="lay dwg">${dwg}</div><div class="lay src" aria-hidden="true">${src}</div><div class="lay our">${img}</div>
+    <canvas class="diff" aria-hidden="true"></canvas><span class="ptag" aria-hidden="true"></span>
+    <span class="pnote">Исходник в цветах файла не нарисовался — показаны его линии одним цветом.</span>`;
   paneB.innerHTML = `<div class="lay our">${img}</div><span class="ptag" aria-hidden="true"><i class="our"></i>SVG — результат</span>`;
   // Вспомогательный исходник — наш рисунок, его можно подгонять под вид.
   $$('#view .lay.src svg').forEach(v => { v.removeAttribute('width'); v.removeAttribute('height');
@@ -822,8 +857,37 @@ function apply() {
       i.style.left = (-V.ox * V.sc) + 'px'; i.style.top = (-V.oy * V.sc) + 'px';
       i.style.width = (V.W * V.sc) + 'px'; i.style.height = (V.H * V.sc) + 'px';
     });
+    if (S.render) {
+      // рамка рендера (мм чертежа) → координаты результата: x − x0, y0 − y
+      const [rx0, ry0, rx1, ry1] = S.render.box, [x0, y0] = S.render.origin;
+      p.querySelectorAll('.lay.dwg img').forEach(i => {
+        i.style.left = ((rx0 - x0) - V.ox) * V.sc + 'px'; i.style.top = ((y0 - ry1) - V.oy) * V.sc + 'px';
+        i.style.width = (rx1 - rx0) * V.sc + 'px'; i.style.height = (ry1 - ry0) * V.sc + 'px';
+      });
+      const ширина = (rx1 - rx0) * V.sc;
+      clearTimeout(S.render.t);
+      if (Math.abs(ширина / S.render.px - 1) > .12) S.render.t = setTimeout(() => толщиныDWG(ширина), 220);
+    }
   }
   отличия();
+}
+/* Толщины DWG. Веса линий файла записаны в пикселях экрана (рендер_dwg.py);
+   под текущий размер картинки они пересчитываются в единицы рисунка, и
+   картинка подменяется готовой — линии на экране той же толщины при любом
+   масштабе, как в AutoCAD. Меняется только заголовок стилей, геометрия та же. */
+function толщиныDWG(ширинаPx) {
+  const R = S.render; if (!R || !ширинаPx) return;
+  const k = R.vbw / ширинаPx;
+  const head = R.head.replace(/stroke-width: ([\d.]+)px/g, (m, p) => `stroke-width: ${(p * k).toFixed(2)}`);
+  const url = URL.createObjectURL(new Blob([head, R.body], { type: 'image/svg+xml' }));
+  R.px = ширинаPx;
+  const заменить = () => { const старый = R.url; R.url = url;
+    document.querySelectorAll('.lay.dwg img').forEach(i => { i.src = url; });
+    if (старый) setTimeout(() => URL.revokeObjectURL(старый), 1000); };
+  const img = document.querySelector('.lay.dwg img');
+  if (!img) { R.url = url; return; }
+  const пред = new Image(); пред.src = url;
+  (пред.decode ? пред.decode() : Promise.resolve()).then(заменить, заменить);
 }
 function вписать() {
   const w = paneA.clientWidth, h = paneA.clientHeight;
@@ -882,10 +946,10 @@ $('.tabs').addEventListener('keydown', e => {
 });
 
 const ТЕГ = {
-  src: '<i class="src"></i>DWG — исходник',
-  our: '<i class="our"></i>SVG — результат',
-  both: '<i class="src"></i>DWG + <i class="our"></i>SVG',
-  side: '<i class="src"></i>DWG — исходник',
+  src: '<i class="dwg"></i>DWG — исходник как в AutoCAD',
+  our: '<i class="our"></i>SVG — результат, как скачается',
+  both: '<i class="src"></i>DWG линиями + <i class="our"></i>SVG',
+  side: '<i class="dwg"></i>DWG — исходник как в AutoCAD',
 };
 function режим(m) {
   const перестройка = S.mode === 'side' || m === 'side';
@@ -893,6 +957,10 @@ function режим(m) {
   $$('.seg [data-mode]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === m)));
   const tag = paneA.querySelector('.ptag'); if (tag) tag.innerHTML = ТЕГ[m];
   $$('[data-diff-legend]').forEach(x => x.hidden = !(m === 'both' && $('#ckdiff').checked));
+  $$('[data-only-both]').forEach(x => x.hidden = m !== 'both');
+  const исх = S.render ? 'dwg' : 'src';
+  const видно = { src: [исх], our: ['our'], both: ['src', 'our'], side: [исх, 'our'] }[m];
+  $$('[data-legend]').forEach(x => x.hidden = !видно.includes(x.dataset.legend));
   if (перестройка) requestAnimationFrame(вписать); else apply();
 }
 $$('.seg [data-mode]').forEach(b => b.onclick = () => режим(b.dataset.mode));
