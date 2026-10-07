@@ -99,6 +99,128 @@ def вызовы_на_месте():
     return из
 
 
+def кириллица_в_dwg(td):
+    """Вид «DWG» (рендер_dwg.py) рисовал русский текст кодами: dwg2dxf оставляет
+    кириллицу экранированной («\\U+043A\\U+043E…»), а ezdxf drawing рисует строку
+    как есть. Текст кодами и тот же текст буквами — в TEXT, MTEXT, атрибуте блока
+    и переопределённом тексте размера — обязаны дать один и тот же рисунок."""
+    import ezdxf
+    из = []
+    коды = "\\U+043A\\U+043E\\U+043C\\U+043D\\U+0430\\U+0442\\U+0430"
+    рисунки = []
+    for i, слово in enumerate((коды, "комната")):
+        doc = ezdxf.new()
+        msp = doc.modelspace()
+        msp.add_line((0, 0), (5000, 0))
+        msp.add_text(слово, dxfattribs={"height": 300}).set_placement((0, 500))
+        msp.add_mtext(слово, dxfattribs={"char_height": 300, "insert": (0, 1500)})
+        blk = doc.blocks.new("МАРКА")
+        blk.add_attdef("Н", (0, 0), dxfattribs={"height": 300})
+        msp.add_blockref("МАРКА", (0, 2500)).add_attrib("Н", слово, (0, 2500), dxfattribs={"height": 300})
+        # Размер строится с буквами в обоих (геометрия размерного блока считается по
+        # ширине текста), а коды ставятся потом — как их оставляет dwg2dxf: и в
+        # переопределении, и в MTEXT размерного блока.
+        dim = msp.add_linear_dim(base=(0, -500), p1=(0, 0), p2=(5000, 0), text="комната")
+        dim.render()
+        dim.dimension.dxf.text = слово
+        for e in dim.dimension.get_geometry_block():
+            if e.dxftype() == "MTEXT":
+                e.text = e.text.replace("комната", слово)
+        f = td / f"кириллица-{i}.dxf"
+        doc.saveas(f)
+        до = f.read_bytes()
+        r = subprocess.run([sys.executable, str(HERE / "рендер_dwg.py"), str(f), str(td / f"кириллица-{i}.svg")],
+                           capture_output=True, text=True)
+        if r.returncode:
+            из.append(f"рендер_dwg.py упал на кириллице: {r.stderr.strip()[-200:]}")
+            return из
+        if f.read_bytes() != до:
+            из.append("рендер_dwg.py изменил исходный файл")
+        рисунки.append((td / f"кириллица-{i}.svg").read_text(encoding="utf-8"))
+    if рисунки[0] != рисунки[1]:
+        из.append("«DWG»: текст «\\U+043A…» нарисован не как «комната» (кириллица кодами)")
+    return из
+
+
+def пробелы_в_dwg(td):
+    """«DWG» рисовал «Кирпична;ладка», «Металлическая⊕естница»: Revit пишет
+    пробел между словами отдельным MTEXT «\\f…;\\W.9; », а ezdxf не понимает
+    дробь без нуля «\\W.9;» и рисует «.9;» буквами поверх следующего слова.
+    Текст с «\\W.9;», «\\H.5x;», пробелом, «\\~», U+00A0 и «\\P» обязан
+    читаться как задуман и рисоваться так же, как с «\\W0.9;», «\\H0.5x;»."""
+    import ezdxf
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("рендер_dwg", HERE / "рендер_dwg.py")
+    рд = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(рд)
+    из = []
+    образцы = (
+        (r"\fGOST Common|b0|i0|c204|p34|;\W.9;\U+041A\U+0438\U+0440 \U+043A\U+043B\U+0430\U+0434\U+043A\U+0430",
+         r"\fGOST Common|b0|i0|c204|p34|;\W0.9;\U+041A\U+0438\U+0440 \U+043A\U+043B\U+0430\U+0434\U+043A\U+0430",
+         "Кир кладка"),
+        (r"\H.5x;\U+043B\U+0435\U+0441\U+0442\~\U+043B\U+0430\Pвторая" + "\u00a0строка",
+         r"\H0.5x;\U+043B\U+0435\U+0441\U+0442\~\U+043B\U+0430\Pвторая" + "\u00a0строка",
+         "лест ла\nвторая\u00a0строка"),  # «\\~» ezdxf читает пробелом
+    )
+    for i, (было, как_надо, читается) in enumerate(образцы):
+        рисунки = []
+        for j, текст in enumerate((было, как_надо)):
+            doc = ezdxf.new()
+            msp = doc.modelspace()
+            msp.add_line((0, 0), (3000, 0))
+            msp.add_mtext(текст, dxfattribs={"char_height": 250, "insert": (0, 1000)})
+            # отдельный «пробел»-MTEXT перед словом, как у Revit
+            msp.add_mtext(r"\fGOST Common|b0|i0|c204|p34|;\W.9; " if j == 0 else
+                          r"\fGOST Common|b0|i0|c204|p34|;\W0.9; ",
+                          dxfattribs={"char_height": 250, "insert": (0, 2000)})
+            msp.add_mtext("слово", dxfattribs={"char_height": 250, "insert": (40, 2000)})
+            f = td / f"пробел-{i}-{j}.dxf"
+            doc.saveas(f)
+            if j == 0:
+                d2 = ezdxf.readfile(f)
+                рд.раскодировать(d2)
+                m = [e for e in d2.modelspace() if e.dxftype() == "MTEXT"]
+                if m[0].plain_text(fast=False) != читается:
+                    из.append(f"«DWG»: текст читается как {m[0].plain_text(fast=False)!r}, а не {читается!r}")
+                if m[1].plain_text(fast=False).strip():
+                    из.append(f"«DWG»: MTEXT-пробел читается как {m[1].plain_text(fast=False)!r} — ляжет на следующее слово")
+            out = td / f"пробел-{i}-{j}.svg"
+            r = subprocess.run([sys.executable, str(HERE / "рендер_dwg.py"), str(f), str(out)],
+                               capture_output=True, text=True)
+            if r.returncode:
+                return из + [f"рендер_dwg.py упал на пробелах: {r.stderr.strip()[-200:]}"]
+            рисунки.append(out.read_text(encoding="utf-8"))
+        if рисунки[0] != рисунки[1]:
+            из.append(f"«DWG»: «\\W.9;»/«\\H.5x;» рисуются не как «\\W0.9;»/«\\H0.5x;» (образец {i + 1})")
+    return из
+
+
+def лист_без_модели(td):
+    """АР2.5-К2.С_1 («Содержание тома»): модель пустая, всё на листе. Раньше —
+    422 и пустой экран во всех режимах. рендер_dwg.py обязан нарисовать лист и
+    отдать его отдельным файлом в миллиметрах листа, без белой подложки и без
+    невидимых служебных знаков Revit (рисовались квадратами)."""
+    import ezdxf
+    из = []
+    doc = ezdxf.new()
+    лист = doc.paperspace()
+    лист.add_lwpolyline([(0, 0), (210, 0), (210, 297), (0, 297)], close=True)
+    лист.add_mtext("\\U+041B\\U+0438\\U+0441\\U+0442\\U+200C\\U+200E", dxfattribs={"char_height": 5, "insert": (20, 280)})
+    f = td / "лист.dxf"
+    doc.saveas(f)
+    r = subprocess.run([sys.executable, str(HERE / "рендер_dwg.py"), str(f), str(td / "лист-r.svg"),
+                        "--sheet-out", str(td / "лист.svg")], capture_output=True, text=True)
+    if r.returncode or "SHEET " not in r.stdout or not (td / "лист.svg").exists():
+        return [f"лист без модели не нарисовался: {(r.stderr or r.stdout).strip()[-200:]}"]
+    svg = (td / "лист.svg").read_text(encoding="utf-8")
+    m = re.search(r'viewBox="0 0 ([\d.]+) ([\d.]+)"', svg)
+    if not m or abs(float(m.group(1)) - 210) > 1 or abs(float(m.group(2)) - 297) > 1:
+        из.append(f"лист без модели: viewBox не в миллиметрах листа ({m and m.group(0)})")
+    if '<rect fill="#ffffff"' in svg:
+        из.append("лист без модели: осталась белая подложка")
+    return из
+
+
 def проверка_проверки():
     """verify() — гейт внутри гейта. Перестанет ловить она — молча развалится
     всё остальное, поэтому её проверяем напрямую."""
@@ -507,7 +629,9 @@ def main():
         return 1
 
     with tempfile.TemporaryDirectory(prefix="чертёжер-гейт-") as td:
-        ошибки = вызовы_на_месте() + проверка_проверки() + синтетика(pathlib.Path(td))
+        ошибки = (вызовы_на_месте() + проверка_проверки() + синтетика(pathlib.Path(td))
+                  + кириллица_в_dwg(pathlib.Path(td)) + пробелы_в_dwg(pathlib.Path(td))
+                  + лист_без_модели(pathlib.Path(td)))
     ошибки += демо()
     ошибки += эталоны()
 

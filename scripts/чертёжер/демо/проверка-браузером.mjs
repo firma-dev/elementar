@@ -188,7 +188,7 @@ for (const [имя, движок] of [['chromium', chromium], ['webkit', webkit]
       const отл = await стр.evaluate(() => { const c = document.querySelector('#paneA canvas.diff');
         return [+c.dataset.del || 0, +c.dataset.add || 0]; });
       const вердикт = (await стр.locator('#verdict').innerText()).replace(/\s+/g, ' ');
-      if (!/убрано|Убрано/.test(вердикт)) ошибка(`${тег}: нет счётчика убранного («${вердикт}»)`);
+      if (!/убрано|Убрано|плана этажа в файле нет/.test(вердикт)) ошибка(`${тег}: нет счётчика убранного («${вердикт}»)`);
       await вЭкран(стр, `${тег} проверка`);
       if (w === 1440 && демо === ДЕМО[0]) {
         await контраст(стр, `${тег} проверка, светлая`);

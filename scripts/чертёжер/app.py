@@ -257,7 +257,7 @@ def convert(raw: bytes, name: str, style: str, fragment: str = "0", overlay: boo
         рендер = None
         if overlay:
             рендер = subprocess.Popen([sys.executable, str(HERE / "рендер_dwg.py"), str(dxf),
-                                       str(d / "render.svg")],
+                                       str(d / "render.svg"), "--sheet-out", str(d / "sheet.svg")],
                                       stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                       text=True, errors="replace")
         try:
@@ -328,6 +328,13 @@ def _разбор(d, dxf, out, style, fragment, numbers, dim_lines, overlay, в�
             текст = без_путей((текст or (r.stdout or "").strip()
                                or "разбор остановился без объяснения")[-1500:])
             print(текст, file=sys.stderr)
+            if "нет ни одного объекта" in текст:
+                # Модель пустая — возможно, всё нарисовано на листе (paper space):
+                # «Содержание тома», ведомость. Чистить там нечего, план этажа
+                # отсутствует; показываем и отдаём лист как есть.
+                лист = лист_как_есть(d, dxf, рендер, время)
+                if лист:
+                    return лист
             raise Понятная(человечно(текст))
         # Первая строка — путь во временный каталог: он ничего не значит для
         # человека и уходит вместе с каталогом сразу после ответа.
@@ -359,6 +366,40 @@ def _разбор(d, dxf, out, style, fragment, numbers, dim_lines, overlay, в�
         return (out.read_text(encoding="utf-8"), отчёт, frags, unknown,
                 {"svg": исх, "error": src_err, "render": как_есть, "render_box": рамка,
                  "origin": origin, "render_error": ошибка_рендера} if overlay else None)
+
+
+def лист_как_есть(d, dxf, рендер, время):
+    """Файл без плана в модели, но с листом: результат — сам лист как есть
+    (рендер_dwg.py, цвета и веса файла, миллиметры листа), «DWG» — он же.
+    Отчёт — одна строка «ЛИСТ …», по ней страница говорит человеку, что это."""
+    if рендер is None:
+        рендер = subprocess.Popen([sys.executable, str(HERE / "рендер_dwg.py"), str(dxf),
+                                   str(d / "render.svg"), "--sheet-out", str(d / "sheet.svg")],
+                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                  text=True, errors="replace")
+    t1 = time.monotonic()
+    try:
+        вывод, хвост = рендер.communicate(timeout=ТАЙМАУТ_РАЗБОРА)
+    except subprocess.TimeoutExpired:
+        return None
+    if время is not None:
+        время["render_wait"] = round(time.monotonic() - t1, 2)
+    m = re.search(r"^RENDER_BOX (\S+) (\S+) (\S+) (\S+)$", вывод or "", re.M)
+    s = re.search(r"^SHEET (.+)$", вывод or "", re.M)
+    f, рис = d / "sheet.svg", d / "render.svg"
+    if not (m and s and f.exists() and рис.exists()):
+        print("лист как есть не нарисовался: " + без_путей((хвост or "")[-800:]), file=sys.stderr)
+        return None
+    сведения = json.loads(s.group(1))
+    рамка = [float(v) for v in m.groups()]
+    svg = f.read_text(encoding="utf-8")
+    # Линии листа одним цветом для «Оба»: те же пути без стилей файла.
+    линии = re.sub(r"<defs>.*?</defs>", "", svg, count=1, flags=re.S)
+    линии = линии.replace("<g transform=", '<g fill="none" stroke="#000" transform=', 1)
+    отчёт = f"ЛИСТ {json.dumps(сведения, ensure_ascii=False)}"
+    return (svg, отчёт, [], [],
+            {"svg": линии, "error": None, "render": рис.read_text(encoding="utf-8"),
+             "render_box": рамка, "origin": [рамка[0], рамка[3]], "render_error": None})
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -464,6 +505,8 @@ class Handler(BaseHTTPRequestHandler):
         время["total"] = round(time.monotonic() - t0, 2)
         self._send(200, json.dumps({"svg": svg, "report": report, "fragments": frags,
                                     "summary": кратко(report), "digest": сводка(report),
+                                    "sheet": (json.loads(report[5:]) if report.startswith("ЛИСТ ")
+                                              else None),
                                     "timing": время,
                                     "unknown": unknown, "fragment": fragment,
                                     "source": source},
