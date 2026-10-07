@@ -1,0 +1,1089 @@
+<!doctype html>
+<html lang="ru" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Чертёжер · элементар</title>
+<script>
+  // Тема — свойство устройства (DESIGN §3.3): берётся из localStorage до первого
+  // кадра. По умолчанию светлая, системная тёмная не подхватывается (Д-035).
+  try { if (localStorage.getItem('e.theme') === 'dark') document.documentElement.dataset.theme = 'dark'; } catch (e) {}
+</script>
+<style>
+/* Чертёжер на дизайн-системе элементара: @elementar/ui (packages/ui/src/styles/
+   tokens.css, tokens.ts). Значения семантического слоя перенесены сюда как есть,
+   имена те же (--e-*), чтобы сверка с источником была построчной. Компоненты
+   страницы пользуются только семантикой.
+
+   Исключение одно — палитра «Проверки» (--ck-*): линии чертежа лежат на белом
+   листе в обеих темах, и для «убрано / добавлено» нужны яркие красный и синий.
+   Они взяты из палитры элементара прототипного слоя (apps/finanser/src/tokens.css:
+   --el__color-red-500, --el__color-blue-500, серые --el__color-gray-500/950). */
+
+@font-face { font-family: 'Basis Grotesque Pro'; src: url(fonts/basis-400.cyrillic.woff2) format('woff2');
+  font-weight: 400; font-display: swap; unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: 'Basis Grotesque Pro'; src: url(fonts/basis-400.latin.woff2) format('woff2');
+  font-weight: 400; font-display: swap; unicode-range: U+0000-00FF, U+2000-206F, U+2190-21BB, U+2212; }
+@font-face { font-family: 'Basis Grotesque Pro'; src: url(fonts/basis-500.cyrillic.woff2) format('woff2');
+  font-weight: 500; font-display: swap; unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: 'Basis Grotesque Pro'; src: url(fonts/basis-500.latin.woff2) format('woff2');
+  font-weight: 500; font-display: swap; unicode-range: U+0000-00FF, U+2000-206F, U+2190-21BB, U+2212; }
+@font-face { font-family: 'Basis Grotesque Pro'; src: url(fonts/basis-700.cyrillic.woff2) format('woff2');
+  font-weight: 700; font-display: swap; unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: 'Basis Grotesque Pro'; src: url(fonts/basis-700.latin.woff2) format('woff2');
+  font-weight: 700; font-display: swap; unicode-range: U+0000-00FF, U+2000-206F, U+2190-21BB, U+2212; }
+@font-face { font-family: 'OCR A Becker'; src: url(fonts/ocr-400.cyrillic.woff2) format('woff2');
+  font-weight: 400; font-display: swap; size-adjust: 93.4%; unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: 'OCR A Becker'; src: url(fonts/ocr-400.latin.woff2) format('woff2');
+  font-weight: 400; font-display: swap; size-adjust: 93.4%; unicode-range: U+0000-00FF, U+2000-206F, U+2190-21BB, U+2212; }
+
+/* ── цвета: стиль Capital Group ──
+   Палитра снята 07.10.2026 с открытого сайта capitalgroup.ru (вычисленные стили
+   страниц «/» и «/contacts» в браузере без окна): #E5E9EF — фон страниц, #7E8C9E —
+   стальной фон шапки и разделов, #47505E — вторичный текст и кнопки, #322F40 —
+   тёмная кнопка, #15181C — текст, #C5CAD2 — светлые линии, #FFFFFF. Хроматики у
+   сайта нет; статусы (успех, внимание, ошибка) — из семантики элементара. Ступени,
+   которых на сайте нет (#DCE1E8, #56606F, тёмная тема), выведены из этих же тонов,
+   контраст текста посчитан: не ниже 4,8:1 на всех фонах обеих тем. Имена токенов
+   — элементара (--e-*), значения — Capital Group. Логотип и шрифты сайта не взяты. */
+/* ── светлая (по умолчанию) ── */
+:root, [data-theme='light'] {
+  --e-bg: #e5e9ef; --e-bg-sunken: #dce1e8; --e-surface: #ffffff; --e-surface-hover: #f2f4f7;
+  --e-surface-active: #e5e9ef;
+  --e-fg: #15181c; --e-fg-2: #47505e; --e-fg-3: #56606f; --e-fg-muted: #7e8c9e;
+  --e-line: #c5cad2; --e-line-soft: #dce1e8; --e-line-control: #7e8c9e; --e-line-focus: #322f40;
+  --e-solid: #322f40; --e-solid-hover: #47505e; --e-solid-active: #15181c; --e-solid-fg: #ffffff;
+  --e-accent: #47505e; --e-accent-tint: #dce3ec; --e-accent-fg: #ffffff;
+  --e-success: #3e7a56; --e-success-tint: #e8f1eb;
+  --e-warning: #8a6520; --e-warning-tint: #f6efdf;
+  --e-danger: #9b3a31; --e-danger-tint: #f7e9e7;
+  --e-top-bg: #47505e; --e-top-fg: #ffffff; --e-top-fg-2: #dfe3e9; --e-top-line: #7e8c9e;
+  --e-shadow-1: 1px 1px 0 rgb(21 24 28 / 0.14); --e-shadow-2: 2px 2px 0 rgb(21 24 28 / 0.22);
+  --e-shadow-3: 4px 4px 0 rgb(21 24 28 / 0.26);
+  color-scheme: light;
+}
+/* ── тёмная, только явным выбором: те же тона, графит Capital Group ── */
+[data-theme='dark'] {
+  --e-bg: #1a1d22; --e-bg-sunken: #141619; --e-surface: #23272e; --e-surface-hover: #2b3038;
+  --e-surface-active: #333944;
+  --e-fg: #e5e9ef; --e-fg-2: #c5cad2; --e-fg-3: #a3aebc; --e-fg-muted: #7e8c9e;
+  --e-line: #333944; --e-line-soft: #2b3038; --e-line-control: #7e8c9e; --e-line-focus: #c5cad2;
+  --e-solid: #e5e9ef; --e-solid-hover: #ffffff; --e-solid-active: #c5cad2; --e-solid-fg: #15181c;
+  --e-accent: #c5cad2; --e-accent-tint: #2f3540; --e-accent-fg: #15181c;
+  --e-success: #86c39c; --e-success-tint: #1e2a23;
+  --e-warning: #e0be72; --e-warning-tint: #2a2620;
+  --e-danger: #ec9e96; --e-danger-tint: #2b2020;
+  --e-top-bg: #322f40; --e-top-fg: #ffffff; --e-top-fg-2: #c5cad2; --e-top-line: #47505e;
+  --e-shadow-1: 1px 1px 0 rgb(0 0 0 / 0.55); --e-shadow-2: 2px 2px 0 rgb(0 0 0 / 0.60);
+  --e-shadow-3: 4px 4px 0 rgb(0 0 0 / 0.66);
+  color-scheme: dark;
+}
+:root {
+  --e-font-sans: 'Basis Grotesque Pro', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --e-font-num: 'OCR A Becker', ui-monospace, 'SF Mono', 'Cascadia Mono', 'Roboto Mono', monospace;
+  --e-size-2xs: .6875rem; --e-size-xs: .75rem; --e-size-sm: .875rem; --e-size-md: 1rem;
+  --e-size-lg: 1.125rem; --e-size-xl: 1.375rem; --e-size-2xl: 1.75rem;
+  --e-leading-tight: 1.15; --e-leading-snug: 1.3; --e-leading-normal: 1.5;
+  --e-tracking-caps: .07em;
+  --e-space-1: 2px; --e-space-2: 4px; --e-space-3: 6px; --e-space-4: 8px; --e-space-5: 12px;
+  --e-space-6: 16px; --e-space-7: 20px; --e-space-8: 24px; --e-space-9: 32px; --e-space-10: 40px;
+  --e-radius-xs: 4px; --e-radius-sm: 6px; --e-radius-md: 10px; --e-radius-lg: 14px;
+  --e-control-h-sm: 32px; --e-control-h-md: 44px; --e-control-h-lg: 52px; --e-topbar-h: 52px;
+  --e-dur-fast: 130ms; --e-dur-base: 200ms; --e-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --e-z-sticky: 10; --e-z-scrim: 40;
+
+  /* «Проверка»: на белом листе, одинаково в обеих темах. SVG показывается как
+     есть (своими цветами стиля), поэтому DWG рисуется цветом, которого в стиле
+     нет: зелёным (--el__color-green-600 элементара). */
+  --ck-sheet: #ffffff;
+  --ck-src: rgb(30 170 60);     /* DWG — исходник */
+  --ck-del: rgb(253 47 75);     /* только в DWG — убрано */
+  --ck-add: rgb(0 100 240);     /* только в SVG — добавлено */
+}
+@media (prefers-reduced-motion: reduce) {
+  :root { --e-dur-fast: 1ms; --e-dur-base: 1ms; }
+  *, *::before, *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important;
+                           transition-duration: 1ms !important; scroll-behavior: auto !important; }
+}
+@media (prefers-contrast: more) {
+  :root, [data-theme='light'], [data-theme='dark'] { --e-line: var(--e-fg-3); --e-line-control: var(--e-fg-3); }
+}
+
+/* ── основа ── */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0; overflow: hidden; background: var(--e-bg); color: var(--e-fg);
+  font: var(--e-size-md)/var(--e-leading-normal) var(--e-font-sans);
+  -webkit-font-smoothing: antialiased; font-synthesis: none;
+}
+h1, h2, h3, p, ol, ul, dl, dd { margin: 0; padding: 0; }
+button, input { font: inherit; color: inherit; }
+.num { font-family: var(--e-font-num); font-variant-numeric: tabular-nums lining-nums; letter-spacing: 0; }
+:focus { outline: none; }
+:focus-visible { outline: 2px solid var(--e-line-focus); outline-offset: 2px; }
+.skip { position: absolute; left: var(--e-space-4); top: -100px; z-index: var(--e-z-scrim);
+        background: var(--e-solid); color: var(--e-solid-fg); padding: var(--e-space-4) var(--e-space-5);
+        border-radius: var(--e-radius-sm); text-decoration: none; }
+.skip:focus-visible { top: var(--e-space-4); }
+[hidden] { display: none !important; }
+
+/* ── каркас: всё в один экран ── */
+.app { display: grid; grid-template-rows: var(--e-topbar-h) minmax(0, 1fr); height: 100vh; height: 100dvh; }
+.top {
+  display: flex; align-items: center; gap: var(--e-space-5); padding: 0 var(--e-space-6); min-width: 0;
+  border-bottom: 1px solid var(--e-top-line); background: var(--e-top-bg); color: var(--e-top-fg);
+}
+.top :focus-visible { outline-color: var(--e-top-fg); }
+.top .btn { background: transparent; color: var(--e-top-fg); border-color: var(--e-top-fg-2); }
+.top .btn:hover:not(:disabled) { background: rgb(255 255 255 / .12); }
+.brand { display: flex; align-items: center; gap: var(--e-space-4); font-weight: 500; font-size: var(--e-size-lg); flex: none; }
+.logo { display: block; flex: none; block-size: 18px; inline-size: calc(18px * 563 / 370);
+        background: currentColor; mask: url(elementar.svg) no-repeat center/contain;
+        -webkit-mask: url(elementar.svg) no-repeat center/contain; }
+.brand .sep { color: var(--e-top-fg-2); font-weight: 400; }
+.badge { flex: none; font-size: var(--e-size-xs); letter-spacing: var(--e-tracking-caps); text-transform: uppercase;
+         color: var(--e-top-fg); border: 1px solid var(--e-top-fg-2); padding: 1px var(--e-space-3);
+         border-radius: var(--e-radius-xs); }
+.top .lead { color: var(--e-top-fg-2); font-size: var(--e-size-sm); margin-left: var(--e-space-2);
+             white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.top .sp { flex: 1; }
+.top .btn { flex: none; }
+
+.work { display: grid; grid-template-columns: clamp(272px, 24vw, 340px) minmax(0, 1fr); min-height: 0; }
+
+/* ── левая колонка: шаги ── */
+.side {
+  display: flex; flex-direction: column; gap: var(--e-space-6); padding: var(--e-space-6);
+  border-right: 1px solid var(--e-line); background: var(--e-bg); overflow-y: auto; min-height: 0;
+}
+.step h2 {
+  display: flex; align-items: center; gap: var(--e-space-4); margin-bottom: var(--e-space-4);
+  font-size: var(--e-size-sm); font-weight: 500; color: var(--e-fg-2);
+}
+.step h2 .n {
+  display: inline-grid; place-items: center; inline-size: 22px; block-size: 22px; border-radius: var(--e-radius-xs);
+  background: var(--e-bg-sunken); border: 1px solid var(--e-line); font-size: var(--e-size-xs); color: var(--e-fg);
+}
+.step.done h2 .n { background: var(--e-solid); color: var(--e-solid-fg); border-color: var(--e-solid); }
+
+.filecard {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0 var(--e-space-5); align-items: center;
+  padding: var(--e-space-5); border: 1px solid var(--e-line); border-radius: var(--e-radius-md);
+  background: var(--e-surface); box-shadow: var(--e-shadow-1);
+}
+.filecard .ic { grid-row: span 2; inline-size: 28px; block-size: 36px; color: var(--e-fg-3); }
+.filecard .nm { font-weight: 500; overflow-wrap: anywhere; line-height: var(--e-leading-snug); }
+.filecard .meta { font-size: var(--e-size-sm); color: var(--e-fg-3); }
+.filecard.empty .nm { font-weight: 400; color: var(--e-fg-3); }
+.linkbtn { appearance: none; background: none; border: 0; padding: 0; color: var(--e-accent);
+           text-decoration: underline; text-underline-offset: 2px; cursor: pointer; font-size: var(--e-size-sm); }
+.err {
+  margin-top: var(--e-space-4); padding: var(--e-space-4) var(--e-space-5); border-radius: var(--e-radius-sm);
+  background: var(--e-danger-tint); color: var(--e-danger); font-size: var(--e-size-sm); line-height: var(--e-leading-snug);
+}
+
+.styles { display: grid; gap: var(--e-space-4); }
+.style {
+  appearance: none; display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: var(--e-space-5); align-items: center;
+  text-align: start; padding: var(--e-space-4); border: 1px solid var(--e-line); border-radius: var(--e-radius-md);
+  background: var(--e-surface); cursor: pointer; min-height: var(--e-control-h-lg);
+}
+.style:hover { background: var(--e-surface-hover); }
+.style[aria-checked='true'] { border-color: var(--e-fg); box-shadow: inset 0 0 0 1px var(--e-fg); }
+.style .thumb { display: block; inline-size: 64px; block-size: 48px; border-radius: var(--e-radius-xs);
+                border: 1px solid var(--e-line); background: #fff; }
+.style b { display: block; font-weight: 500; }
+.style .sw { display: flex; gap: 3px; margin-top: var(--e-space-2); }
+.style .sw i { inline-size: 14px; block-size: 14px; border-radius: 3px; border: 1px solid rgb(0 0 0 / .15); }
+.numsbox { margin-top: var(--e-space-4); font-size: var(--e-size-sm); }
+.numsbox summary { cursor: pointer; color: var(--e-fg-2); padding: var(--e-space-2) 0; line-height: var(--e-leading-snug);
+                   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.numsbox summary span { color: var(--e-fg-3); }
+.numsbox[open] summary { white-space: normal; }
+.numsbox[open] summary span { display: none; }
+.nums { border: 0; margin: var(--e-space-3) 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--e-space-3); }
+.vh { position: absolute !important; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.chip { display: inline-flex; align-items: center; gap: var(--e-space-2); padding: var(--e-space-1) var(--e-space-4);
+        min-block-size: 28px; border: 1px solid var(--e-line-control); border-radius: var(--e-radius-sm);
+        background: var(--e-surface); font-size: var(--e-size-sm); cursor: pointer; user-select: none; }
+.chip input { inline-size: 14px; block-size: 14px; margin: 0; accent-color: var(--e-accent); }
+.chip:has(input:checked) { background: var(--e-accent-tint); border-color: var(--e-accent); }
+.chip:has(input:focus-visible) { outline: 2px solid var(--e-line-focus); outline-offset: 2px; }
+.chip input:focus-visible { outline: none; }
+.style small { display: block; font-size: var(--e-size-xs); color: var(--e-fg-3); }
+
+.btn {
+  appearance: none; display: inline-flex; align-items: center; justify-content: center; gap: var(--e-space-4);
+  min-block-size: var(--e-control-h-md); padding: 0 var(--e-space-6); border-radius: var(--e-radius-sm);
+  border: 1px solid var(--e-line-control); background: var(--e-surface); color: var(--e-fg);
+  font-weight: 500; cursor: pointer; text-decoration: none; white-space: nowrap;
+  transition: background-color var(--e-dur-fast) var(--e-ease-standard), translate var(--e-dur-fast) var(--e-ease-standard);
+}
+.btn:hover:not(:disabled) { background: var(--e-surface-hover); }
+.btn:active:not(:disabled) { background: var(--e-surface-active); }
+.btn.primary { background: var(--e-solid); color: var(--e-solid-fg); border-color: var(--e-solid); box-shadow: var(--e-shadow-2); }
+.btn.primary:hover:not(:disabled) { background: var(--e-solid-hover); }
+.btn.primary:active:not(:disabled) { background: var(--e-solid-active); box-shadow: none; translate: 2px 2px; }
+.btn.primary:focus-visible { outline-offset: 3px; }
+.btn:disabled { cursor: default; background: var(--e-bg-sunken); color: var(--e-fg-3); border-color: var(--e-line); box-shadow: none; }
+.btn.wide { inline-size: 100%; min-block-size: var(--e-control-h-lg); font-size: var(--e-size-lg); }
+.btn.sm { min-block-size: var(--e-control-h-sm); padding: 0 var(--e-space-5); font-size: var(--e-size-sm); }
+.btn svg { inline-size: 18px; block-size: 18px; flex: none; }
+.hint { margin-top: var(--e-space-4); font-size: var(--e-size-sm); color: var(--e-fg-3); min-height: 1.5em; }
+.hint.need { color: var(--e-fg); font-weight: 500; padding: var(--e-space-3) var(--e-space-4); border-radius: var(--e-radius-sm);
+             background: var(--e-warning-tint); box-shadow: inset 3px 0 0 var(--e-warning); }
+
+.sum .row { display: flex; justify-content: space-between; gap: var(--e-space-5); align-items: baseline;
+            padding: var(--e-space-3) 0; border-bottom: 1px solid var(--e-line-soft); font-size: var(--e-size-sm); }
+.sum .row dt { color: var(--e-fg-2); }
+.sum .row dd { font-size: var(--e-size-md); text-align: end; white-space: nowrap; }
+.sum .row dd small { font-size: var(--e-size-xs); color: var(--e-fg-3); font-family: var(--e-font-sans); }
+.note { margin-top: var(--e-space-4); padding: var(--e-space-4) var(--e-space-5); border-radius: var(--e-radius-sm);
+        font-size: var(--e-size-sm); line-height: var(--e-leading-snug); background: var(--e-bg-sunken); color: var(--e-fg-2); }
+.note.warn { background: var(--e-warning-tint); color: var(--e-fg); box-shadow: inset 3px 0 0 var(--e-warning); }
+
+/* Низкое окно (ноутбук, ~650 px): шаги плотнее, чтобы итог помещался без прокрутки */
+@media (max-height: 760px) {
+  .side { gap: var(--e-space-5); padding: var(--e-space-5) var(--e-space-6); }
+  .step h2 { margin-bottom: var(--e-space-3); }
+  .filecard { padding: var(--e-space-4) var(--e-space-5); }
+  .style { padding: var(--e-space-3) var(--e-space-4); }
+  .style .thumb { block-size: 40px; }
+  .btn.wide { min-block-size: var(--e-control-h-md); font-size: var(--e-size-md); }
+  .hint { margin-top: var(--e-space-3); }
+  .sum .row { padding: var(--e-space-2) 0; }
+  .note { margin-top: var(--e-space-3); padding: var(--e-space-3) var(--e-space-4); }
+}
+
+/* ── сцена ── */
+.stage { display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; grid-template-columns: minmax(0, 1fr); min-height: 0; min-width: 0;
+         padding: var(--e-space-5) var(--e-space-6) var(--e-space-4); gap: var(--e-space-4); background: var(--e-bg-sunken); }
+.stage:focus { outline: none; }
+.stage > .bar { grid-row: 1; } .stage > .ckbar { grid-row: 2; } .stage > .view { grid-row: 3; } .stage > .foot { grid-row: 4; }
+.bar { display: flex; align-items: center; gap: var(--e-space-5); flex-wrap: wrap; }
+.bar .sp { flex: 1; }
+.tabs { display: inline-flex; padding: 3px; gap: 3px; border-radius: var(--e-radius-md); background: var(--e-surface);
+        border: 1px solid var(--e-line); }
+.tab { appearance: none; border: 0; background: none; cursor: pointer; padding: 0 var(--e-space-6);
+       min-block-size: 38px; border-radius: var(--e-radius-sm); font-weight: 500; color: var(--e-fg-2); }
+.tab:hover { background: var(--e-surface-hover); color: var(--e-fg); }
+.tab[aria-selected='true'] { background: var(--e-solid); color: var(--e-solid-fg); }
+.dlsize { font-size: var(--e-size-sm); color: var(--e-fg-3); }
+
+.ckbar { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--e-space-4); padding: var(--e-space-4) var(--e-space-5);
+         border: 1px solid var(--e-line); border-radius: var(--e-radius-md); background: var(--e-surface); }
+.ckrow { display: flex; flex-wrap: wrap; align-items: center; gap: var(--e-space-4) var(--e-space-6); }
+.seg { display: inline-flex; border: 1px solid var(--e-line-control); border-radius: var(--e-radius-sm); overflow: hidden; }
+.seg button { appearance: none; border: 0; background: var(--e-surface); cursor: pointer; padding: 0 var(--e-space-5);
+              min-block-size: var(--e-control-h-sm); font-weight: 500; font-size: var(--e-size-sm); }
+.seg button + button { border-left: 1px solid var(--e-line-control); }
+.seg button:hover { background: var(--e-surface-hover); }
+.seg button[aria-pressed='true'] { background: var(--e-solid); color: var(--e-solid-fg); }
+.seg button:focus-visible { outline-offset: -4px; outline-color: var(--e-accent); box-shadow: inset 0 0 0 2px var(--e-surface); }
+.tog { display: inline-flex; align-items: center; gap: var(--e-space-3); font-size: var(--e-size-sm); cursor: pointer; }
+.tog input { inline-size: 16px; block-size: 16px; accent-color: var(--e-accent); margin: 0; }
+.lg { display: inline-flex; align-items: center; gap: var(--e-space-3); font-size: var(--e-size-sm); color: var(--e-fg-2); }
+.lg i, .ptag i { display: inline-block; inline-size: 22px; block-size: 4px; border-radius: 2px; flex: none; }
+.lg i.src, .ptag i.src { background: var(--ck-src); }
+.lg i.our, .ptag i.our { block-size: 12px; inline-size: 18px; border-radius: 2px;
+  background: linear-gradient(90deg, var(--st-wall, #363636) 0 30%, var(--st-floor, #d6d6d6) 30%); box-shadow: 0 0 0 1px var(--e-line-control); }
+.lg i.del { background: var(--ck-del); } .lg i.add { background: var(--ck-add); }
+.lg b { font-weight: 500; color: var(--e-fg); }
+.verdict { font-size: var(--e-size-sm); line-height: var(--e-leading-snug); }
+.verdict strong { font-weight: 500; }
+.verdict.ok strong { color: var(--e-success); }
+.verdict.bad strong { color: var(--e-danger); }
+.verdict .parts { color: var(--e-fg-2); }
+@media (max-width: 1200px), (max-height: 760px) {
+  .verdict .parts { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+}
+.zoom { position: absolute; right: var(--e-space-4); bottom: var(--e-space-4); display: inline-flex; gap: var(--e-space-2);
+        padding: var(--e-space-2); border-radius: var(--e-radius-md); background: rgb(255 255 255 / .9); border: 1px solid #dad5cc; }
+.zoom .btn { background: #fff; color: #221f1b; border-color: #8b8374; }
+.zoom .btn { min-inline-size: var(--e-control-h-sm); padding: 0 var(--e-space-4); }
+
+/* Поле чертежа */
+.view { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--e-space-4); min-height: 0; }
+.view[data-mode='side'][data-tab='check'] { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.view:focus-visible { outline-offset: 3px; border-radius: var(--e-radius-md); }
+.pane { position: relative; overflow: hidden; min-height: 0; border-radius: var(--e-radius-md); background: var(--ck-sheet);
+        border: 1px solid var(--e-line); box-shadow: var(--e-shadow-1); cursor: grab; touch-action: none; user-select: none; }
+.pane.drag { cursor: grabbing; }
+.lay { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.lay svg { display: block; width: 100%; height: 100%; }
+/* Результат — тот же файл, что скачивается: <img> на тот же blob, без единой
+   правки внутри. Масштаб и сдвиг — положением и размером картинки. */
+.lay.our img { position: absolute; display: block; max-width: none; max-height: none; }
+.lay.src { z-index: 2; }
+.lay.our { z-index: 1; }
+.view.under .lay.src { z-index: 1; }
+.view.under .lay.our { z-index: 2; mix-blend-mode: multiply; }
+.diff { z-index: 3; }
+.ptag { z-index: 4; } .zoom { z-index: 5; }
+.range { display: inline-flex; align-items: center; gap: var(--e-space-3); font-size: var(--e-size-sm); }
+.range input { inline-size: 110px; accent-color: var(--e-accent); }
+.diff { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; opacity: 0;
+        transition: opacity var(--e-dur-fast) var(--e-ease-standard); }
+.diff.on { opacity: 1; }
+.ptag { position: absolute; left: var(--e-space-4); top: var(--e-space-4); display: inline-flex; align-items: center;
+        gap: var(--e-space-3); padding: var(--e-space-2) var(--e-space-4); border-radius: var(--e-radius-sm);
+        background: rgb(255 255 255 / .94); color: #221f1b; border: 1px solid #dad5cc; font-size: var(--e-size-sm);
+        font-weight: 500; pointer-events: none; }
+.ptag i.our { box-shadow: none; }
+
+.lay.dwg img { position: absolute; display: block; max-width: none; max-height: none; }
+.lay.dwg { z-index: 1; background: #fff; }
+.lg i.dwg, .ptag i.dwg { block-size: 12px; inline-size: 18px; border-radius: 2px; box-shadow: 0 0 0 1px var(--e-line-control);
+  background: linear-gradient(90deg, #000 0 34%, #ff0000 34% 67%, #0000ff 67%); }
+.pnote { position: absolute; left: var(--e-space-4); bottom: var(--e-space-4); z-index: 4; max-width: 60%;
+         padding: var(--e-space-2) var(--e-space-4); border-radius: var(--e-radius-sm); font-size: var(--e-size-sm);
+         background: #f6efdf; color: #15181c; border: 1px solid #8a6520; pointer-events: none; }
+
+#paneB { display: none; }
+.view[data-mode='side'][data-tab='check'] #paneB { display: block; }
+/* Что видно в каком виде. «DWG» и «Рядом» (слева) — исходник как в AutoCAD;
+   зелёные линии исходника — только в «Оба». Если рендер не удался, вместо него
+   показываются линии (.нет-рендера) и об этом говорит плашка. */
+.view[data-tab='result'] .ptag, .view[data-tab='result'] .lay.src, .view[data-tab='result'] .lay.dwg,
+.view[data-tab='result'] .diff, .view[data-tab='result'] .pnote { display: none; }
+.view[data-tab='check'][data-mode='src'] #paneA .lay.our,
+.view[data-tab='check'][data-mode='src'] #paneA .lay.src,
+.view[data-tab='check'][data-mode='our'] #paneA .lay.src,
+.view[data-tab='check'][data-mode='our'] #paneA .lay.dwg,
+.view[data-tab='check'][data-mode='both'] #paneA .lay.dwg,
+.view[data-tab='check'][data-mode='side'] #paneA .lay.our,
+.view[data-tab='check'][data-mode='side'] #paneA .lay.src { display: none; }
+.view.нет-рендера[data-tab='check'][data-mode='src'] #paneA .lay.src,
+.view.нет-рендера[data-tab='check'][data-mode='side'] #paneA .lay.src { display: block; }
+.view:not(.нет-рендера) .pnote, .view[data-mode='our'] .pnote, .view[data-mode='both'] .pnote { display: none; }
+.view[data-tab='check']:not([data-mode='both']) .diff { display: none; }
+
+/* Исходник (вспомогательный рисунок, не результат): тонкие зелёные линии,
+   текст и размеры — пунктирной рамкой своего габарита */
+.view[data-tab='check'] .lay.src svg g { fill: none !important; stroke: var(--ck-src) !important; stroke-width: 1px !important; }
+.view[data-tab='check'] .lay.src svg g.src-txt { stroke-dasharray: 3 2; }
+.view[data-tab='check'] .lay.src svg path { vector-effect: non-scaling-stroke; }
+
+/* Пустая сцена — большая зона загрузки */
+.dropzone {
+  position: relative; display: grid; place-content: center; justify-items: center; gap: var(--e-space-5);
+  text-align: center; padding: var(--e-space-8); min-height: 0; grid-row: 1 / 4;
+  border: 2px dashed var(--e-line-control); border-radius: var(--e-radius-lg); background: var(--e-surface);
+  transition: background-color var(--e-dur-fast) var(--e-ease-standard), border-color var(--e-dur-fast) var(--e-ease-standard);
+}
+body.over .dropzone, body.over .view .pane { border-color: var(--e-accent); background-color: var(--e-accent-tint); }
+.dropzone .big { inline-size: 56px; block-size: 56px; color: var(--e-fg-3); }
+.dropzone h3 { font-size: var(--e-size-2xl); font-weight: 500; line-height: var(--e-leading-tight); overflow-wrap: anywhere; }
+.dropzone p { color: var(--e-fg-2); max-width: 34em; }
+.dropzone .fine { font-size: var(--e-size-sm); color: var(--e-fg-3); }
+
+/* Прогресс */
+.progress, .problem { display: grid; place-content: center; justify-items: start; gap: var(--e-space-6); padding: var(--e-space-8);
+            border: 1px solid var(--e-line); border-radius: var(--e-radius-lg); background: var(--e-surface); grid-row: 1 / 4; }
+.progress h3, .problem h3 { font-size: var(--e-size-xl); font-weight: 500; }
+.stages { list-style: none; display: grid; gap: var(--e-space-5); }
+.stages li { display: grid; grid-template-columns: 28px auto; align-items: center; gap: var(--e-space-5);
+             font-size: var(--e-size-lg); color: var(--e-fg-3); }
+.stages li .dot { inline-size: 24px; block-size: 24px; border-radius: 50%; border: 2px solid var(--e-line-control);
+                  display: grid; place-items: center; }
+.stages li.now { color: var(--e-fg); font-weight: 500; }
+.stages li.now .dot { border-color: var(--e-accent); border-top-color: transparent; animation: spin 900ms linear infinite; }
+.stages li.ok { color: var(--e-fg-2); }
+.stages li.ok .dot { border-color: var(--e-success); background: var(--e-success); }
+.stages li.ok .dot::after { content: ''; inline-size: 9px; block-size: 5px; border: 2px solid var(--e-surface);
+                            border-top: 0; border-right: 0; rotate: -45deg; translate: 0 -1px; }
+@keyframes spin { to { rotate: 360deg; } }
+@media (prefers-reduced-motion: reduce) { .stages li.now .dot { animation: none; border-top-color: var(--e-accent); border-style: dotted; } }
+.elapsed { font-size: var(--e-size-sm); color: var(--e-fg-3); }
+
+/* Ошибка и незнакомые слои */
+.problem h3 { color: var(--e-danger); }
+.problem p { max-width: 38em; }
+.ask { overflow-y: auto; min-height: 0; padding: var(--e-space-6); border: 1px solid var(--e-line); grid-row: 1 / 4;
+       border-radius: var(--e-radius-lg); background: var(--e-surface); }
+.ask > p { max-width: 46em; margin-bottom: var(--e-space-6); }
+.ask b { font-weight: 500; }
+.ask .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--e-space-6); }
+.lcard { border: 1px solid var(--e-line); border-radius: var(--e-radius-md); padding: var(--e-space-5); background: var(--e-bg); }
+.lcard b { overflow-wrap: anywhere; }
+.lcard .meta { font-size: var(--e-size-sm); color: var(--e-fg-3); }
+.lcard .pic { margin: var(--e-space-4) 0; border: 1px solid var(--e-line); border-radius: var(--e-radius-sm); background: #fff; }
+.lcard .pic svg { display: block; width: 100%; height: auto; max-height: 160px; }
+.lcard .seg { display: flex; } .lcard .seg button { flex: 1; padding: 0 var(--e-space-3); }
+.lcard.done { opacity: .5; }
+
+.foot { font-size: var(--e-size-xs); color: var(--e-fg-3); display: flex; gap: var(--e-space-6); flex-wrap: wrap; min-height: 1.6em; align-items: center; }
+kbd { font-family: var(--e-font-sans); font-size: var(--e-size-xs); padding: 0 var(--e-space-3); border-radius: var(--e-radius-xs);
+      border: 1px solid var(--e-line-control); background: var(--e-surface); color: var(--e-fg-2); }
+
+input[type=file] { display: none; }
+</style>
+</head>
+<body>
+<a class="skip" href="#stage">К чертежу</a>
+<div class="app">
+  <header class="top">
+    <span class="brand"><span class="logo" aria-hidden="true"></span><span>элементар</span><span class="sep">/</span><span>Чертёжер</span></span>
+    <span class="badge">бета</span>
+    <span class="lead">DWG → чистый SVG. Чертёж обрабатывается на этом компьютере и никуда не отправляется.</span>
+    <span class="sp"></span>
+    <button class="btn sm" id="theme" aria-pressed="false">Тёмная тема</button>
+  </header>
+
+  <div class="work">
+    <aside class="side" aria-label="Настройки">
+      <section class="step" id="s1">
+        <h2><span class="n num">1</span>Чертёж</h2>
+        <div class="filecard empty" id="filecard">
+          <svg class="ic" viewBox="0 0 32 40" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 1h18l8 8v30H3z"/><path d="M21 1v8h8"/><path d="M8 30h16M8 25h10M8 20h16"/></svg>
+          <span class="nm" id="fname">Файл не выбран</span>
+          <span class="meta" id="fmeta"><button class="linkbtn" id="pick2">Выбрать файл</button></span>
+        </div>
+        <p class="err" id="ferr" role="alert" hidden></p>
+        <input type="file" id="file" accept=".dwg,.dxf">
+      </section>
+
+      <section class="step" id="s2">
+        <h2><span class="n num">2</span>Стиль</h2>
+        <div class="styles" id="styles" role="radiogroup" aria-label="Стиль чертежа"></div>
+        <details class="numsbox" id="numsbox">
+        <summary>Цифры на чертеже: <span id="numsum">номера помещений, площади, размеры, отметки, прочие</span></summary>
+        <fieldset class="nums" id="nums">
+          <legend class="vh">Какие цифры перенести</legend>
+          <label class="chip"><input type="checkbox" value="помещения" checked>номера помещений</label>
+          <label class="chip"><input type="checkbox" value="площади" checked>площади</label>
+          <label class="chip"><input type="checkbox" value="размеры" checked>размеры</label>
+          <label class="chip"><input type="checkbox" value="отметки" checked>отметки</label>
+          <label class="chip"><input type="checkbox" value="прочие" checked>прочие</label>
+          <label class="chip"><input type="checkbox" value="оси">оси</label>
+          <label class="chip dl"><input type="checkbox" id="dimlines">размерные линии</label>
+        </fieldset>
+        </details>
+      </section>
+
+      <section class="step" id="s3">
+        <button class="btn primary wide" id="go" disabled>Собрать SVG</button>
+        <p class="hint" id="gohint" aria-live="polite">Сначала выберите чертёж.</p>
+      </section>
+
+      <section class="step" id="s4" hidden>
+        <h2><span class="n num">3</span>Итог</h2>
+        <dl class="sum" id="sum"></dl>
+        <div id="notes"></div>
+      </section>
+    </aside>
+
+    <main class="stage" id="stage" tabindex="-1">
+      <div class="bar" id="bar" hidden>
+        <div class="tabs" role="tablist" aria-label="Что показать">
+          <button class="tab" role="tab" id="tabResult" aria-selected="true" aria-controls="view">Результат</button>
+          <button class="tab" role="tab" id="tabCheck" aria-selected="false" aria-controls="view" tabindex="-1">Проверка: DWG и SVG</button>
+        </div>
+        <span class="sp"></span>
+        <span class="dlsize" id="dlsize"></span>
+        <a class="btn primary" id="dl" href="#" download>
+          <svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M10 3v10M5.5 8.5 10 13l4.5-4.5M4 16.5h12"/></svg>
+          Скачать SVG</a>
+      </div>
+
+      <div class="ckbar" id="ckbar" hidden>
+        <div class="ckrow">
+          <div class="seg" role="group" aria-label="Что показать на листе">
+            <button data-mode="src" aria-pressed="false">DWG</button>
+            <button data-mode="our" aria-pressed="false">SVG</button>
+            <button data-mode="both" aria-pressed="true">Оба</button>
+            <button data-mode="side" aria-pressed="false">Рядом</button>
+          </div>
+          <div class="seg" role="group" aria-label="DWG относительно SVG" data-only-both>
+            <button data-order="over" aria-pressed="true">DWG над SVG</button>
+            <button data-order="under" aria-pressed="false">под SVG</button>
+          </div>
+          <label class="range" data-only-both>Прозрачность DWG <input type="range" id="ckop" min="0" max="90" step="5" value="0" aria-valuetext="0 %"></label>
+          <label class="tog" data-only-both><input type="checkbox" id="ckdiff" checked> Подсветить отличия</label>
+        </div>
+        <div class="ckrow">
+          <span class="lg" data-legend="dwg"><i class="dwg"></i><b>DWG</b> — исходник как в AutoCAD: цвета, веса и типы линий из файла</span>
+          <span class="lg" data-legend="src"><i class="src"></i><b>DWG</b> — исходник одним цветом, тонкие линии</span>
+          <span class="lg" data-legend="our"><i class="our"></i><b>SVG</b> — результат, как скачается</span>
+          <span class="lg" data-diff-legend><i class="del"></i>только в DWG — убрано</span>
+          <span class="lg" data-diff-legend><i class="add"></i>только в SVG — добавлено</span>
+        </div>
+        <p class="verdict" id="verdict"></p>
+      </div>
+
+      <div class="view" id="view" data-tab="result" data-mode="both" hidden aria-label="Чертёж: масштаб и сдвиг с клавиатуры" tabindex="0">
+        <div class="pane" id="paneA"></div>
+        <div class="pane" id="paneB"></div>
+        <div class="zoom" role="group" aria-label="Масштаб">
+          <button class="btn sm" data-zoom="out" aria-label="Уменьшить">−</button>
+          <button class="btn sm" data-zoom="in" aria-label="Увеличить">+</button>
+          <button class="btn sm" data-zoom="fit">Вписать</button>
+        </div>
+      </div>
+
+      <div class="dropzone" id="drop" role="region" aria-label="Загрузка чертежа">
+        <svg class="big" viewBox="0 0 56 56" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4h22l10 10v38H12z"/><path d="M34 4v10h10"/><path d="M28 42V22M20 30l8-8 8 8"/></svg>
+        <h3 id="dropTitle">Перетащите DWG или DXF</h3>
+        <p id="dropText">в это окно — или выберите файл на компьютере.</p>
+        <button class="btn primary" id="pick">Выбрать файл</button>
+        <p class="fine">Чертёж из AutoCAD или Revit, до <span class="num">200</span> МБ. Файл остаётся на этом компьютере.</p>
+      </div>
+
+      <div class="progress" id="progress" hidden>
+        <h3>Собираю чертёж</h3>
+        <ol class="stages" id="stages"></ol>
+        <p class="elapsed">Прошло <span class="num" id="elapsed">0,0</span> с</p>
+      </div>
+
+      <div class="problem" id="problem" hidden role="alert">
+        <h3>Не получилось</h3>
+        <p id="problemText"></p>
+        <button class="btn" id="problemPick">Выбрать другой файл</button>
+      </div>
+
+      <div class="ask" id="ask" hidden></div>
+
+      <p class="foot" id="foot"></p>
+    </main>
+  </div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const esc = s => String(s).replace(/[<>&"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
+const fmt = n => Number(n).toLocaleString('ru-RU').replace(/\s/g, '\u202f');
+const sec = t => t.toFixed(1).replace('.', ',');
+const human = n => n >= 1048576 ? (n / 1048576).toFixed(1).replace('.', ',') + ' МБ'
+                                 : Math.max(1, Math.round(n / 1024)) + ' КБ';
+const N = v => `<span class="num">${fmt(v)}</span>`;
+const plural = (n, a, b, c) => { const m = n % 100, k = n % 10;
+  return (m > 10 && m < 20) ? c : k === 1 ? a : (k > 1 && k < 5) ? b : c; };
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const S = { palettes: {}, file: null, style: null, busy: false, res: null, tab: 'result', mode: 'both', dlurl: null, srcIn: null, ourIn: null };
+
+/* ── тема ── */
+const themeBtn = $('#theme');
+const syncTheme = () => { const d = document.documentElement.dataset.theme === 'dark';
+  themeBtn.setAttribute('aria-pressed', String(d)); themeBtn.textContent = d ? 'Светлая тема' : 'Тёмная тема'; };
+themeBtn.onclick = () => {
+  const d = document.documentElement.dataset.theme !== 'dark';
+  document.documentElement.dataset.theme = d ? 'dark' : 'light';
+  try { localStorage.setItem('e.theme', d ? 'dark' : 'light'); } catch (e) {}
+  syncTheme();
+};
+syncTheme();
+
+/* ── экраны сцены: виден ровно один ── */
+function show(which) {
+  for (const id of ['drop', 'progress', 'problem', 'ask', 'view']) $('#' + id).hidden = id !== which;
+  const has = which === 'view';
+  $('#bar').hidden = !has;
+  $('#ckbar').hidden = !(has && S.tab === 'check');
+  foot();
+}
+function foot() {
+  const f = $('#foot');
+  if (!$('#view').hidden && S.tab === 'check')
+    f.innerHTML = '<span><kbd>Пробел</kbd> — DWG и SVG по очереди</span><span>колесо, <kbd>+</kbd> <kbd>−</kbd> — масштаб</span>' +
+                  '<span>перетаскивание, стрелки — сдвиг</span><span><kbd>0</kbd> — вписать</span>';
+  else if (!$('#view').hidden)
+    f.innerHTML = '<span>колесо, <kbd>+</kbd> <kbd>−</kbd> — масштаб</span><span>перетаскивание, стрелки — сдвиг</span><span><kbd>0</kbd> — вписать</span>';
+  else f.innerHTML = '';
+}
+
+/* ── шаг 2: стили с образцом ── */
+function образец(p) {
+  const f = p.floor || '#ddd', w = p.wall || '#333', d = p.door || '#666', g = p.generic || '#999', fx = p.fixture || '#fff';
+  return `<svg class="thumb" viewBox="0 0 64 48" aria-hidden="true">
+    <rect x="6" y="6" width="52" height="36" fill="${esc(f)}"/>
+    <rect x="38" y="24" width="13" height="10" fill="${esc(fx)}" stroke="${esc(g)}" stroke-width="1"/>
+    <path d="M6 6h52v36H6z M30 6v12 M30 30v12" fill="none" stroke="${esc(w)}" stroke-width="3.5"/>
+    <path d="M30 18a12 12 0 0 1 12 12 M30 18v12" fill="none" stroke="${esc(d)}" stroke-width="1.2"/></svg>`;
+}
+const имяСтиля = s => s.charAt(0).toUpperCase() + s.slice(1);
+fetch('styles').then(r => r.json()).then(list => {
+  S.palettes = Object.fromEntries(list.map(s => [s.name, s.palette || {}]));
+  $('#styles').innerHTML = list.map(s => {
+    const p = s.palette || {};
+    const sw = [p.floor, p.wall, p.door, p.generic].filter(Boolean).map(c => `<i style="background:${esc(c)}"></i>`).join('');
+    return `<button class="style" role="radio" aria-checked="false" data-s="${esc(s.name)}">${образец(p)}
+      <span><b>${esc(имяСтиля(s.name))}</b><span class="sw" aria-hidden="true">${sw}</span></span></button>`;
+  }).join('');
+  $$('#styles .style').forEach(b => b.onclick = () => выбратьСтиль(b));
+  const first = $('#styles .style');
+  if (first) выбратьСтиль(first, true);
+}).catch(() => { $('#styles').innerHTML = '<p class="err">Стили не загрузились. Обновите страницу.</p>'; });
+
+function выбратьСтиль(b, тихо) {
+  $$('#styles .style').forEach(x => { x.setAttribute('aria-checked', 'false'); x.tabIndex = -1; });
+  b.setAttribute('aria-checked', 'true'); b.tabIndex = 0;
+  const было = S.style; S.style = b.dataset.s;
+  ready();
+  if (!тихо && было !== S.style) пересобрать('Стиль изменён — пересобираю…');
+}
+$('#styles').addEventListener('keydown', e => {
+  const all = $$('#styles .style'); const i = all.indexOf(document.activeElement);
+  const k = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[e.key];
+  if (i < 0 || !k) return;
+  e.preventDefault(); const n = all[(i + k + all.length) % all.length]; n.focus(); выбратьСтиль(n);
+});
+
+/* ── шаг 1: файл ── */
+function ready() {
+  const go = $('#go');
+  go.disabled = !(S.file && S.style) || S.busy;
+  go.classList.toggle('primary', !S.res);
+  go.textContent = S.busy ? 'Собираю…' : S.res ? 'Собрать заново' : 'Собрать SVG';
+  if (!S.res) $('#gohint').textContent = S.busy ? '' : S.ask ? 'Нужен ваш ответ: справа незнакомые слои — скажите, что в них.'
+    : !S.file ? 'Сначала выберите чертёж.' : !S.style ? 'Выберите стиль.' : 'Всё готово — можно собирать.';
+  $('#gohint').classList.toggle('need', !!S.ask && !S.busy && !S.res);
+  $('#s1').classList.toggle('done', !!S.file);
+  $('#s2').classList.toggle('done', !!S.style);
+}
+function ошибкаФайла(t) { const e = $('#ferr'); e.textContent = t || ''; e.hidden = !t; }
+function take(f) {
+  if (!f || S.busy) return;
+  const ext = (f.name.match(/\.[^.]+$/) || [''])[0].toLowerCase();
+  if (ext !== '.dwg' && ext !== '.dxf') { ошибкаФайла(`«${f.name}» — не чертёж. Нужен файл DWG или DXF.`); return; }
+  if (f.size === 0) { ошибкаФайла(`«${f.name}» пустой. Выберите другой файл.`); return; }
+  if (f.size > 200 * 1048576) { ошибкаФайла(`«${f.name}» больше 200 МБ. Сохраните нужный лист отдельно и загрузите его.`); return; }
+  ошибкаФайла('');
+  S.file = f; S.res = null; S.ask = false;
+  $('#filecard').classList.remove('empty');
+  $('#fname').textContent = f.name;
+  $('#fmeta').innerHTML = `${ext.slice(1).toUpperCase()}, <span class="num">${human(f.size)}</span> · <button class="linkbtn" id="pick2">Заменить</button>`;
+  $('#pick2').onclick = pick;
+  $('#s4').hidden = true;
+  $('#dropTitle').textContent = f.name;
+  $('#dropText').innerHTML = `${ext.slice(1).toUpperCase()}, <span class="num">${human(f.size)}</span>. Файл выбран — нажмите «Собрать SVG» слева.`;
+  $('#pick').textContent = 'Выбрать другой файл';
+  $('#pick').classList.remove('primary');
+  show('drop');
+  ready();
+  $('#go').focus();
+}
+const pick = () => { if (!S.busy) $('#file').click(); };
+$('#pick').onclick = pick; $('#pick2').onclick = pick; $('#problemPick').onclick = pick;
+$('#file').onchange = e => { take(e.target.files[0]); e.target.value = ''; };
+// Перетаскивание принимается всем окном: зона загрузки — вся сцена.
+let глубина = 0;
+addEventListener('dragenter', e => { e.preventDefault(); глубина++; document.body.classList.add('over'); });
+addEventListener('dragover', e => { e.preventDefault(); });
+addEventListener('dragleave', () => { if (--глубина <= 0) { глубина = 0; document.body.classList.remove('over'); } });
+addEventListener('drop', e => { e.preventDefault(); глубина = 0; document.body.classList.remove('over');
+  if (e.dataTransfer && e.dataTransfer.files[0]) take(e.dataTransfer.files[0]); });
+
+/* ── сборка и стадии ──
+   Сервер отдаёт результат одним ответом, поэтому стадии идут по времени запроса
+   (оценка от размера файла), а последняя держится до настоящего ответа и
+   закрывается только им. Процентов нет: их нечем подтвердить. */
+function стадии(dwg, size) {
+  const mb = size / 1048576;
+  const всего = dwg ? 1.2 + 2.2 * mb : 0.8 + 0.4 * mb;
+  const границы = [dwg ? .12 : .06, .4, .7].map(x => x * всего);
+  const имена = [dwg ? 'Читаю DWG' : 'Читаю DXF', 'Убираю оформление', 'Строю пол', 'Рисую'];
+  $('#stages').innerHTML = имена.map(n => `<li><span class="dot" aria-hidden="true"></span><span>${n}</span></li>`).join('');
+  const li = $$('#stages li'); const t0 = performance.now();
+  const тик = () => {
+    const t = (performance.now() - t0) / 1000;
+    const k = границы.filter(g => t >= g).length;
+    li.forEach((x, i) => { x.className = i < k ? 'ok' : i === k ? 'now' : '';
+                           if (i === k) x.setAttribute('aria-current', 'step'); else x.removeAttribute('aria-current'); });
+    $('#elapsed').textContent = sec(t);
+  };
+  тик(); const таймер = setInterval(тик, 100);
+  return () => { clearInterval(таймер); li.forEach(x => { x.className = 'ok'; x.removeAttribute('aria-current'); });
+                 return (performance.now() - t0) / 1000; };
+}
+
+$('#go').onclick = собрать;
+const виды = () => $$('#nums input[value]:checked').map(x => x.value).join(',') || 'нет';
+const сводкаВидов = () => {
+  const on = $$('#nums input:checked').map(x => x.parentElement.textContent.trim());
+  $('#numsum').textContent = on.length ? on.join(', ') : 'не переносить';
+};
+// Цифры поменяли после сборки — пересобираем сами: результат на экране и в
+// «Скачать SVG» всегда соответствует переключателям.
+let пересборка = null;
+function пересобрать(почему) {
+  if (!S.res && !S.busy) return;
+  if (S.busy) { S.again = true; return; }
+  clearTimeout(пересборка);
+  $('#gohint').textContent = почему;
+  пересборка = setTimeout(собрать, 500);
+}
+$('#nums').addEventListener('change', () => { сводкаВидов(); пересобрать('Цифры изменены — пересобираю…'); });
+async function собрать() {
+  if (!S.file || !S.style || S.busy) return;
+  S.busy = true; S.res = null; S.ask = false; S.again = false; ready();
+  $('#s4').hidden = true;
+  show('progress');
+  const стоп = стадии(/\.dwg$/i.test(S.file.name), S.file.size);
+  let d = null, r = null;
+  try {
+    r = await fetch('convert', {
+      method: 'POST', body: S.file,
+      headers: { 'X-Name': encodeURIComponent(S.file.name), 'X-Style': encodeURIComponent(S.style), 'X-Overlay': '1',
+                 'X-Numbers': encodeURIComponent(виды()), 'X-Dim-Lines': $('#dimlines').checked ? '1' : '0' },
+    });
+    d = await r.json().catch(() => ({}));
+  } catch (e) {
+    d = { error: 'Чертёжер не отвечает: похоже, окно терминала, где он запущен, закрыто. Запустите его снова и обновите страницу.' };
+  }
+  const t = стоп();
+  S.busy = false;
+  if (r && r.status === 422 && d.unknown) { ready(); спросить(d.unknown, d.previews || {}); return; }
+  if (!r || !r.ok) { ready(); беда(d.error || 'Чертёж не собрался. Попробуйте ещё раз или выберите другой файл.'); return; }
+  // короткая пауза: последняя стадия должна быть видна закрытой
+  await new Promise(ok => setTimeout(ok, reduced ? 0 : 250));
+  S.res = d; ready();
+  if (S.again) { S.again = false; setTimeout(собрать, 0); }
+  $('#gohint').innerHTML = `Собрано за <span class="num">${sec((d.timing && d.timing.total) || t)}</span> с.`;
+  результат(d);
+}
+function беда(t) { $('#problemText').textContent = t; show('problem'); $('#problemPick').focus(); }
+
+/* ── итог ── */
+function результат(d) {
+  if (S.dlurl) URL.revokeObjectURL(S.dlurl);
+  const blob = new Blob([d.svg], { type: 'image/svg+xml' });
+  S.dlurl = URL.createObjectURL(blob);
+  const a = $('#dl'); a.href = S.dlurl; a.download = S.file.name.replace(/\.(dwg|dxf)$/i, '') + '.svg';
+  $('#dlsize').innerHTML = `SVG, <span class="num">${human(blob.size)}</span>`;
+
+  const g = d.digest || {}, s = d.summary || {};
+  const rows = [];
+  rows.push(['Убрано объектов', g.removed != null ? N(g.removed) : '—']);
+  rows.push(['Помещений залито', g.rooms ? `${N(g.rooms.filled)} <small>из</small> ${N(g.rooms.total)}`
+                                         : '<small>марок помещений нет</small>']);
+  rows.push(['Номеров помещений', g.rooms_numbered != null ? N(g.rooms_numbered) : '<small>нет</small>']);
+  rows.push(['Цифр перенесено', g.numbers != null
+    ? N(g.numbers) + (g.numbers_hidden ? ` <small>, скрыто наложением</small> ${N(g.numbers_hidden)}` : '')
+    : '<small>нет</small>']);
+  if (s.sheet) {
+    const m = s.sheet.match(/(\d+) × (\d+) мм, 1:(\d+)/);
+    rows.push(['Лист', m ? `${N(+m[1])} <small>×</small> ${N(+m[2])} <small>мм,</small> <span class="num">1:${m[3]}</span>` : esc(s.sheet)]);
+  }
+  $('#sum').innerHTML = rows.map(([k, v]) => `<div class="row"><dt>${k}</dt><dd>${v}</dd></div>`).join('');
+  const notes = [];
+  if (g.rooms && g.rooms.filled < g.rooms.total) {
+    const n = g.rooms.total - g.rooms.filled;
+    notes.push(`<p class="note warn">${N(n)} ${plural(n, 'помещение', 'помещения', 'помещений')} без заливки пола — посмотрите на «Проверке».</p>`);
+  }
+  if ((g.lost || []).length)
+    notes.push(`<p class="note warn">Не вошло в результат: ${g.lost.map(([k, n]) => `${esc(k)} — ${N(n)}`).join(', ')}.</p>`);
+  for (const w of s.warnings || []) notes.push(`<p class="note warn">${esc(w.charAt(0).toUpperCase() + w.slice(1))}</p>`);
+  if (g.drawings_on_sheet > 1)
+    notes.push(`<p class="note">На листе ${N(g.drawings_on_sheet)} ${plural(g.drawings_on_sheet, 'чертёж', 'чертежа', 'чертежей')} — собран самый крупный.</p>`);
+  $('#notes').innerHTML = notes.join('');
+  $('#s4').hidden = false;
+
+  const пал = (S.palettes || {})[S.style] || {};
+  if (пал.wall) document.documentElement.style.setProperty('--st-wall', пал.wall);
+  if (пал.floor) document.documentElement.style.setProperty('--st-floor', пал.floor);
+  вердикт(g, d.source);
+  постройСлои(d);
+  вкладка('result');
+  $('#dl').focus();
+}
+
+function вердикт(g, src) {
+  const v = $('#verdict');
+  if (!src || !src.svg) { v.className = 'verdict bad';
+    v.innerHTML = '<strong>Исходник для сравнения не нарисовался.</strong> Результат собран и скачивается как обычно.'; return; }
+  const parts = (g.removed_groups || []).map(([k, n]) => `${k} ${N(n)}`).join(', ');
+  const ещё = g.other_drawings ? ` Ещё ${N(g.other_drawings)} — другие чертежи на этом листе, в результат не взяты.` : '';
+  const r = g.removed || 0;
+  if (!(g.lost || []).length) {
+    v.className = 'verdict ok';
+    v.innerHTML = `<strong>Геометрия совпала полностью, убрано только оформление: ${N(r)} ${plural(r, 'объект', 'объекта', 'объектов')}.</strong>
+      <span class="parts" title="${esc(((parts ? 'Из них ' + parts + '.' : '') + ещё).replace(/<[^>]+>/g, ''))}">${parts ? 'Из них ' + parts + '.' : ''}${ещё}</span>`;
+  } else {
+    const lost = g.lost.reduce((a, [, n]) => a + n, 0);
+    v.className = 'verdict bad';
+    v.innerHTML = `<strong>Убрано ${N(r)} ${plural(r, 'объект', 'объекта', 'объектов')} оформления, и ещё ${N(lost)} не вошло в результат: ${g.lost.map(([k, n]) => `${esc(k)} ${N(n)}`).join(', ')}.</strong>
+      <span class="parts" title="${esc(((parts ? 'Оформление: ' + parts + '.' : '') + ещё).replace(/<[^>]+>/g, ''))}">${parts ? 'Оформление: ' + parts + '.' : ''}${ещё}</span>`;
+  }
+}
+
+/* ── просмотр: общий масштаб и сдвиг для всех слоёв и обеих половин ──
+   Масштаб — это сам viewBox, а не CSS-transform: только так линии «Проверки»
+   остаются тонкими при увеличении (vector-effect не видит transform снаружи). */
+const V = { W: 1, H: 1, sc: 1, ox: 0, oy: 0, fit: 1 };
+const view = $('#view'), paneA = $('#paneA'), paneB = $('#paneB');
+const внутри = svg => svg.replace(/^[\s\S]*?<svg[^>]*>/, '').replace(/<\/svg>\s*$/, '');
+
+function постройСлои(d) {
+  const src = d.source && d.source.svg ? d.source.svg : '';
+  // Результат — <img> на тот же blob, что у «Скачать SVG»: на экране ровно
+  // скачиваемый файл, байт в байт, со своими заливками, цветами и цифрами.
+  const img = `<img src="${S.dlurl}" alt="Результат: ${esc($('#dl').download)}" draggable="false">`;
+  // Исходник как в AutoCAD (рендер_dwg.py) — тоже картинкой: файл большой, а
+  // картинку браузер двигает и масштабирует без перестройки дерева.
+  const so = d.source || {};
+  if (S.render) { clearTimeout(S.render.t); if (S.render.url) URL.revokeObjectURL(S.render.url); }
+  S.render = null;
+  if (so.render && so.render_box && so.origin) {
+    const i = so.render.indexOf('</defs>');
+    const vbw = +(so.render.match(/viewBox="0 0 ([\d.]+)/) || [0, 0])[1];
+    if (i > 0 && vbw) S.render = { head: so.render.slice(0, i), body: so.render.slice(i), vbw,
+                                   box: so.render_box, origin: so.origin, px: 0, url: null };
+  }
+  if (S.render) толщиныDWG(1000, true);
+  view.classList.toggle('нет-рендера', !S.render);
+  const dwg = S.render ? `<img src="${S.render.url}" alt="Исходник как в AutoCAD" draggable="false">` : '';
+  paneA.innerHTML = `<div class="lay dwg">${dwg}</div><div class="lay src" aria-hidden="true">${src}</div><div class="lay our">${img}</div>
+    <canvas class="diff" aria-hidden="true"></canvas><span class="ptag" aria-hidden="true"></span>
+    <span class="pnote">Исходник в цветах файла не нарисовался — показаны его линии одним цветом.</span>`;
+  paneB.innerHTML = `<div class="lay our">${img}</div><span class="ptag" aria-hidden="true"><i class="our"></i>SVG — результат</span>`;
+  // Вспомогательный исходник — наш рисунок, его можно подгонять под вид.
+  $$('#view .lay.src svg').forEach(v => { v.removeAttribute('width'); v.removeAttribute('height');
+                                          v.setAttribute('preserveAspectRatio', 'none'); });
+  const vb = d.svg.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/) || [0, 1, 1];
+  V.W = +vb[1]; V.H = +vb[2];
+  S.srcIn = src ? внутри(src) : null; S.ourIn = внутри(d.svg);
+}
+const видимые = () => S.tab === 'check' && S.mode === 'side' ? [paneA, paneB] : [paneA];
+function apply() {
+  for (const p of видимые()) {
+    const w = p.clientWidth, h = p.clientHeight;
+    if (!w || !h) continue;
+    const t = `${V.ox} ${V.oy} ${w / V.sc} ${h / V.sc}`;
+    p.querySelectorAll('.lay.src svg').forEach(v => v.setAttribute('viewBox', t));
+    p.querySelectorAll('.lay.our img').forEach(i => {
+      i.style.left = (-V.ox * V.sc) + 'px'; i.style.top = (-V.oy * V.sc) + 'px';
+      i.style.width = (V.W * V.sc) + 'px'; i.style.height = (V.H * V.sc) + 'px';
+    });
+    if (S.render) {
+      // рамка рендера (мм чертежа) → координаты результата: x − x0, y0 − y
+      const [rx0, ry0, rx1, ry1] = S.render.box, [x0, y0] = S.render.origin;
+      p.querySelectorAll('.lay.dwg img').forEach(i => {
+        i.style.left = ((rx0 - x0) - V.ox) * V.sc + 'px'; i.style.top = ((y0 - ry1) - V.oy) * V.sc + 'px';
+        i.style.width = (rx1 - rx0) * V.sc + 'px'; i.style.height = (ry1 - ry0) * V.sc + 'px';
+      });
+      const ширина = (rx1 - rx0) * V.sc;
+      clearTimeout(S.render.t);
+      if (Math.abs(ширина / S.render.px - 1) > .12) S.render.t = setTimeout(() => толщиныDWG(ширина), 220);
+    }
+  }
+  отличия();
+}
+/* Толщины DWG. Веса линий файла записаны в пикселях экрана (рендер_dwg.py);
+   под текущий размер картинки они пересчитываются в единицы рисунка, и
+   картинка подменяется готовой — линии на экране той же толщины при любом
+   масштабе, как в AutoCAD. Меняется только заголовок стилей, геометрия та же. */
+function толщиныDWG(ширинаPx, сразу) {
+  const R = S.render; if (!R || !ширинаPx) return;
+  const k = R.vbw / ширинаPx;
+  const head = R.head.replace(/stroke-width: ([\d.]+)px/g, (m, p) => `stroke-width: ${(p * k).toFixed(2)}`);
+  const url = URL.createObjectURL(new Blob([head, R.body], { type: 'image/svg+xml' }));
+  R.px = ширинаPx;
+  const заменить = () => { if (S.render !== R) return URL.revokeObjectURL(url);
+    const старый = R.url; R.url = url;
+    document.querySelectorAll('.lay.dwg img').forEach(i => { i.src = url; });
+    if (старый) setTimeout(() => URL.revokeObjectURL(старый), 1000); };
+  const img = document.querySelector('.lay.dwg img');
+  if (сразу || !img) { R.url = url; return; }
+  const пред = new Image(); пред.src = url;
+  (пред.decode ? пред.decode() : Promise.resolve()).then(заменить, заменить);
+}
+function вписать() {
+  const w = paneA.clientWidth, h = paneA.clientHeight;
+  if (!w || !h) return;
+  V.fit = V.sc = Math.min(w / V.W, h / V.H) * .96;
+  V.ox = -(w / V.sc - V.W) / 2; V.oy = -(h / V.sc - V.H) / 2; apply();
+}
+function зум(f, cx, cy) {
+  const n = Math.min(V.fit * 200, Math.max(V.fit * .5, V.sc * f));
+  V.ox += cx / V.sc - cx / n; V.oy += cy / V.sc - cy / n; V.sc = n; apply();
+}
+for (const p of [paneA, paneB]) {
+  p.addEventListener('wheel', e => { e.preventDefault(); const r = p.getBoundingClientRect();
+    зум(Math.exp(-e.deltaY * .0015), e.clientX - r.left, e.clientY - r.top); }, { passive: false });
+  let st = null;
+  p.addEventListener('pointerdown', e => { st = { x: e.clientX, y: e.clientY, ox: V.ox, oy: V.oy };
+    p.setPointerCapture(e.pointerId); p.classList.add('drag'); });
+  p.addEventListener('pointermove', e => { if (!st) return;
+    V.ox = st.ox - (e.clientX - st.x) / V.sc; V.oy = st.oy - (e.clientY - st.y) / V.sc; apply(); });
+  const стоп = () => { st = null; p.classList.remove('drag'); };
+  p.addEventListener('pointerup', стоп); p.addEventListener('pointercancel', стоп);
+}
+new ResizeObserver(() => { if (!view.hidden) вписать(); }).observe(view);
+$$('[data-zoom]').forEach(b => b.onclick = () => {
+  if (b.dataset.zoom === 'fit') return вписать();
+  зум(b.dataset.zoom === 'in' ? 1.6 : 1 / 1.6, paneA.clientWidth / 2, paneA.clientHeight / 2);
+});
+view.addEventListener('keydown', e => {
+  const step = 60 / V.sc, k = e.key, cx = paneA.clientWidth / 2, cy = paneA.clientHeight / 2;
+  if (k === '+' || k === '=') зум(1.4, cx, cy);
+  else if (k === '-' || k === '−') зум(1 / 1.4, cx, cy);
+  else if (k === '0') вписать();
+  else if (k === 'ArrowLeft') { V.ox -= step; apply(); }
+  else if (k === 'ArrowRight') { V.ox += step; apply(); }
+  else if (k === 'ArrowUp') { V.oy -= step; apply(); }
+  else if (k === 'ArrowDown') { V.oy += step; apply(); }
+  else return;
+  e.preventDefault();
+});
+
+/* ── вкладки и режимы проверки ── */
+function вкладка(t) {
+  S.tab = t;
+  for (const [id, имя] of [['#tabResult', 'result'], ['#tabCheck', 'check']]) {
+    $(id).setAttribute('aria-selected', String(t === имя)); $(id).tabIndex = t === имя ? 0 : -1; }
+  view.dataset.tab = t;
+  show('view');
+  режим(S.mode);
+}
+$('#tabResult').onclick = () => вкладка('result');
+$('#tabCheck').onclick = () => вкладка('check');
+$('.tabs').addEventListener('keydown', e => {
+  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+  e.preventDefault(); const t = S.tab === 'result' ? 'check' : 'result';
+  вкладка(t); $(t === 'result' ? '#tabResult' : '#tabCheck').focus();
+});
+
+const ТЕГ = {
+  src: '<i class="dwg"></i>DWG — исходник как в AutoCAD',
+  our: '<i class="our"></i>SVG — результат, как скачается',
+  both: '<i class="src"></i>DWG линиями + <i class="our"></i>SVG',
+  side: '<i class="dwg"></i>DWG — исходник как в AutoCAD',
+};
+function режим(m) {
+  const перестройка = S.mode === 'side' || m === 'side';
+  S.mode = m; view.dataset.mode = m;
+  $$('.seg [data-mode]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === m)));
+  const tag = paneA.querySelector('.ptag'); if (tag) tag.innerHTML = ТЕГ[m];
+  $$('[data-diff-legend]').forEach(x => x.hidden = !(m === 'both' && $('#ckdiff').checked));
+  $$('[data-only-both]').forEach(x => x.hidden = m !== 'both');
+  const исх = S.render ? 'dwg' : 'src';
+  const видно = { src: [исх], our: ['our'], both: ['src', 'our'], side: [исх, 'our'] }[m];
+  $$('[data-legend]').forEach(x => x.hidden = !видно.includes(x.dataset.legend));
+  if (перестройка) requestAnimationFrame(вписать); else apply();
+}
+$$('.seg [data-mode]').forEach(b => b.onclick = () => режим(b.dataset.mode));
+$$('[data-order]').forEach(b => b.onclick = () => {
+  view.classList.toggle('under', b.dataset.order === 'under');
+  $$('[data-order]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+});
+$('#ckop').oninput = e => { const v = +e.target.value;
+  paneA.querySelector('.lay.src') && (paneA.querySelector('.lay.src').style.opacity = 1 - v / 100);
+  e.target.setAttribute('aria-valuetext', v + ' %'); };
+$('#ckdiff').onchange = () => режим(S.mode);
+
+// Мигалка: пробел показывает DWG и SVG по очереди на одном месте листа.
+addEventListener('keydown', e => {
+  if (e.code !== 'Space' || S.tab !== 'check' || view.hidden) return;
+  const t = e.target;
+  if (t.matches && t.matches('input, textarea, select, a, [role=radio], [role=tab], .seg button, .zoom button, #theme, #go, .linkbtn')) return;
+  e.preventDefault();
+  режим(S.mode === 'src' ? 'our' : 'src');
+});
+
+/* ── отличия: растровое сравнение двух слоёв на текущем виде ──
+   Оба слоя рисуются одинаковой тонкой линией в невидимый холст, совпадение
+   ищется с допуском в 2 пикселя экрана. Что есть только в DWG — красным, что
+   только в SVG — синим. Пересчёт — когда зум и сдвиг остановились. */
+let отлТаймер = null, отлНомер = 0;
+function отличия() {
+  const c = paneA.querySelector('canvas.diff');
+  if (!c) return;
+  c.classList.remove('on'); clearTimeout(отлТаймер); отлНомер++;
+  if (S.tab !== 'check' || S.mode !== 'both' || !$('#ckdiff').checked || !S.srcIn) return;
+  const номер = отлНомер;
+  отлТаймер = setTimeout(() => посчитать(c, номер), 180);
+}
+async function растр(inner, vb, w, h) {
+  const s = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="${vb}" preserveAspectRatio="none">` +
+            `<style>g,path{fill:none!important;stroke:#000!important;stroke-width:1px!important;stroke-dasharray:none!important}` +
+            `path{vector-effect:non-scaling-stroke}</style>${inner}</svg>`;
+  const url = URL.createObjectURL(new Blob([s], { type: 'image/svg+xml' }));
+  try {
+    const img = new Image();
+    await new Promise((ok, no) => { img.onload = ok; img.onerror = no; img.src = url; });
+    const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+    const ctx = cv.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(img, 0, 0, w, h);
+    const px = ctx.getImageData(0, 0, w, h).data, m = new Uint8Array(w * h);
+    for (let i = 0; i < m.length; i++) m[i] = px[i * 4 + 3] > 32 ? 1 : 0;
+    return m;
+  } finally { URL.revokeObjectURL(url); }
+}
+function раздуть(m, w, h, r) {
+  const t = new Uint8Array(m.length), o = new Uint8Array(m.length);
+  for (let y = 0; y < h; y++) { const row = y * w;
+    for (let x = 0; x < w; x++) { if (!m[row + x]) continue;
+      for (let k = Math.max(0, x - r), e = Math.min(w - 1, x + r); k <= e; k++) t[row + k] = 1; } }
+  for (let x = 0; x < w; x++)
+    for (let y = 0; y < h; y++) { if (!t[y * w + x]) continue;
+      for (let k = Math.max(0, y - r), e = Math.min(h - 1, y + r); k <= e; k++) o[k * w + x] = 1; }
+  return o;
+}
+async function посчитать(c, номер) {
+  const w = Math.round(paneA.clientWidth), h = Math.round(paneA.clientHeight);
+  if (!w || !h) return;
+  const vb = `${V.ox} ${V.oy} ${w / V.sc} ${h / V.sc}`;
+  let a, b;
+  try { [a, b] = await Promise.all([растр(S.srcIn, vb, w, h), растр(S.ourIn, vb, w, h)]); }
+  catch (e) {
+    const cb = $('#ckdiff'); cb.checked = false; cb.disabled = true;
+    cb.parentElement.title = 'В этом браузере подсветка отличий недоступна'; режим(S.mode); return; }
+  if (номер !== отлНомер) return;
+  const da = раздуть(a, w, h, 2), db = раздуть(b, w, h, 2);
+  const del = new Uint8Array(w * h), add = new Uint8Array(w * h);
+  let nd = 0, na = 0;
+  for (let i = 0; i < del.length; i++) {
+    if (a[i] && !db[i]) { del[i] = 1; nd++; } else if (b[i] && !da[i]) { add[i] = 1; na++; } }
+  // убранное и так крупное (размеры, оси, облака) — тонкой линией; добавленное
+  // обычно мелкое (швы, номера) — утолщено, чтобы его было видно на целом листе
+  const D = del, A = раздуть(add, w, h, 1);
+  c.width = w; c.height = h;
+  const ctx = c.getContext('2d'), img = ctx.createImageData(w, h), p = img.data;
+  for (let i = 0; i < D.length; i++) {
+    // синее — полупрозрачный маркер поверх: сам результат под ним остаётся виден
+    if (D[i]) { p[i * 4] = 253; p[i * 4 + 1] = 47; p[i * 4 + 2] = 75; p[i * 4 + 3] = 235; }
+    else if (A[i]) { p[i * 4] = 0; p[i * 4 + 1] = 100; p[i * 4 + 2] = 240; p[i * 4 + 3] = 120; }
+  }
+  ctx.putImageData(img, 0, 0);
+  c.dataset.del = nd; c.dataset.add = na;
+  c.classList.add('on');
+}
+
+/* ── незнакомые слои: вопрос, а не тупик ──
+   Три ответа — ровно те решения, которые есть у конвертора. Решение пишется в
+   настройку слоёв, и после последнего ответа чертёж собирается сам. */
+function спросить(слои, картинки) {
+  let осталось = слои.length;
+  S.ask = true; ready();
+  const один = слои.length === 1;
+  $('#ask').innerHTML = `<p><b>${N(слои.length)} ${plural(слои.length, 'слой', 'слоя', 'слоёв')} мне ${один ? 'незнаком' : 'незнакомы'}, поэтому чертёж пока не собран.</b>
+      Посмотрите, что в ${один ? 'нём' : 'них'} лежит, и скажите, что это. Без ответа геометрия пропала бы молча —
+      так однажды исчезли все перегородки дома.</p>
+    <div class="cards">` + слои.map(u => `
+      <div class="lcard" data-layer="${esc(u.layer)}">
+        <b>${esc(u.layer)}</b> <span class="meta">· ${N(u.objects)} ${plural(u.objects, 'объект', 'объекта', 'объектов')}</span>
+        <div class="pic">${картинки[u.layer] || '<p class="note">Картинку этого слоя построить не удалось — решите по имени слоя или откройте чертёж в AutoCAD.</p>'}</div>
+        <div class="seg" role="group" aria-label="Что это за слой">
+          <button data-d="стена" aria-pressed="false">Стена</button>
+          <button data-d="второстепенное" aria-pressed="false">Второстепенное</button>
+          <button data-d="оформление" aria-pressed="false">Оформление</button>
+        </div>
+      </div>`).join('') + '</div>';
+  show('ask');
+  $$('#ask [data-layer] button').forEach(b => b.onclick = async () => {
+    const к = b.closest('[data-layer]');
+    if (к.classList.contains('done')) return;
+    const r = await fetch('decide', { method: 'POST', body: JSON.stringify({ layer: к.dataset.layer, decision: b.dataset.d }) })
+      .catch(() => null);
+    if (!r || !r.ok) { b.textContent = 'Не записалось'; return; }
+    к.classList.add('done'); b.setAttribute('aria-pressed', 'true');
+    if (--осталось === 0) собрать();
+  });
+}
+ready();
+</script>
+</body>
+</html>
