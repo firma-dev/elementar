@@ -142,6 +142,32 @@ def кириллица_в_dwg(td):
     return из
 
 
+def лист_без_модели(td):
+    """АР2.5-К2.С_1 («Содержание тома»): модель пустая, всё на листе. Раньше —
+    422 и пустой экран во всех режимах. рендер_dwg.py обязан нарисовать лист и
+    отдать его отдельным файлом в миллиметрах листа, без белой подложки и без
+    невидимых служебных знаков Revit (рисовались квадратами)."""
+    import ezdxf
+    из = []
+    doc = ezdxf.new()
+    лист = doc.paperspace()
+    лист.add_lwpolyline([(0, 0), (210, 0), (210, 297), (0, 297)], close=True)
+    лист.add_mtext("\\U+041B\\U+0438\\U+0441\\U+0442\\U+200C\\U+200E", dxfattribs={"char_height": 5, "insert": (20, 280)})
+    f = td / "лист.dxf"
+    doc.saveas(f)
+    r = subprocess.run([sys.executable, str(HERE / "рендер_dwg.py"), str(f), str(td / "лист-r.svg"),
+                        "--sheet-out", str(td / "лист.svg")], capture_output=True, text=True)
+    if r.returncode or "SHEET " not in r.stdout or not (td / "лист.svg").exists():
+        return [f"лист без модели не нарисовался: {(r.stderr or r.stdout).strip()[-200:]}"]
+    svg = (td / "лист.svg").read_text(encoding="utf-8")
+    m = re.search(r'viewBox="0 0 ([\d.]+) ([\d.]+)"', svg)
+    if not m or abs(float(m.group(1)) - 210) > 1 or abs(float(m.group(2)) - 297) > 1:
+        из.append(f"лист без модели: viewBox не в миллиметрах листа ({m and m.group(0)})")
+    if '<rect fill="#ffffff"' in svg:
+        из.append("лист без модели: осталась белая подложка")
+    return из
+
+
 def проверка_проверки():
     """verify() — гейт внутри гейта. Перестанет ловить она — молча развалится
     всё остальное, поэтому её проверяем напрямую."""
@@ -551,7 +577,7 @@ def main():
 
     with tempfile.TemporaryDirectory(prefix="чертёжер-гейт-") as td:
         ошибки = (вызовы_на_месте() + проверка_проверки() + синтетика(pathlib.Path(td))
-                  + кириллица_в_dwg(pathlib.Path(td)))
+                  + кириллица_в_dwg(pathlib.Path(td)) + лист_без_модели(pathlib.Path(td)))
     ошибки += демо()
     ошибки += эталоны()
 

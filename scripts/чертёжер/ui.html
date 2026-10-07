@@ -767,8 +767,19 @@ function результат(d) {
     const m = s.sheet.match(/(\d+) × (\d+) мм, 1:(\d+)/);
     rows.push(['Лист', m ? `${N(+m[1])} <small>×</small> ${N(+m[2])} <small>мм,</small> <span class="num">1:${m[3]}</span>` : esc(s.sheet)]);
   }
+  if (d.sheet) {
+    // Плана в файле нет: модель пустая, всё на листе. Чистить нечего — сводка
+    // убранного здесь была бы нулями, вместо неё говорим, что это за файл.
+    rows.length = 0;
+    rows.push(['В файле', `<small>лист</small> «${esc(d.sheet.title)}»`]);
+    const vb = d.svg.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/);
+    if (vb) rows.push(['Размер листа', `${N(Math.round(+vb[1]))} <small>×</small> ${N(Math.round(+vb[2]))} <small>мм</small>`]);
+  }
   $('#sum').innerHTML = rows.map(([k, v]) => `<div class="row"><dt>${k}</dt><dd>${v}</dd></div>`).join('');
   const notes = [];
+  if (d.sheet) notes.push(`<p class="note warn">В файле нет плана этажа: модель пустая, всё нарисовано на листе
+    «${esc(d.sheet.title)}». Чистить нечего — лист показан и скачивается как есть: линии, текст и штамп
+    в цветах файла, в миллиметрах листа.</p>`);
   if (g.rooms && g.rooms.filled < g.rooms.total) {
     const n = g.rooms.total - g.rooms.filled;
     notes.push(`<p class="note warn">${N(n)} ${plural(n, 'помещение', 'помещения', 'помещений')} без заливки пола — посмотрите на «Проверке».</p>`);
@@ -784,14 +795,17 @@ function результат(d) {
   const пал = (S.palettes || {})[S.style] || {};
   if (пал.wall) document.documentElement.style.setProperty('--st-wall', пал.wall);
   if (пал.floor) document.documentElement.style.setProperty('--st-floor', пал.floor);
-  вердикт(g, d.source);
+  вердикт(g, d.source, d.sheet);
   постройСлои(d);
   вкладка('result');
   $('#dl').focus();
 }
 
-function вердикт(g, src) {
+function вердикт(g, src, лист) {
   const v = $('#verdict');
+  if (лист) { v.className = 'verdict';
+    v.innerHTML = `<strong>Это лист «${esc(лист.title)}», плана этажа в файле нет.</strong>
+      <span class="parts">DWG и SVG — один и тот же лист: убирать нечего.</span>`; return; }
   if (!src || !src.svg) { v.className = 'verdict bad';
     v.innerHTML = '<strong>Исходник для сравнения не нарисовался.</strong> Результат собран и скачивается как обычно.'; return; }
   const parts = (g.removed_groups || []).map(([k, n]) => `${k} ${N(n)}`).join(', ');
@@ -998,7 +1012,7 @@ function отличия() {
 }
 async function растр(inner, vb, w, h) {
   const s = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="${vb}" preserveAspectRatio="none">` +
-            `<style>g,path{fill:none!important;stroke:#000!important;stroke-width:1px!important;stroke-dasharray:none!important}` +
+            `<style>g,path,rect,circle,ellipse,line,polyline,polygon{fill:none!important;stroke:#000!important;stroke-width:1px!important;stroke-dasharray:none!important}` +
             `path{vector-effect:non-scaling-stroke}</style>${inner}</svg>`;
   const url = URL.createObjectURL(new Blob([s], { type: 'image/svg+xml' }));
   try {

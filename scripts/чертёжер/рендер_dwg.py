@@ -27,14 +27,22 @@ AutoCAD печатает на белом листе. Ничего не пере�
 from __future__ import annotations
 
 import argparse
+import json
 import pathlib
 import re
 import sys
+import unicodedata
 
 PX_НА_ММ = 96 / 25.4
 
 
-def рендер(путь_dxf: str, масштаб: float = 100.0) -> tuple[str, tuple[float, float, float, float]]:
+def рендер(путь_dxf: str, масштаб: float = 100.0):
+    """→ (svg с весами в пикселях для страницы, рамка, сведения о листе или None).
+
+    Модель пустая, а всё нарисовано на листе (paper space: «Содержание тома»,
+    ведомости) — рисуется этот лист, в своих миллиметрах бумаги. Тогда третьим
+    значением приходит {"layout", "title", "svg"}: "svg" — тот же лист отдельным
+    файлом с весами линий в миллиметрах, для «Скачать SVG"."""
     import ezdxf
     from ezdxf import bbox
     from ezdxf.addons.drawing import Frontend, RenderContext, config, layout, svg
@@ -42,10 +50,20 @@ def рендер(путь_dxf: str, масштаб: float = 100.0) -> tuple[str,
 
     doc = ezdxf.readfile(путь_dxf)
     раскодировать(doc)
-    msp = doc.modelspace()
-    ext = bbox.extents(msp, fast=True)
+    где = doc.modelspace()
+    ext = bbox.extents(где, fast=True)
+    лист = None
     if not ext.has_data:
-        raise ValueError("в модели пусто")
+        # самый наполненный лист; модель и пустые листы пропускаются
+        листы = [l for l in doc.layouts if l.name != "Model" and len(l)]
+        if not листы:
+            raise ValueError("в модели и на листах пусто")
+        где = max(листы, key=len)
+        ext = bbox.extents(где, fast=True)
+        if not ext.has_data:
+            raise ValueError("на листе пусто")
+        лист = {"layout": где.name, "title": название_листа(где)}
+        масштаб = 1.0  # единицы листа — уже миллиметры бумаги
     x0, y0, x1, y1 = ext.extmin.x, ext.extmin.y, ext.extmax.x, ext.extmax.y
     w, h = max(x1 - x0, 1.0), max(y1 - y0, 1.0)
 
@@ -56,14 +74,42 @@ def рендер(путь_dxf: str, масштаб: float = 100.0) -> tuple[str,
         lineweight_policy=config.LineweightPolicy.ABSOLUTE,  # веса из файла, мм бумаги
     )
     backend = svg.SVGBackend()
-    Frontend(RenderContext(doc), backend, config=cfg).draw_layout(msp, finalize=True)
+    Frontend(RenderContext(doc), backend, config=cfg).draw_layout(где, finalize=True)
     # Страница — лист в масштабе чертежа: веса линий получаются в миллиметрах
     # бумаги с точностью до тысячных, а не округляются до нуля.
     стр = layout.Page(w / масштаб, h / масштаб, layout.Units.mm)
     наст = layout.Settings(fit_page=False, scale=1 / масштаб)
     текст = backend.get_string(стр, settings=наст, xml_declaration=False,
                                render_box=BoundingBox2d([(x0, y0), (x1, y1)]))
-    return веса_в_пиксели(текст, w / масштаб), (x0, y0, x1, y1)
+    if лист:
+        лист["svg"] = в_миллиметрах(текст, w, h)
+    return веса_в_пиксели(текст, w / масштаб), (x0, y0, x1, y1), лист
+
+
+def название_листа(где) -> str:
+    """Имя листа для человека. Revit называет блок штампа «…Основная надпись…-<имя
+    листа>» — оттуда; иначе имя вкладки листа в файле."""
+    for e in где.query("INSERT"):
+        имя = e.dxf.name
+        if "надпись" in имя.lower() and "-" in имя:
+            хвост = имя.rsplit("-", 1)[1].strip()
+            if хвост and not хвост.isdigit():
+                return хвост
+    return где.name
+
+
+def в_миллиметрах(текст: str, w: float, h: float) -> str:
+    """Лист как есть отдельным файлом: viewBox в миллиметрах листа (как у
+    результата dxf2svg), размеры в мм, веса линий — миллиметрами бумаги."""
+    m = re.search(r'^<svg[^>]*viewBox="0 0 ([\d.]+) ([\d.]+)"[^>]*>', текст)
+    k = w / float(m.group(1))
+    # Белая подложка ezdxf файлу не нужна: лист и так на белом, а в «Оба» она
+    # закрыла бы исходник и считалась бы «добавленным».
+    текст = re.sub(r'<rect fill="#ffffff"[^>]*/>', "", текст, count=1)
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{w:.2f}mm" height="{h:.2f}mm" '
+            f'viewBox="0 0 {w:.3f} {h:.3f}" role="img" aria-label="Лист">\n'
+            f'<g transform="scale({k:.9g})">' + текст[m.end():].replace("</svg>", "</g></svg>", 1)
+            + ("\n" if not текст.endswith("\n") else ""))
 
 
 def раскодировать(doc) -> int:
@@ -84,7 +130,9 @@ def раскодировать(doc) -> int:
             t = decode_dxf_unicode(t)
         if has_mif_encoding(t):
             t = decode_mif_to_unicode(t)
-        return t
+        # Невидимые служебные знаки (U+200C, U+200E, U+202A… — Revit прячет ими
+        # данные в штампе): AutoCAD их не рисует, а шрифт ezdxf рисует квадратами.
+        return "".join(c for c in t if unicodedata.category(c) != "Cf")
 
     n = 0
     for e in list(doc.entitydb.values()):
@@ -145,13 +193,20 @@ def main():
     ap.add_argument("dxf")
     ap.add_argument("out")
     ap.add_argument("--scale", type=float, default=100.0)
+    ap.add_argument("--sheet-out", metavar="ФАЙЛ",
+                    help="если модель пуста и нарисован лист: сюда — лист как есть, в мм")
     a = ap.parse_args()
     try:
-        svg, (x0, y0, x1, y1) = рендер(a.dxf, a.scale)
+        svg, (x0, y0, x1, y1), лист = рендер(a.dxf, a.scale)
     except Exception as e:
         sys.exit(f"исходник не нарисовался: {type(e).__name__}: {e}"[:300])
     pathlib.Path(a.out).write_text(svg, encoding="utf-8")
     print(f"RENDER_BOX {x0:.3f} {y0:.3f} {x1:.3f} {y1:.3f}")
+    if лист:
+        if a.sheet_out:
+            pathlib.Path(a.sheet_out).write_text(лист["svg"], encoding="utf-8")
+        print("SHEET " + json.dumps({"layout": лист["layout"], "title": лист["title"]},
+                                    ensure_ascii=False))
 
 
 if __name__ == "__main__":
