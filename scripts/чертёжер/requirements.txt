@@ -19,3 +19,7 @@ numpy==2.0.2
 pyparsing==3.3.3
 fonttools==4.60.2
 typing_extensions==4.16.0
+
+# Импортирует ezdxf.addons.drawing (рендер_dwg.py — исходник «как в AutoCAD» для
+# «Проверки»); поставлен 07.10.2026 колесом для Python 3.9, macOS arm64.
+pillow==11.3.0

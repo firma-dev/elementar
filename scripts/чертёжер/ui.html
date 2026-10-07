@@ -824,7 +824,7 @@ function постройСлои(d) {
   // Исходник как в AutoCAD (рендер_dwg.py) — тоже картинкой: файл большой, а
   // картинку браузер двигает и масштабирует без перестройки дерева.
   const so = d.source || {};
-  if (S.render && S.render.url) URL.revokeObjectURL(S.render.url);
+  if (S.render) { clearTimeout(S.render.t); if (S.render.url) URL.revokeObjectURL(S.render.url); }
   S.render = null;
   if (so.render && so.render_box && so.origin) {
     const i = so.render.indexOf('</defs>');
@@ -832,7 +832,7 @@ function постройСлои(d) {
     if (i > 0 && vbw) S.render = { head: so.render.slice(0, i), body: so.render.slice(i), vbw,
                                    box: so.render_box, origin: so.origin, px: 0, url: null };
   }
-  if (S.render) толщиныDWG(1000);
+  if (S.render) толщиныDWG(1000, true);
   view.classList.toggle('нет-рендера', !S.render);
   const dwg = S.render ? `<img src="${S.render.url}" alt="Исходник как в AutoCAD" draggable="false">` : '';
   paneA.innerHTML = `<div class="lay dwg">${dwg}</div><div class="lay src" aria-hidden="true">${src}</div><div class="lay our">${img}</div>
@@ -875,17 +875,18 @@ function apply() {
    под текущий размер картинки они пересчитываются в единицы рисунка, и
    картинка подменяется готовой — линии на экране той же толщины при любом
    масштабе, как в AutoCAD. Меняется только заголовок стилей, геометрия та же. */
-function толщиныDWG(ширинаPx) {
+function толщиныDWG(ширинаPx, сразу) {
   const R = S.render; if (!R || !ширинаPx) return;
   const k = R.vbw / ширинаPx;
   const head = R.head.replace(/stroke-width: ([\d.]+)px/g, (m, p) => `stroke-width: ${(p * k).toFixed(2)}`);
   const url = URL.createObjectURL(new Blob([head, R.body], { type: 'image/svg+xml' }));
   R.px = ширинаPx;
-  const заменить = () => { const старый = R.url; R.url = url;
+  const заменить = () => { if (S.render !== R) return URL.revokeObjectURL(url);
+    const старый = R.url; R.url = url;
     document.querySelectorAll('.lay.dwg img').forEach(i => { i.src = url; });
     if (старый) setTimeout(() => URL.revokeObjectURL(старый), 1000); };
   const img = document.querySelector('.lay.dwg img');
-  if (!img) { R.url = url; return; }
+  if (сразу || !img) { R.url = url; return; }
   const пред = new Image(); пред.src = url;
   (пред.decode ? пред.decode() : Promise.resolve()).then(заменить, заменить);
 }
