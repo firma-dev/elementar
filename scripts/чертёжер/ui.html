@@ -231,6 +231,8 @@ button, input { font: inherit; color: inherit; }
 .btn.sm { min-block-size: var(--e-control-h-sm); padding: 0 var(--e-space-5); font-size: var(--e-size-sm); }
 .btn svg { inline-size: 18px; block-size: 18px; flex: none; }
 .hint { margin-top: var(--e-space-4); font-size: var(--e-size-sm); color: var(--e-fg-3); min-height: 1.5em; }
+.hint.need { color: var(--e-fg); font-weight: 500; padding: var(--e-space-3) var(--e-space-4); border-radius: var(--e-radius-sm);
+             background: var(--e-warning-tint); box-shadow: inset 3px 0 0 var(--e-warning); }
 
 .sum .row { display: flex; justify-content: space-between; gap: var(--e-space-5); align-items: baseline;
             padding: var(--e-space-3) 0; border-bottom: 1px solid var(--e-line-soft); font-size: var(--e-size-sm); }
@@ -615,8 +617,9 @@ function ready() {
   go.disabled = !(S.file && S.style) || S.busy;
   go.classList.toggle('primary', !S.res);
   go.textContent = S.busy ? 'Собираю…' : S.res ? 'Собрать заново' : 'Собрать SVG';
-  if (!S.res) $('#gohint').textContent = S.busy ? '' : !S.file ? 'Сначала выберите чертёж.'
-    : !S.style ? 'Выберите стиль.' : 'Всё готово — можно собирать.';
+  if (!S.res) $('#gohint').textContent = S.busy ? '' : S.ask ? 'Нужен ваш ответ: справа незнакомые слои — скажите, что в них.'
+    : !S.file ? 'Сначала выберите чертёж.' : !S.style ? 'Выберите стиль.' : 'Всё готово — можно собирать.';
+  $('#gohint').classList.toggle('need', !!S.ask && !S.busy && !S.res);
   $('#s1').classList.toggle('done', !!S.file);
   $('#s2').classList.toggle('done', !!S.style);
 }
@@ -628,7 +631,7 @@ function take(f) {
   if (f.size === 0) { ошибкаФайла(`«${f.name}» пустой. Выберите другой файл.`); return; }
   if (f.size > 200 * 1048576) { ошибкаФайла(`«${f.name}» больше 200 МБ. Сохраните нужный лист отдельно и загрузите его.`); return; }
   ошибкаФайла('');
-  S.file = f; S.res = null;
+  S.file = f; S.res = null; S.ask = false;
   $('#filecard').classList.remove('empty');
   $('#fname').textContent = f.name;
   $('#fmeta').innerHTML = `${ext.slice(1).toUpperCase()}, <span class="num">${human(f.size)}</span> · <button class="linkbtn" id="pick2">Заменить</button>`;
@@ -685,7 +688,7 @@ const сводкаВидов = () => {
 $('#nums').addEventListener('change', () => { сводкаВидов(); if (S.res) $('#gohint').textContent = 'Настройки изменены — соберите заново.'; });
 async function собрать() {
   if (!S.file || !S.style || S.busy) return;
-  S.busy = true; S.res = null; ready();
+  S.busy = true; S.res = null; S.ask = false; ready();
   $('#s4').hidden = true;
   show('progress');
   const стоп = стадии(/\.dwg$/i.test(S.file.name), S.file.size);
@@ -974,6 +977,7 @@ async function посчитать(c, номер) {
    настройку слоёв, и после последнего ответа чертёж собирается сам. */
 function спросить(слои, картинки) {
   let осталось = слои.length;
+  S.ask = true; ready();
   const один = слои.length === 1;
   $('#ask').innerHTML = `<p><b>${N(слои.length)} ${plural(слои.length, 'слой', 'слоя', 'слоёв')} мне ${один ? 'незнаком' : 'незнакомы'}, поэтому чертёж пока не собран.</b>
       Посмотрите, что в ${один ? 'нём' : 'них'} лежит, и скажите, что это. Без ответа геометрия пропала бы молча —
