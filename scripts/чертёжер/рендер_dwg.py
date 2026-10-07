@@ -41,6 +41,7 @@ def рендер(путь_dxf: str, масштаб: float = 100.0) -> tuple[str,
     from ezdxf.math import BoundingBox2d
 
     doc = ezdxf.readfile(путь_dxf)
+    раскодировать(doc)
     msp = doc.modelspace()
     ext = bbox.extents(msp, fast=True)
     if not ext.has_data:
@@ -63,6 +64,59 @@ def рендер(путь_dxf: str, масштаб: float = 100.0) -> tuple[str,
     текст = backend.get_string(стр, settings=наст, xml_declaration=False,
                                render_box=BoundingBox2d([(x0, y0), (x1, y1)]))
     return веса_в_пиксели(текст, w / масштаб), (x0, y0, x1, y1)
+
+
+def раскодировать(doc) -> int:
+    """Кириллица, экранированная \\U+XXXX (так её оставляет dwg2dxf) или \\M+NXXXX,
+    — обратно в буквы, иначе на рисунке вместо «комната» стоят коды.
+
+    Меняется документ в памяти, файл на диске не трогается. Проходят все объекты
+    базы — модель, листы и блоки (вставки, размерные блоки): TEXT, MTEXT,
+    ATTRIB/ATTDEF, переопределённый текст размера, MTEXT выноски. Тот же
+    раскодировщик ezdxf, что в цифры.строка. Возвращает число исправленных строк."""
+    from ezdxf.lldxf.encoding import (decode_dxf_unicode, decode_mif_to_unicode,
+                                      has_dxf_unicode, has_mif_encoding)
+
+    def буквы(t):
+        if not isinstance(t, str) or "\\" not in t:
+            return t
+        if has_dxf_unicode(t):
+            t = decode_dxf_unicode(t)
+        if has_mif_encoding(t):
+            t = decode_mif_to_unicode(t)
+        return t
+
+    n = 0
+    for e in list(doc.entitydb.values()):
+        тип = e.dxftype()
+        try:
+            if тип == "MTEXT":
+                новый = буквы(e.text)
+                if новый != e.text:
+                    e.text, n = новый, n + 1
+            elif тип in ("TEXT", "ATTRIB", "ATTDEF", "DIMENSION", "ARC_DIMENSION",
+                         "LARGE_RADIAL_DIMENSION"):
+                старый = e.dxf.get("text")
+                if старый:
+                    новый = буквы(старый)
+                    if новый != старый:
+                        e.dxf.text, n = новый, n + 1
+                if тип in ("ATTRIB", "ATTDEF") and getattr(e, "has_embedded_mtext_entity", False):
+                    m = e.virtual_mtext_entity()
+                    новый = буквы(m.text)
+                    if новый != m.text:
+                        m.text = новый
+                        e.embed_mtext(m)
+                        n += 1
+            elif тип == "MULTILEADER":
+                ctx = e.context
+                if ctx.mtext is not None:
+                    новый = буквы(ctx.mtext.default_content)
+                    if новый != ctx.mtext.default_content:
+                        ctx.mtext.default_content, n = новый, n + 1
+        except Exception:
+            continue  # один странный объект не должен оставлять без рисунка весь лист
+    return n
 
 
 def веса_в_пиксели(текст: str, ширина_мм: float) -> str:

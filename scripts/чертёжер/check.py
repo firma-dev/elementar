@@ -99,6 +99,49 @@ def вызовы_на_месте():
     return из
 
 
+def кириллица_в_dwg(td):
+    """Вид «DWG» (рендер_dwg.py) рисовал русский текст кодами: dwg2dxf оставляет
+    кириллицу экранированной («\\U+043A\\U+043E…»), а ezdxf drawing рисует строку
+    как есть. Текст кодами и тот же текст буквами — в TEXT, MTEXT, атрибуте блока
+    и переопределённом тексте размера — обязаны дать один и тот же рисунок."""
+    import ezdxf
+    из = []
+    коды = "\\U+043A\\U+043E\\U+043C\\U+043D\\U+0430\\U+0442\\U+0430"
+    рисунки = []
+    for i, слово in enumerate((коды, "комната")):
+        doc = ezdxf.new()
+        msp = doc.modelspace()
+        msp.add_line((0, 0), (5000, 0))
+        msp.add_text(слово, dxfattribs={"height": 300}).set_placement((0, 500))
+        msp.add_mtext(слово, dxfattribs={"char_height": 300, "insert": (0, 1500)})
+        blk = doc.blocks.new("МАРКА")
+        blk.add_attdef("Н", (0, 0), dxfattribs={"height": 300})
+        msp.add_blockref("МАРКА", (0, 2500)).add_attrib("Н", слово, (0, 2500), dxfattribs={"height": 300})
+        # Размер строится с буквами в обоих (геометрия размерного блока считается по
+        # ширине текста), а коды ставятся потом — как их оставляет dwg2dxf: и в
+        # переопределении, и в MTEXT размерного блока.
+        dim = msp.add_linear_dim(base=(0, -500), p1=(0, 0), p2=(5000, 0), text="комната")
+        dim.render()
+        dim.dimension.dxf.text = слово
+        for e in dim.dimension.get_geometry_block():
+            if e.dxftype() == "MTEXT":
+                e.text = e.text.replace("комната", слово)
+        f = td / f"кириллица-{i}.dxf"
+        doc.saveas(f)
+        до = f.read_bytes()
+        r = subprocess.run([sys.executable, str(HERE / "рендер_dwg.py"), str(f), str(td / f"кириллица-{i}.svg")],
+                           capture_output=True, text=True)
+        if r.returncode:
+            из.append(f"рендер_dwg.py упал на кириллице: {r.stderr.strip()[-200:]}")
+            return из
+        if f.read_bytes() != до:
+            из.append("рендер_dwg.py изменил исходный файл")
+        рисунки.append((td / f"кириллица-{i}.svg").read_text(encoding="utf-8"))
+    if рисунки[0] != рисунки[1]:
+        из.append("«DWG»: текст «\\U+043A…» нарисован не как «комната» (кириллица кодами)")
+    return из
+
+
 def проверка_проверки():
     """verify() — гейт внутри гейта. Перестанет ловить она — молча развалится
     всё остальное, поэтому её проверяем напрямую."""
@@ -507,7 +550,8 @@ def main():
         return 1
 
     with tempfile.TemporaryDirectory(prefix="чертёжер-гейт-") as td:
-        ошибки = вызовы_на_месте() + проверка_проверки() + синтетика(pathlib.Path(td))
+        ошибки = (вызовы_на_месте() + проверка_проверки() + синтетика(pathlib.Path(td))
+                  + кириллица_в_dwg(pathlib.Path(td)))
     ошибки += демо()
     ошибки += эталоны()
 
