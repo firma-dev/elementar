@@ -182,6 +182,18 @@ for (const [имя, движок] of [['chromium', chromium], ['webkit', webkit]
       await вЭкран(стр, `${тег} рядом`);
       if (демо === ДЕМО[0] || !сверять) await снимок(стр, `${тег}-5-рядом`);
       await стр.click('.seg [data-mode="both"]');
+      if (w === 1440 && демо === ДЕМО[0]) {
+        // переключатель цифр после сборки пересобирает сам, без «Собрать заново»
+        await стр.click('#numsbox summary');
+        const снова = стр.waitForResponse((x) => x.url().endsWith('/convert'), { timeout: 60000 });
+        await стр.click('#nums input[value="площади"]');
+        const р2 = await снова;
+        const заголовки = р2.request().headers();
+        await стр.waitForFunction(() => !document.querySelector('#view').hidden && /Собрано/.test(document.querySelector('#gohint').textContent));
+        const цифр = await стр.locator('#sum .row:nth-child(4) dd').innerText();
+        if (decodeURIComponent(заголовки['x-numbers'] || '').includes('площади') || цифр.trim() !== '0')
+          ошибка(`${тег}: снятые «площади» не применились сами (цифр ${цифр}, заголовок ${заголовки['x-numbers']})`);
+      }
       if (консоль.length) ошибка(`${тег}: ошибки страницы: ${консоль.join('; ')}`);
       console.log(`  ${тег}: ${сек} с, стадия «${первая}», ${сверять ? 'эталон сверен' : 'без эталона'}, ` +
         `превью ${Math.round(бокс.width)}×${Math.round(бокс.height)}, отличия ${отл[0]}/${отл[1]} пкс; «${итог}»; «${вердикт.slice(0, 160)}»`);

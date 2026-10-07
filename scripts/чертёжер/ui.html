@@ -602,7 +602,7 @@ function выбратьСтиль(b, тихо) {
   b.setAttribute('aria-checked', 'true'); b.tabIndex = 0;
   const было = S.style; S.style = b.dataset.s;
   ready();
-  if (!тихо && S.res && было !== S.style) $('#gohint').textContent = 'Стиль изменён — соберите заново.';
+  if (!тихо && было !== S.style) пересобрать('Стиль изменён — пересобираю…');
 }
 $('#styles').addEventListener('keydown', e => {
   const all = $$('#styles .style'); const i = all.indexOf(document.activeElement);
@@ -685,10 +685,20 @@ const сводкаВидов = () => {
   const on = $$('#nums input:checked').map(x => x.parentElement.textContent.trim());
   $('#numsum').textContent = on.length ? on.join(', ') : 'не переносить';
 };
-$('#nums').addEventListener('change', () => { сводкаВидов(); if (S.res) $('#gohint').textContent = 'Настройки изменены — соберите заново.'; });
+// Цифры поменяли после сборки — пересобираем сами: результат на экране и в
+// «Скачать SVG» всегда соответствует переключателям.
+let пересборка = null;
+function пересобрать(почему) {
+  if (!S.res && !S.busy) return;
+  if (S.busy) { S.again = true; return; }
+  clearTimeout(пересборка);
+  $('#gohint').textContent = почему;
+  пересборка = setTimeout(собрать, 500);
+}
+$('#nums').addEventListener('change', () => { сводкаВидов(); пересобрать('Цифры изменены — пересобираю…'); });
 async function собрать() {
   if (!S.file || !S.style || S.busy) return;
-  S.busy = true; S.res = null; S.ask = false; ready();
+  S.busy = true; S.res = null; S.ask = false; S.again = false; ready();
   $('#s4').hidden = true;
   show('progress');
   const стоп = стадии(/\.dwg$/i.test(S.file.name), S.file.size);
@@ -710,6 +720,7 @@ async function собрать() {
   // короткая пауза: последняя стадия должна быть видна закрытой
   await new Promise(ok => setTimeout(ok, reduced ? 0 : 250));
   S.res = d; ready();
+  if (S.again) { S.again = false; setTimeout(собрать, 0); }
   $('#gohint').innerHTML = `Собрано за <span class="num">${sec((d.timing && d.timing.total) || t)}</span> с.`;
   результат(d);
 }
